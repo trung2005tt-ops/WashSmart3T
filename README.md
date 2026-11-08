@@ -1,6 +1,6 @@
 # ĐỒ ÁN TỐT NGHIỆP: HỆ THỐNG QUẢN LÝ & ĐIỀU PHỐI GIẶT ỦI THÔNG MINH (WASHSMART 3T)
 
-## 📌 Giới Thiệu Tổng Quan
+## Giới Thiệu Tổng Quan
 Hệ sinh thái **WashSmart 3T** là giải pháp số hóa toàn diện quy trình giặt ủi công nghệ cao, kết nối thời gian thực giữa Khách hàng, Shipper giao nhận, Nhân viên quầy và Ban quản trị hệ thống:
 1. **Backend Web API (.NET 8)**: Cung cấp toàn bộ RESTful API, quản lý logic giặt sấy, định tuyến OSRM, VietQR Napas 247 và cơ chế bảo hiểm 3T Care.
 2. **Web Portal Quản Trị & POS Quầy (HTML5 / Tailwind CSS / ES6)**: Dashboard chỉ số KPI thời gian thực, Tiếp nhận đơn quầy tích hợp cân điện tử, Bản đồ điều phối gom/giao đơn cho Shipper, và Trung tâm xử lý khiếu nại bồi hoàn.
@@ -8,7 +8,7 @@ Hệ sinh thái **WashSmart 3T** là giải pháp số hóa toàn diện quy tr�
 
 ---
 
-## 📂 Cấu Trúc Mã Nguồn Chuẩn Đồ Án Tốt Nghiệp
+## Cấu Trúc Mã Nguồn Chuẩn Đồ Án Tốt Nghiệp
 
 ```
 DoAnTotNghiep/
@@ -39,7 +39,7 @@ DoAnTotNghiep/
 
 ---
 
-## 🚀 Hướng Dẫn Khởi Chạy Nhanh
+## Hướng Dẫn Khởi Chạy Nhanh
 
 ### 1. Khởi Chạy Backend API (C# .NET 8)
 - **Yêu cầu**: .NET 8 SDK, SQL Server Express (`localhost\SQLEXPRESS`).
@@ -71,7 +71,7 @@ DoAnTotNghiep/
 
 ---
 
-## 🔑 Tài Khoản Thử Nghiệm Hệ Thống (Demo Accounts)
+## Tài Khoản Thử Nghiệm Hệ Thống (Demo Accounts)
 
 | Vai Trò | Số Điện Thoại | Mật Khẩu | Tên Người Dùng | Mục Đích Sử Dụng |
 | :--- | :--- | :--- | :--- | :--- |
@@ -81,7 +81,7 @@ DoAnTotNghiep/
 
 ---
 
-## 💎 Điểm Nhấn Công Nghệ Của Đồ Án
+## Điểm Nhấn Công Nghệ Của Đồ Án
 1. **VietQR NAPAS 247 Động**: Tạo mã QR chuẩn EMVCo tự động khóa số tiền và nội dung đơn hàng `#WS3T-XXXX`, chống chuyển sai sót, đồng bộ tài khoản thật động từ `store_config.json`.
 2. **Bản Đồ Điều Phối & Ghép Đơn Thông Minh (Dispatch Engine)**: Tích hợp OpenStreetMap và giải thuật tối ưu hóa đường đi ngắn nhất (OSRM TSP) giúp shipper tối ưu cung đường giao nhiều đơn cùng lúc.
 3. **Quy Chuẩn Bảo Hiểm 3T Care**: Quy trình xử lý sự cố đồ giặt minh bạch 4 bước (Tiếp nhận -> Đối soát Seal/IoT -> Lựa chọn hướng giải quyết: Giặt lại / Hoàn tiền / Đền bù / Voucher -> Chốt biên bản bồi hoàn).
