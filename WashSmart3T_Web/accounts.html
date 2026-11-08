@@ -1,0 +1,1443 @@
+<!DOCTYPE html>
+
+<html lang="vi">
+
+
+
+<head>
+
+  <meta charset="utf-8">
+
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+
+  <title>Quản lý Tài khoản - WashSmart 3T</title>
+
+
+
+  <!-- Fonts & Icons -->
+
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+
+
+
+  <style>
+
+    body {
+
+      font-family: 'Plus Jakarta Sans', sans-serif;
+
+      overscroll-behavior: none;
+
+    }
+
+    ::-webkit-scrollbar {
+
+      display: none;
+
+    }
+
+  </style>
+
+
+
+  <!-- Tailwind CSS Config -->
+
+  <script src="https://cdn.tailwindcss.com">
+
+    function togglePasswordVisibility(id, pass) {
+      const el = document.getElementById('pwd-display-' + id);
+      const icon = document.getElementById('pwd-icon-' + id);
+      if (!el || !icon) return;
+      if (el.textContent === '••••••') {
+        el.textContent = pass;
+        el.classList.add('text-primary');
+        icon.textContent = 'visibility_off';
+      } else {
+        el.textContent = '••••••';
+        el.classList.remove('text-primary');
+        icon.textContent = 'visibility';
+      }
+    }
+
+    function copyPassword(pass) {
+      if (navigator.clipboard) {
+        navigator.clipboard.writeText(pass).then(function() {
+          showToast('Đã sao chép mật khẩu: ' + pass);
+        }).catch(function() {
+          showToast('Mật khẩu: ' + pass);
+        });
+      } else {
+        showToast('Mật khẩu: ' + pass);
+      }
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+
+    function openResetPasswordModal(id, name) {
+
+      const newPass = prompt(`Nhập mật khẩu mới cho tài khoản "${name}":`, '123456');
+
+      if (newPass === null) return;
+
+      const passClean = newPass.trim() || '123456';
+
+      Api.Users.resetPassword(id, passClean)
+
+        .then(res => {
+
+          showToast(res.message || `Đã đổi mật khẩu cho ${name} thành: ${passClean}`);
+
+        })
+
+        .catch(err => {
+
+          showToast('Lỗi đặt lại mật khẩu: ' + err.message, true);
+
+        });
+
+    }
+
+
+
+    async function handleResetAllPasswords() {
+
+      if (!confirm('Bạn có chắc chắn muốn đặt lại mật khẩu cho TẤT CẢ các tài khoản trong cơ sở dữ liệu về "123456" không?')) return;
+
+      try {
+
+        const res = await Api.Users.resetAllPasswords('123456');
+
+        showToast(res.message || 'Đã đặt lại mật khẩu toàn bộ tài khoản về 123456 thành công!');
+
+        await loadAccounts();
+
+      } catch (err) {
+
+        showToast('Lỗi đặt lại mật khẩu: ' + err.message, true);
+
+      }
+
+    }
+
+
+
+  </script>
+
+  <script>
+
+    tailwind.config = {
+
+      darkMode: "class",
+
+      theme: {
+
+        extend: {
+
+          colors: {
+
+            "primary": "#8e0028",
+
+            "primary-container": "#b90538",
+
+            "primary-fixed": "#ffdadb",
+
+            "surface": "#fff8f9",
+
+            "surface-container-low": "#f9f2f3",
+
+            "surface-container": "#f3eced",
+
+            "surface-container-high": "#ede7e8",
+
+            "surface-card": "#ffffff",
+
+            "on-surface": "#1d1b1c",
+
+            "secondary": "#6a5b5e",
+
+            "outline": "#8f6f70",
+
+            "outline-variant": "#e3bdbf",
+
+            "error": "#ba1a1a"
+
+          }
+
+        }
+
+      }
+
+    };
+
+  
+
+    function openResetPasswordModal(id, name) {
+
+      const newPass = prompt(`Nhập mật khẩu mới cho tài khoản "${name}":`, '123456');
+
+      if (newPass === null) return;
+
+      const passClean = newPass.trim() || '123456';
+
+      Api.Users.resetPassword(id, passClean)
+
+        .then(res => {
+
+          showToast(res.message || `Đã đổi mật khẩu cho ${name} thành: ${passClean}`);
+
+        })
+
+        .catch(err => {
+
+          showToast('Lỗi đặt lại mật khẩu: ' + err.message, true);
+
+        });
+
+    }
+
+
+
+    async function handleResetAllPasswords() {
+
+      if (!confirm('Bạn có chắc chắn muốn đặt lại mật khẩu cho TẤT CẢ các tài khoản trong cơ sở dữ liệu về "123456" không?')) return;
+
+      try {
+
+        const res = await Api.Users.resetAllPasswords('123456');
+
+        showToast(res.message || 'Đã đặt lại mật khẩu toàn bộ tài khoản về 123456 thành công!');
+
+        await loadAccounts();
+
+      } catch (err) {
+
+        showToast('Lỗi đặt lại mật khẩu: ' + err.message, true);
+
+      }
+
+    }
+
+
+
+  </script>
+
+</head>
+
+
+
+<body class="bg-surface text-on-surface antialiased text-sm">
+
+
+
+  <!-- Sidebar Navigation (Đầy đủ 8 mục hệ thống) -->
+
+  <aside class="fixed left-0 top-0 h-full w-64 bg-primary text-white z-50 flex flex-col justify-between shadow-lg">
+
+    <div class="flex flex-col">
+
+      <!-- Logo -->
+
+      <div class="p-5 flex items-center gap-3 border-b border-white/10">
+
+        <div class="w-10 h-10 rounded-xl bg-white text-primary flex items-center justify-center font-bold shadow-sm">
+
+          <span class="material-symbols-outlined text-2xl">local_laundry_service</span>
+
+        </div>
+
+        <div>
+
+          <h2 class="font-bold text-base leading-tight">WashSmart 3T</h2>
+
+          <p class="text-[11px] text-white/70 uppercase tracking-wider font-medium">Hệ Thống Quản Lý</p>
+
+        </div>
+
+      </div>
+
+
+
+      <!-- Navigation Links -->
+
+      <nav class="p-3 space-y-1">
+
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors" href="index.html">
+
+          <span class="material-symbols-outlined text-xl">analytics</span>
+
+          <span>Dashboard</span>
+
+        </a>
+
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors" href="orders.html">
+
+          <span class="material-symbols-outlined text-xl">receipt_long</span>
+
+          <span>Quản lý Đơn hàng</span>
+
+        </a>
+
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors" href="pos.html">
+
+          <span class="material-symbols-outlined text-xl">point_of_sale</span>
+
+          <span>POS Quầy</span>
+
+        </a>
+
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors" href="dispatch.html">
+
+          <span class="material-symbols-outlined text-xl">two_wheeler</span>
+
+          <span>Điều phối Shipper</span>
+
+        </a>
+
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white text-primary font-bold shadow-sm" href="accounts.html">
+
+          <span class="material-symbols-outlined text-xl">badge</span>
+
+          <span>Quản lý Tài khoản</span>
+
+        </a>
+
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors" href="customers.html">
+
+          <span class="material-symbols-outlined text-xl">loyalty</span>
+
+          <span>Khách hàng & Loyalty</span>
+
+        </a>
+
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors" href="complaints.html">
+
+          <span class="material-symbols-outlined text-xl">support_agent</span>
+
+          <span>Xử lý Khiếu nại</span>
+
+        </a>
+
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors" href="services.html">
+
+          <span class="material-symbols-outlined text-xl">sell</span>
+
+          <span>Dịch vụ & Bảng giá</span>
+
+        </a>
+
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+
+          href="store-settings.html">
+
+          <span class="material-symbols-outlined text-xl">store</span>
+
+          <span>Cấu hình Cửa hàng</span>
+
+        </a>
+
+      </nav>
+
+    </div>
+
+
+
+    <!-- Status & Logout -->
+
+    <div class="p-4 space-y-3 border-t border-white/10">
+
+
+
+      <button onclick="handleLogout(event)" class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-black/20 hover:bg-black/40 text-white font-medium transition-colors text-xs">
+
+        <span class="material-symbols-outlined text-base">logout</span>
+
+        <span>Đăng xuất</span>
+
+      </button>
+
+    </div>
+
+  </aside>
+
+
+
+  <!-- Main Content Area -->
+
+  <div class="pl-64">
+
+    <!-- Top Header -->
+
+    <header class="h-16 bg-surface-card border-b border-surface-container flex items-center justify-between px-6 sticky top-0 z-40">
+
+      <div class="flex items-center gap-4 flex-1 max-w-lg">
+
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container text-on-surface text-xs font-semibold cursor-pointer">
+
+          <span class="material-symbols-outlined text-base text-primary">store</span>
+
+          <span>Chi nhánh CS1 - TP.HCM</span>
+
+          <span class="material-symbols-outlined text-base">expand_more</span>
+
+        </div>
+
+        <div class="relative flex-1">
+
+          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-lg">search</span>
+
+          <input id="account-search-input" type="text" placeholder="Tìm tên nhân viên, SĐT, vai trò..." class="w-full pl-9 pr-4 py-1.5 rounded-full bg-surface-container-low text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+
+        </div>
+
+      </div>
+
+
+
+      <div class="flex items-center gap-3">
+
+        <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs">KN</div>
+
+        <div class="text-left text-xs">
+
+          <p class="font-bold leading-tight">Nguyễn Kiều Như</p>
+
+          <p class="text-secondary text-[11px]">Quản lý cửa hàng</p>
+
+        </div>
+
+      </div>
+
+    </header>
+
+
+
+    <!-- Main Container -->
+
+    <main class="p-6 space-y-6">
+
+
+
+      <!-- Page Title & Actions -->
+
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+
+        <div>
+
+          <h1 class="text-2xl font-bold tracking-tight text-on-surface">Quản Lý Tài Khoản & Phân Quyền</h1>
+
+          <p class="text-secondary text-xs mt-1">Danh sách nhân sự cửa hàng, tài khoản POS, Shipper và phân quyền truy cập hệ thống.</p>
+
+        </div>
+
+
+
+        <div class="flex items-center gap-2">
+
+          <button onclick="showToast('Đang khởi tạo file xuất dữ liệu nhân sự Excel...')" class="flex items-center gap-2 px-3.5 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold transition-colors">
+
+            <span class="material-symbols-outlined text-base text-secondary">file_download</span>
+
+            <span>Xuất Excel</span>
+
+          </button>
+
+          <button id="btn-reset-all-passwords" onclick="handleResetAllPasswords()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-semibold transition-colors shadow-sm" title="Đặt lại mật khẩu cho tất cả tài khoản về 123456">
+
+            <span class="material-symbols-outlined text-base text-amber-700">lock_reset</span>
+
+            <span>Đặt Lại Mật Khẩu (123456)</span>
+
+          </button>
+
+          <button id="btn-open-add-modal" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary-container transition-colors text-xs font-semibold shadow-sm">
+
+            <span class="material-symbols-outlined text-base">person_add</span>
+
+            <span>Thêm Nhân Viên Mới</span>
+
+          </button>
+
+        </div>
+
+      </div>
+
+
+
+      <!-- KPI Summary Cards -->
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+
+        <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between">
+
+          <div>
+
+            <p class="text-xs text-secondary font-medium">Tổng nhân sự chi nhánh</p>
+
+            <p class="text-2xl font-bold text-on-surface mt-1" id="kpi-total-staff">0 <span class="text-xs font-normal text-secondary">nhân sự</span></p>
+
+          </div>
+
+          <div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center">
+
+            <span class="material-symbols-outlined">badge</span>
+
+          </div>
+
+        </div>
+
+
+
+        <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between">
+
+          <div>
+
+            <p class="text-xs text-secondary font-medium">Quản trị & Lễ tân POS</p>
+
+            <p class="text-2xl font-bold text-primary mt-1" id="kpi-admin-pos">0 <span class="text-xs font-normal text-secondary">tài khoản</span></p>
+
+          </div>
+
+          <div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center">
+
+            <span class="material-symbols-outlined">admin_panel_settings</span>
+
+          </div>
+
+        </div>
+
+
+
+        <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between">
+
+          <div>
+
+            <p class="text-xs text-secondary font-medium">Shipper & Kỹ thuật xưởng</p>
+
+            <p class="text-2xl font-bold text-on-surface mt-1" id="kpi-field-staff">0 <span class="text-xs font-normal text-secondary">nhân sự</span></p>
+
+          </div>
+
+          <div class="w-10 h-10 rounded-lg bg-surface-container text-secondary flex items-center justify-center">
+
+            <span class="material-symbols-outlined">two_wheeler</span>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+
+      <!-- Filters & Accounts Table Container -->
+
+      <div class="space-y-4">
+
+        
+
+        <!-- Role Filter Selector -->
+
+        <div class="p-2 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between gap-3 overflow-x-auto">
+
+          <div class="flex items-center gap-2" id="role-filter-buttons">
+
+                        <button class="role-btn active px-3.5 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold whitespace-nowrap" data-role="all">
+              Tất cả nhân sự
+            </button>
+            <button class="role-btn px-3.5 py-1.5 rounded-lg text-secondary hover:bg-surface-container transition-colors text-xs font-semibold whitespace-nowrap" data-role="Admin">
+              Admin Quản trị
+            </button>
+            <button class="role-btn px-3.5 py-1.5 rounded-lg text-secondary hover:bg-surface-container transition-colors text-xs font-semibold whitespace-nowrap" data-role="Staff">
+              Lễ tân POS
+            </button>
+            <button class="role-btn px-3.5 py-1.5 rounded-lg text-secondary hover:bg-surface-container transition-colors text-xs font-semibold whitespace-nowrap" data-role="Shipper">
+              Shipper Giao nhận
+            </button>
+            <button class="role-btn px-3.5 py-1.5 rounded-lg text-secondary hover:bg-surface-container transition-colors text-xs font-semibold whitespace-nowrap" data-role="Technician">
+              Kỹ thuật xưởng
+            </button>
+
+          </div>
+
+
+
+          <span class="text-xs text-secondary font-medium whitespace-nowrap px-2" id="record-counter-text">Hiển thị 0 nhân sự</span>
+
+        </div>
+
+
+
+        <!-- Table Card -->
+
+        <div class="bg-surface-card rounded-xl border border-surface-container overflow-hidden">
+
+          <table class="w-full text-left border-collapse">
+
+            <thead>
+
+              <tr class="bg-surface-container-low text-secondary text-[11px] uppercase tracking-wider border-b border-surface-container">
+
+                <th class="py-3 px-4 font-semibold">Nhân viên & SĐT</th>
+
+                <th class="py-3 px-3 font-semibold">Vai trò phụ trách</th>
+
+                <th class="py-3 px-3 font-semibold">Chi nhánh làm việc</th>
+
+                <th class="py-3 px-3 font-semibold text-center">Mật khẩu</th>
+
+                <th class="py-3 px-3 font-semibold text-center">Trạng thái</th>
+
+                <th class="py-3 px-4 font-semibold text-center">Thao tác</th>
+
+              </tr>
+
+            </thead>
+
+            <tbody class="divide-y divide-surface-container text-xs" id="accounts-table-body">
+
+              <!-- Rendered Dynamically via JS -->
+
+            </tbody>
+
+          </table>
+
+        </div>
+
+
+
+      </div>
+
+
+
+    </main>
+
+  </div>
+
+
+
+  <!-- Modal: Thêm / Sửa Nhân Viên -->
+
+  <div id="account-modal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm hidden items-center justify-center p-4">
+
+    <div class="bg-surface-card rounded-xl max-w-md w-full p-5 border border-surface-container shadow-xl space-y-4">
+
+      <div class="flex items-center justify-between">
+
+        <h3 class="font-bold text-sm text-on-surface" id="modal-account-title">Thêm Nhân Sự Mới</h3>
+
+        <button id="close-account-modal" class="text-secondary hover:text-on-surface">
+
+          <span class="material-symbols-outlined text-lg">close</span>
+
+        </button>
+
+      </div>
+
+
+
+      <div class="space-y-3 text-xs">
+
+        <div>
+
+          <label class="block font-semibold text-secondary mb-1">Họ và Tên</label>
+
+          <input id="input-emp-name" type="text" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Ví dụ: Nguyễn Văn Hải">
+
+        </div>
+
+
+
+        <div>
+
+          <label class="block font-semibold text-secondary mb-1">Số Điện Thoại</label>
+
+          <input id="input-emp-phone" type="tel" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Ví dụ: 0988 234 567">
+
+        </div>
+
+
+
+        <div>
+
+          <label class="block font-semibold text-secondary mb-1">Mật khẩu tài khoản</label>
+
+          <input id="input-emp-password" type="text" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Mặc định: 123456">
+
+        </div>
+
+
+
+        <div class="grid grid-cols-2 gap-3">
+
+          <div>
+
+            <label class="block font-semibold text-secondary mb-1">Vai Trò</label>
+
+            <select id="input-emp-role" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+
+              <option value="Admin Quản trị">Admin Quản trị</option>
+
+              <option value="Lễ tân POS" selected>Lễ tân POS</option>
+
+              <option value="Shipper">Shipper Giao nhận</option>
+
+              <option value="Kỹ thuật xưởng">Kỹ thuật xưởng</option>
+
+            </select>
+
+          </div>
+
+          <div>
+
+            <label class="block font-semibold text-secondary mb-1">Chi nhánh</label>
+
+            <select id="input-emp-branch" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+
+              <option value="Toàn hệ thống">Toàn hệ thống</option>
+
+              <option value="CS1 - TP.HCM" selected>CS1 - TP.HCM</option>
+
+              <option value="CS2 - Quận 7">CS2 - Quận 7</option>
+
+            </select>
+
+          </div>
+
+        </div>
+
+
+
+        <div>
+
+          <label class="block font-semibold text-secondary mb-1">Trạng thái tài khoản</label>
+
+          <select id="input-emp-status" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+
+            <option value="active">Đang hoạt động</option>
+
+            <option value="inactive">Khóa tài khoản</option>
+
+          </select>
+
+        </div>
+
+      </div>
+
+
+
+      <div class="flex items-center justify-end gap-2 pt-2">
+
+        <button id="cancel-account-modal" class="px-4 py-2 rounded-lg bg-surface-container text-xs font-medium text-on-surface hover:bg-surface-container-high">Hủy</button>
+
+        <button id="confirm-save-account" class="px-4 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary-container">Lưu tài khoản</button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- Modal: Xác nhận Xóa Nhân Viên -->
+
+  <div id="delete-modal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm hidden items-center justify-center p-4">
+
+    <div class="bg-surface-card rounded-xl max-w-sm w-full p-5 border border-surface-container shadow-xl space-y-4 text-center">
+
+      <div class="w-12 h-12 rounded-full bg-red-50 text-red-700 flex items-center justify-center mx-auto">
+
+        <span class="material-symbols-outlined text-2xl">warning</span>
+
+      </div>
+
+      <div>
+
+        <h3 class="font-bold text-sm text-on-surface">Xóa Tài Khoản Nhân Viên?</h3>
+
+        <p class="text-xs text-secondary mt-1">Bạn có chắc chắn muốn xóa nhân viên <strong id="delete-emp-name-text" class="text-on-surface">...</strong> khỏi hệ thống? Thao tác này không thể hoàn tác.</p>
+
+      </div>
+
+
+
+      <div class="flex items-center justify-center gap-2 pt-2">
+
+        <button id="cancel-delete-modal" class="w-full py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-xs font-medium text-on-surface">Hủy bỏ</button>
+
+        <button id="confirm-delete-account" class="w-full py-2 rounded-lg bg-red-700 hover:bg-red-800 text-white text-xs font-semibold">Xác nhận Xóa</button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+
+
+  <!-- Toast Container -->
+
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+
+
+  <!-- JavaScript Dynamic State Management -->
+
+  <script src="api.js">
+
+    function openResetPasswordModal(id, name) {
+
+      const newPass = prompt(`Nhập mật khẩu mới cho tài khoản "${name}":`, '123456');
+
+      if (newPass === null) return;
+
+      const passClean = newPass.trim() || '123456';
+
+      Api.Users.resetPassword(id, passClean)
+
+        .then(res => {
+
+          showToast(res.message || `Đã đổi mật khẩu cho ${name} thành: ${passClean}`);
+
+        })
+
+        .catch(err => {
+
+          showToast('Lỗi đặt lại mật khẩu: ' + err.message, true);
+
+        });
+
+    }
+
+
+
+    async function handleResetAllPasswords() {
+
+      if (!confirm('Bạn có chắc chắn muốn đặt lại mật khẩu cho TẤT CẢ các tài khoản trong cơ sở dữ liệu về "123456" không?')) return;
+
+      try {
+
+        const res = await Api.Users.resetAllPasswords('123456');
+
+        showToast(res.message || 'Đã đặt lại mật khẩu toàn bộ tài khoản về 123456 thành công!');
+
+        await loadAccounts();
+
+      } catch (err) {
+
+        showToast('Lỗi đặt lại mật khẩu: ' + err.message, true);
+
+      }
+
+    }
+
+
+
+  </script>
+
+  <script>
+
+    // 1. Dữ liệu State Nhân Viên thật kết nối từ SQL Server Backend
+
+    let accountsData = [];
+
+    let currentEditingId = null;
+
+    let deletingTargetId = null;
+
+    let currentRoleFilter = "all";
+
+    let searchQuery = "";
+
+
+
+    async function loadAccounts() {
+      try {
+        const users = await Api.Users.all();
+        // CHỈ QUẢN LÝ NHÂN SỰ CỬA HÀNG (Admin, Lễ tân POS, Shipper, Kỹ thuật xưởng)
+        // Loại bỏ tài khoản Khách hàng (khách hàng được quản lý riêng tại trang customers.html)
+        const staffOnly = (users || []).filter(u => u.roleName !== 'Customer' && u.roleId !== 4);
+        accountsData = staffOnly.map(u => ({
+          id: u.id,
+          name: u.fullName,
+          phone: u.phone,
+          email: u.email,
+          role: u.roleName === 'Admin' ? 'Admin Quản trị' : (u.roleName === 'Shipper' ? 'Shipper Giao nhận' : (u.roleName === 'Staff' ? 'Lễ tân POS' : (u.roleName === 'Technician' ? 'Kỹ thuật xưởng' : u.roleName))),
+          rawRole: u.roleName,
+          branch: u.branch || 'CS1 - TP.HCM',
+          status: u.isActive ? 'active' : 'inactive',
+          avatar: u.avatar || 'NV',
+          plainPassword: u.plainPassword || '123456'
+        }));
+        renderTable();
+
+      } catch (err) {
+
+        console.error('Lỗi tải danh sách nhân sự:', err);
+
+        showToast('Không thể tải danh sách tài khoản: ' + err.message, true);
+
+      }
+
+    }
+
+
+
+    function handleLogout(e) {
+
+      if (e) e.preventDefault();
+
+      if (window.Auth) Auth.logout();
+
+      else window.location.href = 'login.html';
+
+    }
+
+
+
+    function showToast(message, isError = false) {
+
+      const container = document.getElementById('toast-container');
+
+      const toast = document.createElement('div');
+
+      toast.className = `pointer-events-auto flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-medium text-white shadow-lg ${isError ? 'bg-red-800' : 'bg-zinc-900'}`;
+
+      toast.innerHTML = `<span class="material-symbols-outlined text-base">${isError ? 'error' : 'check_circle'}</span><span>${message}</span>`;
+
+      container.appendChild(toast);
+
+      setTimeout(() => toast.remove(), 4000);
+
+    }
+
+
+
+    // 2. Render Bảng & KPI Số liệu
+
+    function renderTable() {
+      const tbody = document.getElementById('accounts-table-body');
+      tbody.innerHTML = '';
+
+      // Lọc theo Role & Search chuẩn xác từng vai trò
+      const filtered = accountsData.filter(item => {
+        let matchRole = false;
+        if (currentRoleFilter === 'all') {
+          matchRole = true;
+        } else if (currentRoleFilter === 'Admin') {
+          matchRole = item.rawRole === 'Admin' || item.role.includes('Admin');
+        } else if (currentRoleFilter === 'Staff' || currentRoleFilter === 'POS') {
+          matchRole = item.rawRole === 'Staff' || item.role.includes('POS') || item.role.includes('Lễ tân');
+        } else if (currentRoleFilter === 'Shipper') {
+          matchRole = item.rawRole === 'Shipper' || item.role.includes('Shipper');
+        } else if (currentRoleFilter === 'Customer') {
+          matchRole = item.rawRole === 'Customer' || item.role.includes('Khách');
+        } else {
+          matchRole = item.role.toLowerCase().includes(currentRoleFilter.toLowerCase()) || 
+                      item.rawRole.toLowerCase() === currentRoleFilter.toLowerCase();
+        }
+
+        const matchSearch = !searchQuery || 
+                            item.name.toLowerCase().includes(searchQuery) ||
+                            item.phone.includes(searchQuery) ||
+                            item.role.toLowerCase().includes(searchQuery);
+        return matchRole && matchSearch;
+      });
+
+
+
+      // Cập nhật KPI
+
+      document.getElementById('kpi-total-staff').innerHTML = `${accountsData.length} <span class="text-xs font-normal text-secondary">nhân sự</span>`;
+
+      document.getElementById('kpi-admin-pos').innerHTML = `${accountsData.filter(x => x.role.includes('Admin') || x.role.includes('POS')).length} <span class="text-xs font-normal text-secondary">tài khoản</span>`;
+
+      document.getElementById('kpi-field-staff').innerHTML = `${accountsData.filter(x => x.role.includes('Shipper') || x.role.includes('Kỹ thuật')).length} <span class="text-xs font-normal text-secondary">nhân sự</span>`;
+
+      document.getElementById('record-counter-text').textContent = `Hiển thị ${filtered.length} / ${accountsData.length} nhân sự`;
+
+
+
+      if (filtered.length === 0) {
+
+        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-secondary font-medium">Không tìm thấy nhân viên nào phù hợp</td></tr>`;
+
+        return;
+
+      }
+
+
+
+      filtered.forEach(item => {
+
+        const tr = document.createElement('tr');
+
+        tr.className = 'hover:bg-surface-container-low transition-colors';
+
+        
+
+        let roleBadgeClass = 'bg-surface-container text-on-surface';
+
+        if (item.role.includes('Admin')) roleBadgeClass = 'bg-primary text-white font-bold';
+
+        else if (item.role.includes('POS')) roleBadgeClass = 'bg-amber-100 text-amber-800 font-bold';
+
+        else if (item.role.includes('Shipper')) roleBadgeClass = 'bg-blue-100 text-blue-800 font-bold';
+
+
+
+        tr.innerHTML = `
+
+          <td class="py-3 px-4">
+
+            <div class="flex items-center gap-3">
+
+              <div class="w-9 h-9 rounded-full bg-primary text-white font-bold text-xs flex items-center justify-center shrink-0">
+
+                ${item.avatar || 'NV'}
+
+              </div>
+
+              <div>
+
+                <p class="font-bold text-on-surface">${item.name}</p>
+
+                <p class="text-[11px] text-secondary">${item.phone}</p>
+
+              </div>
+
+            </div>
+
+          </td>
+
+          <td class="py-3 px-3">
+
+            <span class="px-2.5 py-1 rounded-full text-[10px] ${roleBadgeClass}">
+
+              ${item.role}
+
+            </span>
+
+          </td>
+
+          <td class="py-3 px-3 font-medium text-secondary">${item.branch}</td>
+
+          <td class="py-3 px-3 text-center">
+            ${(item.rawRole === 'Customer' || item.role.includes('Khách'))
+              ? `<span class="text-secondary/60 text-[11px] italic inline-flex items-center gap-1 font-medium select-none"><span class="material-symbols-outlined text-[13px]">lock</span>Bảo mật</span>`
+              : `<div class="inline-flex items-center gap-1 font-mono text-[11px] bg-surface-container-low px-2 py-1 rounded border border-surface-container shadow-xs">
+                  <span id="pwd-display-${item.id}" class="text-secondary select-all font-semibold tracking-wider">••••••</span>
+                  <button type="button" onclick="togglePasswordVisibility(${item.id}, '${escapeHtml(item.plainPassword || '123456')}')" class="text-secondary hover:text-primary p-0.5 transition-colors" title="Xem / Ẩn mật khẩu">
+                    <span id="pwd-icon-${item.id}" class="material-symbols-outlined text-[15px]">visibility</span>
+                  </button>
+                  <button type="button" onclick="copyPassword('${escapeHtml(item.plainPassword || '123456')}')" class="text-secondary hover:text-primary p-0.5 transition-colors" title="Sao chép mật khẩu">
+                    <span class="material-symbols-outlined text-[15px]">content_copy</span>
+                  </button>
+                </div>`}
+          </td>
+
+          <td class="py-3 px-3 text-center">
+
+            <span class="px-2 py-0.5 rounded ${item.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700'} text-[10px] font-bold">
+
+              ${item.status === 'active' ? 'Hoạt động' : 'Đã khóa'}
+
+            </span>
+
+          </td>
+
+          <td class="py-3 px-4 text-center">
+
+            <div class="flex items-center justify-center gap-1.5">
+
+              <button onclick="openResetPasswordModal(${item.id}, '${escapeHtml(item.name)}')" class="p-1 rounded hover:bg-amber-50 text-secondary hover:text-amber-700 transition-colors" title="Đặt lại mật khẩu">
+
+                <span class="material-symbols-outlined text-base">lock_reset</span>
+
+              </button>
+
+              <button onclick="openEditModal(${item.id})" class="p-1 rounded hover:bg-surface-container text-secondary hover:text-primary transition-colors" title="Chỉnh sửa">
+
+                <span class="material-symbols-outlined text-base">edit</span>
+
+              </button>
+
+              <button onclick="openDeleteModal(${item.id})" class="p-1 rounded hover:bg-red-50 text-secondary hover:text-red-700 transition-colors" title="Xóa tài khoản">
+
+                <span class="material-symbols-outlined text-base">delete</span>
+
+              </button>
+
+            </div>
+
+          </td>
+
+        `;
+
+        tbody.appendChild(tr);
+
+      });
+
+    }
+
+
+
+    // 3. Mở Modal Chỉnh Sửa & Thêm Mới
+
+    const accountModal = document.getElementById('account-modal');
+
+
+
+    function openEditModal(id) {
+
+      const item = accountsData.find(x => x.id === id);
+
+      if (!item) return;
+
+
+
+      currentEditingId = id;
+
+      document.getElementById('modal-account-title').textContent = `Chỉnh Sửa Nhân Viên #${item.id}`;
+
+      document.getElementById('input-emp-name').value = item.name;
+
+      document.getElementById('input-emp-phone').value = item.phone;
+
+      document.getElementById('input-emp-password').value = item.plainPassword || '123456';
+
+      document.getElementById('input-emp-role').value = item.role;
+
+      document.getElementById('input-emp-branch').value = item.branch;
+
+      document.getElementById('input-emp-status').value = item.status;
+
+
+
+      accountModal.classList.remove('hidden');
+
+      accountModal.classList.add('flex');
+
+    }
+
+
+
+    document.getElementById('btn-open-add-modal')?.addEventListener('click', () => {
+
+      currentEditingId = null;
+
+      document.getElementById('modal-account-title').textContent = 'Thêm Nhân Sự Mới';
+
+      document.getElementById('input-emp-name').value = '';
+
+      document.getElementById('input-emp-phone').value = '';
+
+      document.getElementById('input-emp-role').value = 'Lễ tân POS';
+
+      document.getElementById('input-emp-branch').value = 'CS1 - TP.HCM';
+
+      document.getElementById('input-emp-status').value = 'active';
+
+
+
+      accountModal.classList.remove('hidden');
+
+      accountModal.classList.add('flex');
+
+    });
+
+
+
+    const hideAccountModal = () => {
+
+      accountModal.classList.add('hidden');
+
+      accountModal.classList.remove('flex');
+
+    };
+
+
+
+    document.getElementById('close-account-modal')?.addEventListener('click', hideAccountModal);
+
+    document.getElementById('cancel-account-modal')?.addEventListener('click', hideAccountModal);
+
+
+
+    // 4. Lưu Nhân Viên (Gửi trực tiếp lên Backend SQL Server)
+
+    document.getElementById('confirm-save-account')?.addEventListener('click', async () => {
+
+      const name = document.getElementById('input-emp-name').value.trim();
+
+      const phone = document.getElementById('input-emp-phone').value.trim();
+
+      const role = document.getElementById('input-emp-role').value;
+
+      const branch = document.getElementById('input-emp-branch').value;
+
+      const status = document.getElementById('input-emp-status').value;
+
+
+
+      if (!name || !phone) {
+
+        showToast('Vui lòng nhập đầy đủ tên và số điện thoại!', true);
+
+        return;
+
+      }
+
+
+
+      let roleName = 'Staff';
+
+      if (role.includes('Admin')) roleName = 'Admin';
+
+      else if (role.includes('Shipper')) roleName = 'Shipper';
+
+
+
+      const password = document.getElementById('input-emp-password').value.trim();
+
+
+
+      try {
+
+        if (currentEditingId !== null) {
+
+          const payload = {
+
+            fullName: name,
+
+            phone: phone,
+
+            roleName: roleName,
+
+            isActive: status === 'active'
+
+          };
+
+          if (password) payload.password = password;
+
+          await Api.Users.update(currentEditingId, payload);
+
+          showToast(`Đã cập nhật thông tin nhân sự "${name}" thành công!`);
+
+        } else {
+
+          const finalPass = password || '123456';
+
+          await Api.Users.create({
+
+            fullName: name,
+
+            phone: phone,
+
+            roleName: roleName,
+
+            isActive: status === 'active',
+
+            password: finalPass
+
+          });
+
+          showToast(`Đã tạo tài khoản "${name}" (${roleName}) thành công! Mật khẩu: ${finalPass}`);
+
+        }
+
+        hideAccountModal();
+
+        await loadAccounts();
+
+      } catch (err) {
+
+        showToast('Lỗi lưu tài khoản: ' + err.message, true);
+
+      }
+
+    });
+
+
+
+    // 5. Modal Xóa Nhân Viên (Gửi trực tiếp lên Backend SQL Server)
+
+    const deleteModal = document.getElementById('delete-modal');
+
+
+
+    function openDeleteModal(id) {
+
+      const item = accountsData.find(x => x.id === id);
+
+      if (!item) return;
+
+
+
+      deletingTargetId = id;
+
+      document.getElementById('delete-emp-name-text').textContent = item.name;
+
+      deleteModal.classList.remove('hidden');
+
+      deleteModal.classList.add('flex');
+
+    }
+
+
+
+    const hideDeleteModal = () => {
+
+      deleteModal.classList.add('hidden');
+
+      deleteModal.classList.remove('flex');
+
+      deletingTargetId = null;
+
+    };
+
+
+
+    document.getElementById('cancel-delete-modal')?.addEventListener('click', hideDeleteModal);
+
+
+
+    document.getElementById('confirm-delete-account')?.addEventListener('click', async () => {
+
+      if (deletingTargetId !== null) {
+
+        try {
+
+          const res = await Api.Users.delete(deletingTargetId);
+
+          showToast(res.message || 'Đã xử lý tài khoản thành công!');
+
+          deletingTargetId = null;
+
+          hideDeleteModal();
+
+          await loadAccounts();
+
+        } catch (err) {
+
+          showToast('Lỗi xử lý tài khoản: ' + err.message, true);
+
+        }
+
+      }
+
+    });
+
+
+
+    // 6. Xử lý Lọc & Tìm kiếm
+
+    const roleBtns = document.querySelectorAll('.role-btn');
+
+    roleBtns.forEach(btn => {
+
+      btn.addEventListener('click', () => {
+
+        roleBtns.forEach(b => {
+
+          b.classList.remove('active', 'bg-primary', 'text-white');
+
+          b.classList.add('text-secondary');
+
+        });
+
+        btn.classList.add('active', 'bg-primary', 'text-white');
+
+        btn.classList.remove('text-secondary');
+
+
+
+        currentRoleFilter = btn.dataset.role;
+        renderTable();
+
+      });
+
+    });
+
+
+
+    document.getElementById('account-search-input')?.addEventListener('input', (e) => {
+
+      searchQuery = e.target.value.toLowerCase().trim();
+
+      loadAccounts();
+
+    });
+
+
+
+    // Khởi tạo hiển thị
+
+    loadAccounts();
+
+  
+
+    function openResetPasswordModal(id, name) {
+
+      const newPass = prompt(`Nhập mật khẩu mới cho tài khoản "${name}":`, '123456');
+
+      if (newPass === null) return;
+
+      const passClean = newPass.trim() || '123456';
+
+      Api.Users.resetPassword(id, passClean)
+
+        .then(res => {
+
+          showToast(res.message || `Đã đổi mật khẩu cho ${name} thành: ${passClean}`);
+
+        })
+
+        .catch(err => {
+
+          showToast('Lỗi đặt lại mật khẩu: ' + err.message, true);
+
+        });
+
+    }
+
+
+
+    async function handleResetAllPasswords() {
+
+      if (!confirm('Bạn có chắc chắn muốn đặt lại mật khẩu cho TẤT CẢ các tài khoản trong cơ sở dữ liệu về "123456" không?')) return;
+
+      try {
+
+        const res = await Api.Users.resetAllPasswords('123456');
+
+        showToast(res.message || 'Đã đặt lại mật khẩu toàn bộ tài khoản về 123456 thành công!');
+
+        await loadAccounts();
+
+      } catch (err) {
+
+        showToast('Lỗi đặt lại mật khẩu: ' + err.message, true);
+
+      }
+
+    }
+
+
+
+  </script>
+
+</body>
+
+
+
+</html>

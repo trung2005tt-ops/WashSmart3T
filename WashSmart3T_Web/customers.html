@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Khách Hàng & Loyalty - WashSmart 3T</title>
+
+  <!-- Fonts & Icons -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      overscroll-behavior: none;
+    }
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+
+  <!-- Tailwind CSS Config -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#8e0028",
+            "primary-container": "#b90538",
+            "primary-fixed": "#ffdadb",
+            "surface": "#fff8f9",
+            "surface-container-low": "#f9f2f3",
+            "surface-container": "#f3eced",
+            "surface-container-high": "#ede7e8",
+            "surface-card": "#ffffff",
+            "on-surface": "#1d1b1c",
+            "secondary": "#6a5b5e",
+            "outline": "#8f6f70",
+            "outline-variant": "#e3bdbf",
+          }
+        }
+      }
+    };
+  </script>
+</head>
+
+<body class="bg-surface text-on-surface antialiased text-sm">
+
+  <!-- Sidebar Navigation (Đầy đủ 8 mục hệ thống) -->
+  <aside class="fixed left-0 top-0 h-full w-64 bg-primary text-white z-50 flex flex-col justify-between shadow-lg">
+    <div class="flex flex-col">
+      <!-- Logo -->
+      <div class="p-5 flex items-center gap-3 border-b border-white/10">
+        <div class="w-10 h-10 rounded-xl bg-white text-primary flex items-center justify-center font-bold shadow-sm">
+          <span class="material-symbols-outlined text-2xl">local_laundry_service</span>
+        </div>
+        <div>
+          <h2 class="font-bold text-base leading-tight">WashSmart 3T</h2>
+          <p class="text-[11px] text-white/70 uppercase tracking-wider font-medium">Hệ Thống Quản Lý</p>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="p-3 space-y-1">
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors" href="index.html">
+          <span class="material-symbols-outlined text-xl">analytics</span>
+          <span>Dashboard</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors" href="orders.html">
+          <span class="material-symbols-outlined text-xl">receipt_long</span>
+          <span>Quản lý Đơn hàng</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors" href="pos.html">
+          <span class="material-symbols-outlined text-xl">point_of_sale</span>
+          <span>POS Quầy</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors" href="dispatch.html">
+          <span class="material-symbols-outlined text-xl">two_wheeler</span>
+          <span>Điều phối Shipper</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors" href="accounts.html">
+          <span class="material-symbols-outlined text-xl">badge</span>
+          <span>Quản lý Tài khoản</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white text-primary font-bold shadow-sm" href="customers.html">
+          <span class="material-symbols-outlined text-xl">loyalty</span>
+          <span>Khách hàng & Loyalty</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors" href="complaints.html">
+          <span class="material-symbols-outlined text-xl">support_agent</span>
+          <span>Xử lý Khiếu nại</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors" href="services.html">
+          <span class="material-symbols-outlined text-xl">sell</span>
+          <span>Dịch vụ & Bảng giá</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="store-settings.html">
+          <span class="material-symbols-outlined text-xl">store</span>
+          <span>Cấu hình Cửa hàng</span>
+        </a>
+      </nav>
+    </div>
+
+    <!-- Status & Logout -->
+    <div class="p-4 space-y-3 border-t border-white/10">
+
+      <button onclick="handleLogout(event)" class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-black/20 hover:bg-black/40 text-white font-medium transition-colors text-xs">
+        <span class="material-symbols-outlined text-base">logout</span>
+        <span>Đăng xuất</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <div class="pl-64">
+    <!-- Top Header -->
+    <header class="h-16 bg-surface-card border-b border-surface-container flex items-center justify-between px-6 sticky top-0 z-40">
+      <div class="flex items-center gap-4 flex-1 max-w-lg">
+        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container text-on-surface text-xs font-semibold cursor-pointer">
+          <span class="material-symbols-outlined text-base text-primary">store</span>
+          <span>Chi nhánh CS1 - TP.HCM</span>
+          <span class="material-symbols-outlined text-base">expand_more</span>
+        </div>
+        <div class="relative flex-1">
+          <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-lg">search</span>
+          <input id="customer-search-input" type="text" placeholder="Tìm tên khách hàng, SĐT, mã KH..." class="w-full pl-9 pr-4 py-1.5 rounded-full bg-surface-container-low text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs">KN</div>
+        <div class="text-left text-xs">
+          <p class="font-bold leading-tight">Nguyễn Kiều Như</p>
+          <p class="text-secondary text-[11px]">Quản lý cửa hàng</p>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="p-6 space-y-6">
+
+      <!-- Page Title & Actions -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl font-bold tracking-tight text-on-surface">Khách Hàng & Chương Trình Tích Điểm</h1>
+          <p class="text-secondary text-xs mt-1">Quản lý tài khoản, tích điểm tự động khi đăng ký App và cấp phát ưu đãi.</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button id="open-broadcast-modal" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary-container transition-colors text-xs font-medium shadow-sm">
+            <span class="material-symbols-outlined text-base">campaign</span>
+            <span>Gửi Voucher Toàn Hệ Thống</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Summary Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between">
+          <div>
+            <p class="text-xs text-secondary font-medium">Tổng khách hàng</p>
+            <p class="text-2xl font-bold text-on-surface mt-1" id="kpi-total-customers">-- <span class="text-xs font-normal text-secondary">tài khoản</span></p>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center">
+            <span class="material-symbols-outlined">group</span>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between">
+          <div>
+            <p class="text-xs text-secondary font-medium">Hội viên VIP (Gold & Diamond)</p>
+            <p class="text-2xl font-bold text-primary mt-1" id="kpi-vip-customers">-- <span class="text-xs font-normal text-secondary">(--)</span></p>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center">
+            <span class="material-symbols-outlined">hotel_class</span>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between">
+          <div>
+            <p class="text-xs text-secondary font-medium">Thưởng chào mừng tạo App</p>
+            <p class="text-2xl font-bold text-green-700 mt-1">+45 xu <span class="text-xs font-normal text-secondary">(Tự động)</span></p>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-green-50 text-green-700 flex items-center justify-center">
+            <span class="material-symbols-outlined">card_giftcard</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Layout: Left Table + Right Rules -->
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+
+        <!-- Left Column: Customer Table (8 cols) -->
+        <div class="xl:col-span-8 space-y-4">
+
+          <!-- Tier Filters -->
+          <div class="p-2 rounded-xl bg-surface-card border border-surface-container flex items-center gap-2 overflow-x-auto" id="tier-filters">
+            <button class="tier-btn active px-3.5 py-1.5 rounded-lg bg-primary text-white text-xs font-medium whitespace-nowrap" data-tier="all">
+              Tất cả
+            </button>
+            <button class="tier-btn px-3.5 py-1.5 rounded-lg text-secondary hover:bg-surface-container transition-colors text-xs font-medium whitespace-nowrap" data-tier="diamond">
+              VIP Diamond
+            </button>
+            <button class="tier-btn px-3.5 py-1.5 rounded-lg text-secondary hover:bg-surface-container transition-colors text-xs font-medium whitespace-nowrap" data-tier="gold">
+              VIP Gold
+            </button>
+            <button class="tier-btn px-3.5 py-1.5 rounded-lg text-secondary hover:bg-surface-container transition-colors text-xs font-medium whitespace-nowrap" data-tier="member">
+              Thành viên mới
+            </button>
+          </div>
+
+          <!-- Customer Table -->
+          <div class="bg-surface-card rounded-xl border border-surface-container overflow-hidden">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-surface-container-low text-secondary text-[11px] uppercase tracking-wider border-b border-surface-container">
+                  <th class="py-3 px-4 font-semibold">Khách hàng</th>
+                  <th class="py-3 px-3 font-semibold">Hạng thẻ</th>
+                  <th class="py-3 px-3 font-semibold text-right">WashPoints</th>
+                  <th class="py-3 px-3 font-semibold text-right">Tổng chi tiêu</th>
+                  <th class="py-3 px-4 font-semibold text-center">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-surface-container text-xs" id="customer-table-body"><tr><td colspan="5" class="py-8 text-center text-secondary">Đang tải danh sách khách hàng từ cơ sở dữ liệu...</td></tr></tbody>
+            </table>
+          </div>
+
+        </div>
+
+        <!-- Right Column: Auto Rules Panel (4 cols) -->
+        <div class="xl:col-span-4 space-y-4">
+          
+          <div class="p-5 rounded-xl bg-surface-card border border-surface-container space-y-4">
+            <div class="flex items-center justify-between border-b border-surface-container pb-3">
+              <h2 class="font-bold text-sm text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-green-600 text-lg">auto_awesome</span>
+                Quy Tắc Tự Động Đăng Ký & Lên Hạng
+              </h2>
+              <span class="text-[10px] px-2 py-0.5 rounded bg-green-100 text-green-800 font-bold">Hoạt động</span>
+            </div>
+
+            <div class="space-y-3 text-xs">
+              <div class="p-3 rounded-lg bg-green-50 border border-green-200 space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-green-900 bg-green-200 px-2 py-0.5 rounded text-[10px]">Đăng ký App lần đầu</span>
+                  <span class="font-bold text-green-800">+45 xu WashPoints</span>
+                </div>
+                <p class="text-[11px] text-green-800">Tự động cộng 45 xu ngay khi khách hàng xác nhận SĐT trên App.</p>
+              </div>
+
+              <div class="p-3 rounded-lg bg-surface-container-low border border-surface-container space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded text-[10px]">Lên VIP Gold (&ge;5tr)</span>
+                  <span class="font-mono text-primary font-bold">GOLD-WELCOME</span>
+                </div>
+                <p class="text-[11px] text-secondary">Tự động đẩy Voucher giảm 20% vào Ví App khách hàng.</p>
+              </div>
+
+              <div class="p-3 rounded-lg bg-surface-container-low border border-surface-container space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="font-bold text-white bg-primary px-2 py-0.5 rounded text-[10px]">Lên VIP Diamond (&ge;15tr)</span>
+                  <span class="font-mono text-primary font-bold">DIAMOND-VIP</span>
+                </div>
+                <p class="text-[11px] text-secondary">Tự động tặng 01 lần Giặt Hấp Áo Vest Miễn Phí.</p>
+              </div>
+            </div>
+
+            <button onclick="showToast('Đã lưu cấu hình tự động thưởng xu & voucher.')" class="w-full py-2 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high text-xs font-medium transition-colors">
+              Lưu thiết lập quy tắc
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Modal: Broadcast Voucher -->
+  <div id="broadcast-modal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-surface-card rounded-xl max-w-md w-full p-5 border border-surface-container shadow-xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-sm text-on-surface flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary">campaign</span>
+          Phát Voucher Cho Tất Cả Khách Hàng
+        </h3>
+        <button id="close-broadcast-modal" class="text-secondary hover:text-on-surface">
+          <span class="material-symbols-outlined text-lg">close</span>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-secondary mb-1">Đối tượng nhận mã</label>
+          <select id="broadcast-target" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+            <option value="all">Tất cả khách hàng trong hệ thống (1,420 tài khoản)</option>
+            <option value="diamond">Chỉ nhóm VIP Diamond (45 khách)</option>
+            <option value="gold">Chỉ nhóm VIP Gold (265 khách)</option>
+            <option value="member">Chỉ nhóm Khách mới tạo App</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-secondary mb-1">Mã Voucher phát hành</label>
+          <input id="broadcast-code" type="text" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs font-mono font-bold uppercase focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Ví dụ: TRIAN30K, FREESHIPQ7" value="TRIAN30K">
+        </div>
+
+        <div>
+          <label class="block font-semibold text-secondary mb-1">Tiêu đề / Mô tả ưu đãi</label>
+          <input id="broadcast-desc" type="text" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary" value="Giảm 30.000 đ tri ân khách hàng thân thiết">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-secondary mb-1">Mức giảm</label>
+            <input id="broadcast-value" type="number" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary" value="30000" placeholder="Số tiền hoặc %">
+          </div>
+          <div>
+            <label class="block font-semibold text-secondary mb-1">Loại giảm giá</label>
+            <select id="broadcast-type" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+              <option value="FixedAmount" selected>Số tiền cố định (VNĐ)</option>
+              <option value="Percentage">Phần trăm (%)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-secondary mb-1">Đơn tối thiểu (VNĐ)</label>
+            <input id="broadcast-min-order" type="number" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary" value="50000">
+          </div>
+          <div>
+            <label class="block font-semibold text-secondary mb-1">Hạn sử dụng</label>
+            <input id="broadcast-expiry" type="text" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary" value="31/12/2026">
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button id="cancel-broadcast-modal" class="px-4 py-2 rounded-lg bg-surface-container text-xs font-medium text-on-surface hover:bg-surface-container-high">Hủy</button>
+        <button id="confirm-broadcast-send" class="px-4 py-2 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary-container">Xác nhận phát Voucher</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Điều chỉnh Điểm -->
+  <div id="points-modal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-surface-card rounded-xl max-w-sm w-full p-5 border border-surface-container shadow-xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-sm text-on-surface">Cộng / Trừ WashPoints</h3>
+        <button id="close-points-modal" class="text-secondary hover:text-on-surface">
+          <span class="material-symbols-outlined text-lg">close</span>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <p class="text-secondary" id="modal-points-target">Khách hàng: --</p>
+        <div>
+          <label class="block font-semibold text-secondary mb-1">Số xu điều chỉnh (+ / -)</label>
+          <input id="input-points-val" type="number" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-sm font-bold text-primary focus:outline-none" value="45">
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button id="cancel-points-modal" class="px-4 py-2 rounded-lg bg-surface-container text-xs font-medium text-on-surface hover:bg-surface-container-high">Hủy</button>
+        <button id="confirm-points-update" class="px-4 py-2 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary-container">Cập nhật số dư</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- JavaScript -->
+  <script src="api.js"></script>
+  <script>
+    function handleLogout(e) {
+      if (e) e.preventDefault();
+      if (window.Auth) Auth.logout();
+      else window.location.href = 'login.html';
+    }
+
+    function showToast(message, isError = false) {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `pointer-events-auto flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-medium text-white shadow-lg ${isError ? 'bg-red-800' : 'bg-zinc-900'}`;
+      toast.innerHTML = `<span class="material-symbols-outlined text-base">${isError ? 'error' : 'check_circle'}</span><span>${message}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+
+    let allCustomers = [];
+    let currentTierFilter = 'all';
+
+    async function loadCustomers() {
+      try {
+        const query = document.getElementById('customer-search-input')?.value.trim() || '';
+        allCustomers = await Api.Users.customers(query);
+        renderCustomerTable();
+      } catch (err) {
+        console.error('Lỗi tải khách hàng:', err);
+        showToast('Không thể kết nối cơ sở dữ liệu khách hàng: ' + err.message, true);
+      }
+    }
+
+    let currentAdjustCustomerId = null;
+
+    function renderCustomerTable() {
+      const tbody = document.getElementById('customer-table-body');
+      tbody.innerHTML = '';
+
+      const search = (document.getElementById('customer-search-input')?.value || '').toLowerCase().trim();
+
+      const filtered = allCustomers.filter(c => {
+        let matchTier = true;
+        if (currentTierFilter === 'diamond') matchTier = c.tier.includes('Diamond');
+        else if (currentTierFilter === 'gold') matchTier = c.tier.includes('Gold');
+        else if (currentTierFilter === 'member') matchTier = c.tier.includes('Mới') || c.tier.includes('Thân');
+
+        const matchSearch = !search || 
+          c.fullName.toLowerCase().includes(search) || 
+          c.phone.includes(search) || 
+          c.code.toLowerCase().includes(search);
+
+        return matchTier && matchSearch;
+      });
+
+      // Update KPI
+      const vipCount = allCustomers.filter(c => c.tier.includes('VIP')).length;
+      const kpiTotal = document.getElementById('kpi-total-customers');
+      if (kpiTotal) kpiTotal.innerHTML = `${allCustomers.length} <span class="text-xs font-normal text-secondary">tài khoản</span>`;
+      
+      const kpiVip = document.getElementById('kpi-vip-customers');
+      const vipPercent = allCustomers.length > 0 ? ((vipCount / allCustomers.length) * 100).toFixed(1) : '0';
+      if (kpiVip) kpiVip.innerHTML = `${vipCount} <span class="text-xs font-normal text-secondary">(${vipPercent}%)</span>`;
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="py-8 text-center text-secondary">Không tìm thấy khách hàng nào phù hợp.</td></tr>';
+        return;
+      }
+
+      filtered.forEach(c => {
+        const tr = document.createElement('tr');
+        tr.className = 'customer-row hover:bg-surface-container-low transition-colors';
+        const initials = c.fullName.split(' ').map(p => p[0]).slice(-2).join('').toUpperCase();
+
+        tr.innerHTML = `
+          <td class="py-3 px-4">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center shrink-0">
+                ${initials || 'KH'}
+              </div>
+              <div>
+                <p class="font-bold text-on-surface">${escapeHtml(c.fullName)}</p>
+                <p class="text-[11px] text-secondary">${escapeHtml(c.phone)} · #${escapeHtml(c.code)}</p>
+              </div>
+            </div>
+          </td>
+          <td class="py-3 px-3">
+            <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${c.tierBadge || 'bg-gray-100 text-gray-700'}">
+              ${escapeHtml(c.tier)}
+            </span>
+          </td>
+          <td class="py-3 px-3 text-right font-bold text-primary">
+            ${c.points.toLocaleString('vi-VN')} xu
+          </td>
+          <td class="py-3 px-3 text-right font-semibold text-on-surface">
+            ${formatMoney(c.totalSpent)}
+          </td>
+          <td class="py-3 px-4 text-center">
+            <div class="flex items-center justify-center gap-1.5">
+              <button onclick="handleUpgradeTier(${c.id}, '${escapeHtml(c.fullName)}', '${escapeHtml(c.tier)}')" class="px-2.5 py-1 rounded bg-amber-100 hover:bg-amber-200 text-amber-900 font-semibold text-[11px] transition-colors" title="Thăng hạng VIP">
+                Thăng Hạng
+              </button>
+              <button onclick="openGiftVoucherModal('${escapeHtml(c.phone)}', '${escapeHtml(c.fullName)}')" class="p-1 rounded hover:bg-amber-100 text-amber-700 transition-colors" title="Tặng Voucher riêng cho khách hàng này">
+                <span class="material-symbols-outlined text-base">card_giftcard</span>
+              </button>
+              <button onclick="handleAdjustPoints(${c.id}, '${escapeHtml(c.fullName)}', ${c.points})" class="p-1 rounded hover:bg-surface-container text-secondary" title="Cộng/Trừ xu">
+                <span class="material-symbols-outlined text-base">swap_vert</span>
+              </button>
+            </div>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    async function handleUpgradeTier(id, name, currentTier) {
+      const nextTier = currentTier.includes('Diamond') ? 'VIP Gold' : (currentTier.includes('Gold') ? 'VIP Diamond' : 'VIP Gold');
+      const voucher = nextTier.includes('Diamond') ? 'DIAMOND-VIP' : 'GOLD-WELCOME';
+      try {
+        const res = await Api.Users.upgradeTier(id, nextTier);
+        showToast(`🎉 ${res.message || `Đã thăng hạng khách hàng ${name} lên ${nextTier}!`}`);
+        await loadCustomers();
+      } catch (err) {
+        showToast('Lỗi thăng hạng: ' + err.message, true);
+      }
+    }
+
+    function handleAdjustPoints(id, name, currentPoints) {
+      currentAdjustCustomerId = id;
+      document.getElementById('modal-points-target').textContent = `Khách hàng: ${name} (Hiện có ${currentPoints} xu)`;
+      document.getElementById('points-modal').classList.remove('hidden');
+      document.getElementById('points-modal').classList.add('flex');
+    }
+
+    // Tier Filter Buttons
+    const tierBtns = document.querySelectorAll('.tier-btn');
+    tierBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        tierBtns.forEach(b => {
+          b.classList.remove('active', 'bg-primary', 'text-white');
+          b.classList.add('text-secondary');
+        });
+        btn.classList.add('active', 'bg-primary', 'text-white');
+        btn.classList.remove('text-secondary');
+        currentTierFilter = btn.dataset.tier;
+        renderCustomerTable();
+      });
+    });
+
+    document.getElementById('customer-search-input')?.addEventListener('input', () => {
+      renderCustomerTable();
+    });
+
+    loadCustomers();
+
+
+
+    // Search Filter
+    document.getElementById('customer-search-input')?.addEventListener('input', (e) => {
+      const query = e.target.value.toLowerCase().trim();
+      customerRows.forEach(row => {
+        row.style.display = row.innerText.toLowerCase().includes(query) ? '' : 'none';
+      });
+    });
+
+    // Upgrade Tier Button
+    document.querySelectorAll('.btn-upgrade-tier').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const name = btn.dataset.name;
+        const nextTier = btn.dataset.next;
+        const voucherCode = nextTier === 'VIP Diamond' ? 'DIAMOND-VIP' : 'GOLD-WELCOME';
+        showToast(`🎉 Đã thăng hạng ${name} lên ${nextTier}! Tự động phát Voucher [${voucherCode}] về App.`);
+      });
+    });
+
+    // Modal Points
+    const pointsModal = document.getElementById('points-modal');
+    document.querySelectorAll('.btn-adjust-points').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.getElementById('modal-points-target').textContent = `Khách hàng: ${btn.dataset.name} (Hiện có ${btn.dataset.points} xu)`;
+        pointsModal.classList.remove('hidden');
+        pointsModal.classList.add('flex');
+      });
+    });
+
+    const hidePointsModal = () => {
+      pointsModal.classList.add('hidden');
+      pointsModal.classList.remove('flex');
+    };
+    document.getElementById('close-points-modal')?.addEventListener('click', hidePointsModal);
+    document.getElementById('cancel-points-modal')?.addEventListener('click', hidePointsModal);
+    document.getElementById('confirm-points-update')?.addEventListener('click', async () => {
+      const val = parseInt(document.getElementById('input-points-val')?.value, 10);
+      if (isNaN(val) || val === 0 || !currentAdjustCustomerId) {
+        showToast('Vui lòng nhập số xu điều chỉnh (+ hoặc -)', true);
+        return;
+      }
+      try {
+        const res = await Api.Users.adjustPoints(currentAdjustCustomerId, val);
+        hidePointsModal();
+        showToast(res.message || 'Đã cập nhật số dư WashPoints thành công.');
+        await loadCustomers();
+      } catch (err) {
+        showToast('Lỗi điều chỉnh điểm: ' + err.message, true);
+      }
+    });
+
+    // Broadcast Voucher Modal
+    const broadcastModal = document.getElementById('broadcast-modal');
+    document.getElementById('open-broadcast-modal')?.addEventListener('click', () => {
+      broadcastModal.classList.remove('hidden');
+      broadcastModal.classList.add('flex');
+    });
+
+    const hideBroadcastModal = () => {
+      broadcastModal.classList.add('hidden');
+      broadcastModal.classList.remove('flex');
+    };
+    document.getElementById('close-broadcast-modal')?.addEventListener('click', hideBroadcastModal);
+    document.getElementById('cancel-broadcast-modal')?.addEventListener('click', hideBroadcastModal);
+
+    document.getElementById('confirm-broadcast-send')?.addEventListener('click', async () => {
+      const code = (document.getElementById('broadcast-code').value || '').trim().toUpperCase();
+      const desc = (document.getElementById('broadcast-desc').value || '').trim();
+      const val = Number(document.getElementById('broadcast-value')?.value) || 30000;
+      const type = document.getElementById('broadcast-type')?.value || 'FixedAmount';
+      const minOrder = Number(document.getElementById('broadcast-min-order')?.value) || 50000;
+      const expiry = document.getElementById('broadcast-expiry')?.value || '31/12/2026';
+      const target = document.getElementById('broadcast-target')?.value || 'all';
+
+      if (!code) {
+        showToast('Vui lòng nhập mã ưu đãi!', true);
+        return;
+      }
+
+      const btn = document.getElementById('confirm-broadcast-send');
+      btn.disabled = true;
+      btn.textContent = 'Đang phát hành...';
+
+      try {
+        const res = await Api.Promotions.create({
+          code: code,
+          title: desc || `Ưu đãi ${code}`,
+          description: desc || `Giảm giá trực tiếp đơn hàng giặt sấy từ WashSmart 3T`,
+          discountType: type,
+          value: val,
+          maxDiscount: type === 'Percentage' ? 50000 : val,
+          minOrder: minOrder,
+          category: 'Giặt Sấy & Ủi',
+          badge: type === 'Percentage' ? `GIẢM ${val}%` : 'VOUCHER',
+          expiryDate: expiry
+        });
+
+        hideBroadcastModal();
+        showToast(`🚀 ${res.message || `Đã phát hành voucher [${code}] đến khách hàng trên App thành công!`}`);
+      } catch (err) {
+        showToast('Lỗi phát hành voucher: ' + err.message, true);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Xác nhận phát Voucher';
+      }
+    });
+
+    function openGiftVoucherModal(phone, name) {
+      const modal = document.getElementById('broadcast-modal');
+      const targetSelect = document.getElementById('broadcast-target');
+      if (targetSelect) {
+        let opt = targetSelect.querySelector(`option[value="${phone}"]`);
+        if (!opt) {
+          opt = document.createElement('option');
+          opt.value = phone;
+          targetSelect.insertBefore(opt, targetSelect.firstChild);
+        }
+        opt.textContent = `Tặng riêng cho: ${name} (${phone})`;
+        targetSelect.value = phone;
+      }
+      document.getElementById('broadcast-code').value = 'VIP-' + phone.slice(-4) + '-20K';
+      document.getElementById('broadcast-desc').value = `Ưu đãi tặng riêng khách hàng thân thiết ${name}`;
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+  </script>
+</body>
+
+</html>

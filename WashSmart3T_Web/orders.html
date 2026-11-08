@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Quản Lý Và Tiến Độ Đơn Hàng - WashSmart 3T</title>
+
+  <!-- Fonts & Icons -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
+    rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      overscroll-behavior: none;
+    }
+
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+
+  <!-- Tailwind CSS Config -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#8e0028",
+            "primary-container": "#b90538",
+            "primary-fixed": "#ffdadb",
+            "surface": "#fff8f9",
+            "surface-container-low": "#f9f2f3",
+            "surface-container": "#f3eced",
+            "surface-container-high": "#ede7e8",
+            "surface-card": "#ffffff",
+            "on-surface": "#1d1b1c",
+            "secondary": "#6a5b5e",
+            "outline": "#8f6f70",
+            "outline-variant": "#e3bdbf",
+          }
+        }
+      }
+    };
+  </script>
+</head>
+
+<body class="bg-surface text-on-surface antialiased text-sm">
+
+  <!-- Sidebar Navigation -->
+  <aside class="fixed left-0 top-0 h-full w-64 bg-primary text-white z-50 flex flex-col justify-between shadow-lg">
+    <div class="flex flex-col">
+      <!-- Logo -->
+      <div class="p-5 flex items-center gap-3 border-b border-white/10">
+        <div class="w-10 h-10 rounded-xl bg-white text-primary flex items-center justify-center font-bold shadow-sm">
+          <span class="material-symbols-outlined text-2xl">local_laundry_service</span>
+        </div>
+        <div>
+          <h2 class="font-bold text-base leading-tight">WashSmart 3T</h2>
+          <p class="text-[11px] text-white/70 uppercase tracking-wider font-medium">Hệ Thống Quản Lý</p>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="p-3 space-y-1">
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="index.html">
+          <span class="material-symbols-outlined text-xl">analytics</span>
+          <span>Dashboard</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white text-primary font-bold shadow-sm"
+          href="orders.html">
+          <span class="material-symbols-outlined text-xl">receipt_long</span>
+          <span>Quản lý Đơn hàng</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="pos.html">
+          <span class="material-symbols-outlined text-xl">point_of_sale</span>
+          <span>POS Quầy</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="dispatch.html">
+          <span class="material-symbols-outlined text-xl">two_wheeler</span>
+          <span>Điều phối Shipper</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="accounts.html">
+          <span class="material-symbols-outlined text-xl">badge</span>
+          <span>Quản lý Tài khoản</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="customers.html">
+          <span class="material-symbols-outlined text-xl">loyalty</span>
+          <span>Khách hàng & Loyalty</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="complaints.html">
+          <span class="material-symbols-outlined text-xl">support_agent</span>
+          <span>Xử lý Khiếu nại</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="services.html">
+          <span class="material-symbols-outlined text-xl">sell</span>
+          <span>Dịch vụ & Bảng giá</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="store-settings.html">
+          <span class="material-symbols-outlined text-xl">store</span>
+          <span>Cấu hình Cửa hàng</span>
+        </a>
+      </nav>
+    </div>
+
+    <!-- USB Scale Status & Logout -->
+    <div class="p-4 space-y-3 border-t border-white/10">
+
+      <button onclick="handleLogout(event)"
+        class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-black/20 hover:bg-black/40 text-white font-medium transition-colors text-xs">
+        <span class="material-symbols-outlined text-base">logout</span>
+        <span>Đăng xuất</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <div class="pl-64">
+    <!-- Top Header -->
+    <header
+      class="h-16 bg-surface-card border-b border-surface-container flex items-center justify-between px-6 sticky top-0 z-40">
+      <div class="flex items-center gap-4 flex-1 max-w-lg">
+        <div
+          class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container text-on-surface text-xs font-semibold cursor-pointer">
+          <span class="material-symbols-outlined text-base text-primary">store</span>
+          <span>Chi nhánh CS1 - TP.HCM</span>
+          <span class="material-symbols-outlined text-base">expand_more</span>
+        </div>
+        <div class="relative flex-1">
+          <span
+            class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-lg">search</span>
+          <input type="text" id="orderSearchInput" placeholder="Tìm mã đơn, tên hoặc SĐT khách hàng..."
+            class="w-full pl-9 pr-4 py-1.5 rounded-full bg-surface-container-low text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs">KN
+        </div>
+        <div class="text-left text-xs">
+          <p class="font-bold leading-tight">Nguyễn Kiều Như</p>
+          <p class="text-secondary text-[11px]">Quản lý cửa hàng</p>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="p-6 space-y-6">
+
+      <!-- Page Title & Quick Actions -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-2xl font-bold tracking-tight text-on-surface">Quản lý và tiến độ đơn hàng</h1>
+            <span
+              class="px-2.5 py-0.5 rounded-full bg-green-100 text-green-800 text-[11px] font-bold inline-flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-green-600 animate-ping"></span> Realtime Live
+            </span>
+          </div>
+          <p class="text-secondary text-xs mt-1">Giám sát quy trình giặt sấy, quản lý trạng thái đơn hàng và điều phối
+            quầy theo thời gian thực.</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button onclick="loadOrders(true)"
+            class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold transition-colors">
+            <span class="material-symbols-outlined text-base text-primary">sync</span>
+            <span>Tải lại</span>
+          </button>
+          <button onclick="openCreateOrderModal()"
+            class="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary-container text-xs font-semibold shadow-sm transition-colors">
+            <span class="material-symbols-outlined text-base">add</span>
+            <span>Tạo đơn hàng mới</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- KPI Summary Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between">
+          <div>
+            <p class="text-xs text-secondary font-medium">Tổng đơn hệ thống</p>
+            <p class="text-2xl font-bold text-on-surface mt-1" id="metricTotalOrders">0 đơn</p>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center">
+            <span class="material-symbols-outlined">receipt_long</span>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between">
+          <div>
+            <p class="text-xs text-secondary font-medium">Đơn chờ xử lý</p>
+            <p class="text-2xl font-bold text-primary mt-1" id="metricPendingOrders">0 đơn</p>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center">
+            <span class="material-symbols-outlined">pending_actions</span>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between">
+          <div>
+            <p class="text-xs text-secondary font-medium">Đang giặt & sấy</p>
+            <p class="text-2xl font-bold text-on-surface mt-1" id="metricWashingOrders">0 đơn</p>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center">
+            <span class="material-symbols-outlined">local_laundry_service</span>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between">
+          <div>
+            <p class="text-xs text-secondary font-medium">Doanh thu đã thu</p>
+            <p class="text-2xl font-bold text-primary mt-1" id="metricCompletedRevenue">0 đ</p>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center">
+            <span class="material-symbols-outlined">payments</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Error Alert Message -->
+      <div id="kanbanError"
+        class="hidden p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs font-medium flex items-center gap-2">
+        <span class="material-symbols-outlined text-base">error</span>
+        <span id="kanbanErrorText">Không tải được dữ liệu đơn hàng từ C# API!</span>
+      </div>
+
+      <!-- 4-Column Kanban Board -->
+      <div class="bg-surface-card rounded-xl border border-surface-container p-4 space-y-4">
+
+        <div id="kanbanBoard" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
+
+          <!-- CỘT 1: Tiếp nhận / Chờ xử lý -->
+          <div
+            class="bg-surface-container-low rounded-xl border border-surface-container p-4 min-h-[580px] flex flex-col space-y-3">
+            <div class="flex items-center justify-between pb-2 border-b border-surface-container">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-secondary"></span>
+                <h2 class="font-bold text-xs text-on-surface uppercase tracking-wider">Tiếp nhận / Chờ xử lý</h2>
+              </div>
+              <span id="colPendingCount"
+                class="px-2 py-0.5 rounded bg-surface-container text-secondary text-[11px] font-bold">0 đơn</span>
+            </div>
+            <div id="colPending" class="space-y-3 flex-1"></div>
+            <button id="colPendingMoreBtn" type="button" onclick="showAllOrders('colPending')"
+              class="hidden w-full mt-2 py-2 rounded-lg border border-surface-container bg-white text-primary text-xs font-bold hover:bg-surface-container-low transition-colors">Xem
+              thêm</button>
+          </div>
+
+          <!-- CỘT 2: Đang giặt & sấy -->
+          <div
+            class="bg-surface-container-low rounded-xl border border-surface-container p-4 min-h-[580px] flex flex-col space-y-3">
+            <div class="flex items-center justify-between pb-2 border-b border-surface-container">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></span>
+                <h2 class="font-bold text-xs text-on-surface uppercase tracking-wider">Đang giặt & sấy</h2>
+              </div>
+              <span id="colWashingCount" class="px-2 py-0.5 rounded bg-primary text-white text-[11px] font-bold">0
+                đơn</span>
+            </div>
+            <div id="colWashing" class="space-y-3 flex-1"></div>
+            <button id="colWashingMoreBtn" type="button" onclick="showAllOrders('colWashing')"
+              class="hidden w-full mt-2 py-2 rounded-lg border border-surface-container bg-white text-primary text-xs font-bold hover:bg-surface-container-low transition-colors">Xem
+              thêm</button>
+          </div>
+
+          <!-- CỘT 3: Sẵn sàng giao / Chờ Shipper -->
+          <div
+            class="bg-surface-container-low rounded-xl border border-surface-container p-4 min-h-[580px] flex flex-col space-y-3">
+            <div class="flex items-center justify-between pb-2 border-b border-surface-container">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+                <h2 class="font-bold text-xs text-on-surface uppercase tracking-wider">Sẵn sàng / Chờ Shipper</h2>
+              </div>
+              <span id="colReadyCount" class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[11px] font-bold">0
+                đơn</span>
+            </div>
+            <div id="colReady" class="space-y-3 flex-1"></div>
+            <button id="colReadyMoreBtn" type="button" onclick="showAllOrders('colReady')"
+              class="hidden w-full mt-2 py-2 rounded-lg border border-surface-container bg-white text-primary text-xs font-bold hover:bg-surface-container-low transition-colors">Xem
+              thêm</button>
+          </div>
+
+          <!-- CỘT 4: Đã hoàn tất -->
+          <div
+            class="bg-surface-container-low rounded-xl border border-surface-container p-4 min-h-[580px] flex flex-col space-y-3">
+            <div class="flex items-center justify-between pb-2 border-b border-surface-container">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-green-600"></span>
+                <h2 class="font-bold text-xs text-on-surface uppercase tracking-wider">Đã hoàn tất</h2>
+              </div>
+              <span id="colDoneCount" class="px-2 py-0.5 rounded bg-green-100 text-green-800 text-[11px] font-bold">0
+                đơn</span>
+            </div>
+            <div id="colDone" class="space-y-3 flex-1"></div>
+            <button id="colDoneMoreBtn" type="button" onclick="showAllOrders('colDone')"
+              class="hidden w-full mt-2 py-2 rounded-lg border border-surface-container bg-white text-primary text-xs font-bold hover:bg-surface-container-low transition-colors">Xem
+              thêm</button>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- MÀN HÌNH CHI TIẾT: TOÀN BỘ ĐƠN CỦA TRẠNG THÁI ĐƯỢC CHỌN -->
+      <section id="allOrdersPanel"
+        class="hidden bg-white rounded-xl border border-surface-container shadow-sm overflow-hidden" aria-live="polite">
+        <div
+          class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 border-b border-surface-container bg-surface-container-low">
+          <div>
+            <h2 id="allOrdersPanelTitle" class="text-lg font-bold text-on-surface">Toàn bộ đơn hàng</h2>
+            <p id="allOrdersPanelSubtitle" class="text-sm text-secondary mt-1">Danh sách đầy đủ theo trạng thái</p>
+          </div>
+          <button type="button" onclick="closeAllOrders()"
+            class="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-lg border border-surface-container bg-white text-on-surface text-sm font-bold hover:bg-surface-container-low">
+            <span class="material-symbols-outlined text-base">close</span> Đóng danh sách
+          </button>
+        </div>
+        <div class="p-4 space-y-3">
+          <div class="relative">
+            <span
+              class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-lg">search</span>
+            <input id="allOrdersSearchInput" type="search" autocomplete="off"
+              placeholder="Tìm theo mã đơn, tên khách hàng, số điện thoại, địa chỉ..."
+              class="w-full rounded-lg border border-surface-container bg-white py-3 pl-10 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+          </div>
+          <div id="allOrdersList" class="flex flex-col gap-3"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL: Chi tiết đơn hàng trước khi Admin xác nhận -->
+  <div id="orderDetailsModal"
+    class="fixed inset-0 z-[60] bg-black/40 backdrop-blur-sm hidden items-center justify-center p-4" role="dialog"
+    aria-modal="true" aria-labelledby="orderDetailsTitle">
+    <div
+      class="w-full max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white shadow-2xl border border-surface-container">
+      <div
+        class="sticky top-0 z-10 flex items-center justify-between gap-3 p-5 border-b border-surface-container bg-white">
+        <div>
+          <h2 id="orderDetailsTitle" class="text-lg font-bold text-on-surface">Chi tiết đơn hàng</h2>
+          <p id="orderDetailsSubtitle" class="text-sm text-secondary mt-1">Thông tin khách cung cấp khi đặt đơn</p>
+        </div>
+        <button type="button" onclick="closeOrderDetails()"
+          class="px-3 py-2 rounded-lg bg-surface-container text-on-surface text-sm font-bold">Đóng</button>
+      </div>
+      <div id="orderDetailsContent" class="p-5 space-y-4"></div>
+      <div id="orderDetailsActions"
+        class="sticky bottom-0 flex flex-col sm:flex-row justify-end gap-2 p-4 border-t border-surface-container bg-white">
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Hủy đơn hàng -->
+  <div id="cancelOrderModal"
+    class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-surface-card rounded-xl max-w-md w-full p-5 border border-surface-container shadow-xl space-y-4">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2 text-red-600">
+          <span class="material-symbols-outlined text-xl">warning</span>
+          <h3 class="font-bold text-xs text-on-surface">Xác Nhận Hủy Đơn Hàng</h3>
+        </div>
+        <button onclick="closeCancelModal()" class="text-secondary hover:text-on-surface">
+          <span class="material-symbols-outlined text-lg">close</span>
+        </button>
+      </div>
+
+      <p class="text-xs text-secondary">Bạn đang chuẩn bị hủy đơn <strong id="cancelModalOrderId"
+          class="text-primary font-mono">#WS3T-0</strong>. Thao tác này sẽ cập nhật trên máy chủ C#.</p>
+
+      <div>
+        <label class="block font-semibold text-secondary text-xs mb-1">Ghi chú lý do hủy:</label>
+        <textarea id="cancelNoteInput"
+          class="w-full bg-surface-container-low text-xs text-on-surface p-2.5 rounded-lg border border-surface-container focus:outline-none focus:ring-1 focus:ring-primary h-20 resize-none"
+          placeholder="Nhập lý do hủy đơn..."></textarea>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2">
+        <button onclick="closeCancelModal()"
+          class="px-4 py-2 rounded-lg bg-surface-container text-xs font-medium text-on-surface hover:bg-surface-container-high transition-colors">Hủy
+          bỏ</button>
+        <button onclick="confirmCancelOrder()"
+          class="px-4 py-2 rounded-lg bg-primary hover:bg-primary-container text-white text-xs font-semibold shadow-sm transition-colors">Xác
+          nhận Hủy Đơn</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: In Phiếu Tag Áo Vải 3T -->
+  <div id="printTagModal"
+    class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-surface-card rounded-xl max-w-sm w-full p-5 border border-surface-container shadow-xl space-y-4">
+      <div class="flex items-center justify-between border-b border-surface-container pb-2">
+        <h3 class="font-bold text-xs text-on-surface flex items-center gap-2">
+          <span class="material-symbols-outlined text-primary text-lg">print</span>
+          Mẫu In Tag Áo Vải 3T
+        </h3>
+        <button onclick="closePrintModal()" class="text-secondary hover:text-on-surface">
+          <span class="material-symbols-outlined text-lg">close</span>
+        </button>
+      </div>
+
+      <div
+        class="bg-surface-container-low border-2 border-dashed border-secondary/30 p-4 rounded-lg text-center font-mono space-y-1">
+        <p class="font-bold text-primary text-xs">WASHSMART 3T LAUNDRY</p>
+        <p class="text-[10px] text-secondary">CS1 QUẬN 1 - TP.HỒ CHÍ MINH</p>
+        <div class="h-px bg-secondary/20 my-2"></div>
+        <p id="printTagTargetId" class="text-base font-bold text-on-surface">#WS3T-0</p>
+        <p class="text-xs font-semibold text-gray-800">NV Quản Lý: NV-0011 · Đặng Thùy Dương</p>
+        <p class="text-[10px] text-secondary">Tem niêm phong xưởng giặt tự động</p>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-1">
+        <button onclick="closePrintModal()"
+          class="px-3 py-1.5 rounded-lg bg-surface-container text-xs font-medium text-on-surface">Đóng</button>
+        <button onclick="executePrint()"
+          class="px-4 py-1.5 rounded-lg bg-primary hover:bg-primary-container text-white text-xs font-semibold shadow-sm">Gửi
+          máy in POS-80</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Realtime Status Indicator -->
+  <div
+    class="fixed bottom-5 right-5 z-40 bg-surface-card/90 backdrop-blur-md px-3.5 py-2 rounded-full border border-surface-container shadow-lg flex items-center gap-3 text-xs">
+    <div class="flex items-center gap-1.5 font-medium text-on-surface">
+      <span class="w-2 h-2 rounded-full bg-green-500 animate-ping"></span>
+      <span>Đồng bộ C# API: <strong id="syncStatus" class="text-primary font-semibold">Đang kết nối...</strong></span>
+    </div>
+    <div class="h-3 w-px bg-surface-container"></div>
+    <button onclick="loadOrders(true)" class="text-primary hover:underline font-bold flex items-center gap-1">
+      <span class="material-symbols-outlined text-sm">sync</span> Tải lại
+    </button>
+  </div>
+
+  <script src="api.js"></script>
+
+  <script>
+    let activeTargetOrderId = null;
+    let activeDetailsOrderId = null;
+    let allOrders = [];
+    const expandedOrderColumns = { colPending: false, colWashing: false, colReady: false, colDone: false };
+    let isLoadingOrders = false;
+    let lastOrderSearchTerm = '';
+    let allOrdersSearchTerm = '';
+
+    function handleLogout(e) {
+      if (e) e.preventDefault();
+      if (window.Auth) Auth.logout();
+      else window.location.href = 'login.html';
+    }
+
+    function formatMoney(amount) {
+      return (amount || 0).toLocaleString('vi-VN') + ' đ';
+    }
+
+    function orderCode(id) {
+      return (id || 0).toString();
+    }
+
+    function getNormalizedStatus(rawStatus) {
+      if (rawStatus === null || rawStatus === undefined) return 'Pending';
+      const s = rawStatus.toString().trim();
+
+      if (s === '0' || s.toLowerCase() === 'pending') return 'Pending';
+      if (s === '1' || s.toLowerCase() === 'confirmed') return 'Confirmed';
+      if (s === '2' || s.toLowerCase() === 'pickingup') return 'PickingUp';
+      if (s === '3' || s.toLowerCase() === 'received') return 'Received';
+      if (s === '4' || s.toLowerCase() === 'washing') return 'Washing';
+      if (s === '5' || s.toLowerCase() === 'ready') return 'Ready';
+      if (s === '6' || s.toLowerCase() === 'delivering') return 'Delivering';
+      if (s === '7' || s.toLowerCase() === 'completed') return 'Completed';
+      if (s === '8' || s.toLowerCase() === 'cancelled') return 'Cancelled';
+      return s;
+    }
+
+    const STATUS_LABELS = {
+      Pending: 'Chờ xác nhận',
+      Confirmed: 'Đã xác nhận',
+      PickingUp: 'Shipper đang lấy',
+      Received: 'Đã nhận đồ',
+      Washing: 'Đang giặt & sấy',
+      Ready: 'Sẵn sàng giao',
+      Delivering: 'Đang giao',
+      Completed: 'Hoàn tất',
+      Cancelled: 'Đã hủy',
+    };
+
+    const NEXT_STATUS = {
+      Pending: 'Confirmed',
+      Confirmed: 'PickingUp',
+      PickingUp: 'Received',
+      Received: 'Washing',
+      Washing: 'Ready',
+      Ready: 'Delivering',
+      Delivering: 'Completed',
+    };
+
+    function statusBadgeClass(status) {
+      const st = getNormalizedStatus(status);
+      switch (st) {
+        case 'Pending': case 'Confirmed': return 'bg-surface-container text-secondary font-bold';
+        case 'PickingUp': return 'bg-blue-100 text-blue-800 font-bold';
+        case 'Received': case 'Washing': return 'bg-primary text-white font-bold';
+        case 'Ready': return 'bg-amber-100 text-amber-800 font-bold';
+        case 'Delivering': return 'bg-purple-100 text-purple-800 font-bold';
+        case 'Completed': return 'bg-green-100 text-green-800 font-bold';
+        case 'Cancelled': return 'bg-red-100 text-red-800 font-bold';
+        default: return 'bg-surface-container text-secondary';
+      }
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[ch]);
+    }
+
+    function getOrderItems(order) {
+      return order.items || order.Items || order.orderDetails || order.OrderDetails || [];
+    }
+
+    function describeOrderItem(item) {
+      const name = item.serviceName || item.ServiceName || 'Dịch vụ';
+      const quantityRaw = item.quantity ?? item.Quantity;
+      const quantity = Number(quantityRaw);
+      const unit = item.unit || item.Unit || '';
+      const qtyLabel = Number.isFinite(quantity) && quantity > 0
+        ? `${quantity} ${unit}`.trim()
+        : 'Chờ cân/đếm thực tế';
+      return { name, qtyLabel, price: item.totalPrice ?? item.TotalPrice, unitPrice: item.unitPrice ?? item.UnitPrice, unit };
+    }
+
+    function findOrderById(orderId) {
+      return allOrders.find(o => Number(o.id ?? o.Id ?? o.orderId ?? o.OrderId) === Number(orderId));
+    }
+
+    function formatOrderDate(value) {
+      if (!value) return 'Chưa có thông tin';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return 'Chưa có thông tin';
+      return new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }).format(date);
+    }
+
+    function openOrderDetails(orderId) {
+      const order = findOrderById(orderId);
+      if (!order) { alert('Không tìm thấy đơn hàng trong dữ liệu vừa tải. Vui lòng tải lại.'); return; }
+      activeDetailsOrderId = Number(orderId);
+      const id = order.id ?? order.Id ?? orderId;
+      const status = getNormalizedStatus(order.status ?? order.Status);
+      const items = getOrderItems(order);
+      const note = String(order.note ?? order.Note ?? '');
+      const content = document.getElementById('orderDetailsContent');
+      const actions = document.getElementById('orderDetailsActions');
+      document.getElementById('orderDetailsTitle').textContent = `Chi tiết đơn #WS3T-${orderCode(id)}`;
+      document.getElementById('orderDetailsSubtitle').textContent = 'Kiểm tra thông tin khách đặt trước khi xác nhận';
+      const itemRows = items.length ? items.map(item => {
+        const d = describeOrderItem(item);
+        const priceText = d.price == null ? 'Chưa chốt — chờ cân/đếm thực tế' : formatMoney(Number(d.price));
+        return `<div class="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_auto] gap-2 items-start p-3 rounded-lg bg-surface-container-low border border-surface-container"><div><p class="font-semibold text-sm text-on-surface">${escapeHtml(d.name)}</p><p class="text-xs text-secondary mt-1">Số lượng: ${escapeHtml(d.qtyLabel)}</p>${d.unitPrice != null ? `<p class="text-xs text-secondary">Đơn giá: ${formatMoney(Number(d.unitPrice))}${d.unit ? ' / ' + escapeHtml(d.unit) : ''}</p>` : ''}</div><div class="text-sm font-bold text-primary">${escapeHtml(priceText)}</div></div>`;
+      }).join('') : '<p class="text-sm text-secondary">Không có chi tiết dịch vụ trong phản hồi API.</p>';
+      content.innerHTML = `
+        <section class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="p-3 rounded-lg border border-surface-container"><p class="text-xs text-secondary">Khách hàng</p><p class="font-bold mt-1">${escapeHtml(order.customerName ?? order.CustomerName ?? 'Khách hàng')}</p><p class="text-sm mt-1">${escapeHtml(order.customerPhone ?? order.CustomerPhone ?? order.contactPhone ?? order.ContactPhone ?? '')}</p></div>
+          <div class="p-3 rounded-lg border border-surface-container"><p class="text-xs text-secondary">Trạng thái / thời điểm tạo</p><p class="font-bold mt-1">${escapeHtml(STATUS_LABELS[status] || status)}</p><p class="text-sm text-secondary mt-1">${escapeHtml(formatOrderDate(order.createdAt ?? order.CreatedAt))}</p></div>
+          <div class="p-3 rounded-lg border border-surface-container"><p class="text-xs text-secondary">Địa chỉ lấy đồ</p><p class="text-sm mt-1 whitespace-pre-wrap">${escapeHtml(order.pickupAddress ?? order.PickupAddress ?? 'Chưa có')}</p></div>
+          <div class="p-3 rounded-lg border border-surface-container"><p class="text-xs text-secondary">Địa chỉ giao đồ</p><p class="text-sm mt-1 whitespace-pre-wrap">${escapeHtml(order.deliveryAddress ?? order.DeliveryAddress ?? 'Chưa có')}</p></div>
+          <div class="p-3 rounded-lg border border-surface-container bg-surface-container-low">
+            <p class="text-xs text-secondary font-medium">Nhân viên tiếp nhận / Quầy</p>
+            <p class="font-bold mt-1 text-on-surface flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-primary text-base">badge</span>
+              <span>${escapeHtml(order.staffCode || 'NV-0011')} · ${escapeHtml(order.staffName || 'Đặng Thùy Dương')}</span>
+            </p>
+            <p class="text-[11px] text-secondary mt-0.5">Chi nhánh CS1 - TP.HCM</p>
+          </div>
+          <div class="p-3 rounded-lg border border-surface-container bg-surface-container-low">
+            <p class="text-xs text-secondary font-medium">Shipper phụ trách</p>
+            <p class="font-bold mt-1 text-on-surface flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-blue-600 text-base">two_wheeler</span>
+              <span>${order.shipperName ? `${escapeHtml(order.shipperCode || 'SP-0012')} · ${escapeHtml(order.shipperName)}` : 'Chưa phân công Shipper'}</span>
+            </p>
+            <p class="text-[11px] text-secondary mt-0.5">${order.shipperPhone ? 'SĐT: ' + escapeHtml(order.shipperPhone) : 'Sẵn sàng điều phối'}</p>
+          </div>
+        </section>
+        <section><h3 class="font-bold text-sm mb-2">Dịch vụ khách đã chọn</h3><div class="space-y-2">${itemRows}</div></section>
+        ${window.renderOrderNoteHtml ? window.renderOrderNoteHtml(note) : `<section class="p-4 rounded-lg border border-primary/20 bg-primary/5"><h3 class="font-bold text-sm mb-2">Thông tin phân loại & Dịch vụ</h3><div class="text-sm whitespace-pre-wrap break-words">${note.trim() ? escapeHtml(note) : "Chưa có ghi chú"}</div></section>`}
+        <section class="flex items-center justify-between p-4 rounded-lg bg-surface-container-low"><span class="font-bold text-sm">Tổng tiền hiện tại</span><span class="font-bold text-lg text-primary">${formatMoney(Number(order.totalAmount ?? order.TotalAmount ?? 0))}</span></section>
+        <p class="text-xs text-secondary">Tổng tiền đã được đồng bộ chuẩn xác từ app (gồm tiền giặt dự kiến, phụ phí tiện ích và cước giao nhận theo cự ly). Shipper sẽ đối soát khi cân đồ thực tế.</p>`;
+      actions.innerHTML = status === 'Pending'
+        ? `<button type="button" onclick="closeOrderDetails()" class="px-4 py-2 rounded-lg border border-surface-container font-semibold text-sm">Đóng, xem sau</button><button type="button" onclick="confirmOrderFromDetails(${Number(id)})" class="px-4 py-2 rounded-lg bg-primary text-white font-bold text-sm"><span class="material-symbols-outlined text-base align-middle mr-1">task_alt</span>Xác nhận đơn hàng</button>`
+        : `<button type="button" onclick="closeOrderDetails()" class="px-4 py-2 rounded-lg bg-primary text-white font-bold text-sm">Đóng chi tiết</button>`;
+      const modal = document.getElementById('orderDetailsModal'); modal.classList.remove('hidden'); modal.classList.add('flex');
+    }
+
+    function closeOrderDetails() {
+      const modal = document.getElementById('orderDetailsModal'); modal.classList.add('hidden'); modal.classList.remove('flex'); activeDetailsOrderId = null;
+    }
+
+    async function confirmOrderFromDetails(orderId) {
+      const order = findOrderById(orderId);
+      if (!order || getNormalizedStatus(order.status ?? order.Status) !== 'Pending') {
+        alert('Đơn không còn ở trạng thái chờ xác nhận. Danh sách sẽ được cập nhật.'); closeOrderDetails(); await loadOrders(true); return;
+      }
+      try {
+        const actions = document.getElementById('orderDetailsActions');
+        if (actions) actions.querySelectorAll('button').forEach(button => button.disabled = true);
+        await Api.Orders.updateStatus(orderId, 'Confirmed', 'Admin đã xem chi tiết đơn và xác nhận từ web');
+        closeOrderDetails(); await loadOrders(true);
+      } catch (err) {
+        alert('Xác nhận đơn thất bại: ' + err.message);
+        openOrderDetails(orderId);
+      }
+    }
+
+    function buildOrderCard(order) {
+      const code = orderCode(order.id || order.Id);
+      const st = getNormalizedStatus(order.status || order.Status);
+      const isDone = st === 'Completed';
+      const isCancelled = st === 'Cancelled';
+      const nextStatus = NEXT_STATUS[st];
+
+      const items = getOrderItems(order).map(i => {
+        const detail = describeOrderItem(i);
+        return `${detail.name} — ${detail.qtyLabel}`;
+      }).join(' • ');
+
+      let buttons = '';
+
+      if (st === 'Pending') {
+        buttons += `
+          <button class="w-full py-2 rounded-lg bg-primary hover:bg-primary-container text-white font-semibold text-xs flex items-center justify-center gap-1 shadow-sm transition-all active:scale-[0.98]" onclick="openOrderDetails(${Number(order.id || order.Id)})" type="button">
+            <span class="material-symbols-outlined text-base">visibility</span>
+            <span>Xem chi tiết & xác nhận</span>
+          </button>`;
+      }
+      else if (st === 'Confirmed' || st === 'Ready') {
+        buttons += `
+          <button class="w-full py-2 rounded-lg bg-primary hover:bg-primary-container text-white font-semibold text-xs flex items-center justify-center gap-1 shadow-sm transition-all active:scale-[0.98]" onclick="dispatchShipper(${order.id || order.Id})" type="button">
+            <span class="material-symbols-outlined text-base">two_wheeler</span>
+            <span>${st === 'Ready' ? 'Gán Shipper giao đồ sạch' : 'Điều phối Shipper lấy đồ'}</span>
+          </button>`;
+      }
+      else if (st === 'PickingUp') {
+        buttons += `
+          <div class="p-2 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg text-center text-xs font-bold flex items-center justify-center gap-1">
+            <span class="material-symbols-outlined text-base animate-spin">hourglass_top</span>
+            <span>Chờ Shipper lấy đồ...</span>
+          </div>`;
+      }
+      else if (st === 'Delivering') {
+        buttons += `
+          <div class="p-2 bg-purple-50 border border-purple-200 text-purple-800 rounded-lg text-center text-xs font-bold flex items-center justify-center gap-1">
+            <span class="material-symbols-outlined text-base animate-spin">hourglass_bottom</span>
+            <span>Chờ Shipper giao & thu tiền...</span>
+          </div>`;
+      }
+      else if (nextStatus && !isCancelled) {
+        buttons += `
+          <button class="w-full py-2 rounded-lg bg-primary hover:bg-primary-container text-white font-semibold text-xs flex items-center justify-center gap-1 shadow-sm transition-all active:scale-[0.98]" onclick="advanceOrder(${order.id || order.Id}, '${nextStatus}')" type="button">
+            <span>Chuyển: ${STATUS_LABELS[nextStatus]}</span>
+            <span class="material-symbols-outlined text-base">arrow_forward</span>
+          </button>`;
+      }
+
+      if (!isDone && !isCancelled && (st === 'Pending' || st === 'Confirmed')) {
+        buttons += `
+          <div class="grid grid-cols-2 gap-1.5 mt-1.5">
+            <button class="py-1.5 rounded-lg bg-surface-container text-primary hover:bg-red-50 text-[11px] font-semibold transition-colors flex items-center justify-center gap-1" onclick="openCancelModal(${order.id || order.Id})" type="button">
+              <span class="material-symbols-outlined text-sm">close</span>
+              <span>Hủy đơn</span>
+            </button>
+            <button class="py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-[11px] font-semibold transition-colors flex items-center justify-center gap-1" onclick="openPrintModal('${code}')" type="button">
+              <span class="material-symbols-outlined text-sm">print</span>
+              <span>In phiếu tag</span>
+            </button>
+          </div>`;
+      } else if (isDone || isCancelled) {
+        buttons += `
+          <div class="pt-1">
+            <div class="w-full py-1.5 rounded-lg bg-surface-container text-secondary text-center text-xs font-semibold flex items-center justify-center gap-1">
+              <span class="material-symbols-outlined text-sm">${isCancelled ? 'cancel' : 'check_circle'}</span>
+              <span>${isCancelled ? 'Đơn đã bị hủy' : '✓ Đã hoàn tất & Đã nhận tiền'}</span>
+            </div>
+          </div>`;
+      }
+
+      return `
+        <div class="bg-surface-card rounded-xl p-3.5 border border-surface-container min-h-[300px] flex flex-col ${isDone || isCancelled ? 'opacity-80' : ''} space-y-2 hover:shadow-sm transition-all">
+          <div class="flex items-start justify-between">
+            <div>
+              <div class="flex items-center gap-1.5">
+                <span class="font-bold text-primary font-mono text-xs ${isCancelled ? 'line-through' : ''}">#WS3T-${code}</span>
+                <span class="text-[10px] px-2 py-0.5 rounded ${statusBadgeClass(st)}">${STATUS_LABELS[st] || st}</span>
+              </div>
+              <p class="font-bold text-xs text-on-surface mt-1">${order.customerName || order.CustomerName || 'Khách vãng lai'}</p>
+              <p class="text-[11px] text-secondary">${order.customerPhone || order.CustomerPhone || order.contactPhone || ''}</p>
+            </div>
+          </div>
+          <div class="p-2.5 rounded-lg bg-surface-container-low border border-surface-container text-xs space-y-1">
+            <p class="text-[11px] text-secondary truncate">${items || 'Gói Giặt Sấy Tinh Tươm'}</p>
+            <p class="font-bold text-primary text-xs">${formatMoney(order.totalAmount || order.TotalAmount || 0)}</p>
+          </div>
+          <p class="text-[11px] text-secondary truncate flex items-center gap-1">
+            <span class="material-symbols-outlined text-xs text-primary">location_on</span> ${escapeHtml(order.pickupAddress || order.PickupAddress || 'Nhận tại quầy')}
+          </p>
+          ${st === 'Pending' ? '' : `<button type="button" onclick="openOrderDetails(${Number(order.id || order.Id)})" class="w-full py-1.5 rounded-lg border border-surface-container bg-white hover:bg-surface-container-low text-on-surface text-[11px] font-bold flex items-center justify-center gap-1"><span class="material-symbols-outlined text-sm">description</span> Xem chi tiết đơn</button>`}
+          <div class="pt-1 mt-auto">${buttons}</div>
+        </div>`;
+    }
+
+    function columnForStatus(status) {
+      const st = getNormalizedStatus(status);
+      switch (st) {
+        case 'Pending': case 'Confirmed': case 'PickingUp': return 'colPending';
+        case 'Received': case 'Washing': return 'colWashing';
+        case 'Ready': case 'Delivering': return 'colReady';
+        case 'Completed': case 'Cancelled': return 'colDone';
+        default: return 'colPending';
+      }
+    }
+
+    function getOrderTimestamp(order) {
+      const raw = order.createdAt || order.CreatedAt || order.createdDate || order.CreatedDate || order.orderDate || order.OrderDate || order.createdOn || order.CreatedOn;
+      const parsed = raw ? new Date(raw).getTime() : NaN;
+      if (Number.isFinite(parsed)) return parsed;
+      const id = Number(order.id || order.Id || 0);
+      return Number.isFinite(id) ? id : 0;
+    }
+
+    function sortNewestFirst(list) {
+      return [...list].sort((a, b) => getOrderTimestamp(b) - getOrderTimestamp(a));
+    }
+
+    let activeAllOrdersColumn = null;
+
+    const orderColumnTitles = {
+      colPending: 'Tiếp nhận / Chờ xử lý',
+      colWashing: 'Đang giặt & sấy',
+      colReady: 'Sẵn sàng / Chờ Shipper',
+      colDone: 'Đã hoàn tất'
+    };
+
+    function showAllOrders(colId) {
+      if (!(colId in orderColumnTitles)) return;
+      activeAllOrdersColumn = colId;
+      allOrdersSearchTerm = '';
+      const allSearchInput = document.getElementById('allOrdersSearchInput');
+      if (allSearchInput) allSearchInput.value = '';
+      renderOrderColumns(lastOrderSearchTerm);
+      const panel = document.getElementById('allOrdersPanel');
+      if (panel) {
+        panel.classList.remove('hidden');
+        panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+
+    function closeAllOrders() {
+      const panel = document.getElementById('allOrdersPanel');
+      if (panel) panel.classList.add('hidden');
+      activeAllOrdersColumn = null;
+      allOrdersSearchTerm = '';
+      const allSearchInput = document.getElementById('allOrdersSearchInput');
+      if (allSearchInput) allSearchInput.value = '';
+    }
+
+    function orderSearchText(order) {
+      const values = [
+        order.id, order.Id, order.orderId, order.OrderId,
+        order.customerName, order.CustomerName, order.customerPhone, order.CustomerPhone, order.contactPhone,
+        order.pickupAddress, order.PickupAddress, order.status, order.Status,
+        order.totalAmount, order.TotalAmount, order.note, order.Note,
+        order.customer, order.Customer, order.items, order.Items, order.orderDetails, order.OrderDetails
+      ];
+      return values.map(value => {
+        if (value === null || value === undefined) return '';
+        if (typeof value === 'object') return JSON.stringify(value);
+        return String(value);
+      }).join(' ').toLocaleLowerCase('vi');
+    }
+
+    function renderOrderColumns(searchTerm = '') {
+      const term = (searchTerm || '').trim().toLocaleLowerCase('vi');
+      const buckets = { colPending: [], colWashing: [], colReady: [], colDone: [] };
+      sortNewestFirst(allOrders)
+        .filter(o => !term || orderSearchText(o).includes(term))
+        .forEach(o => {
+          const colKey = columnForStatus(o.status || o.Status);
+          if (buckets[colKey]) buckets[colKey].push(o);
+        });
+
+      const countIds = { colPending: 'colPendingCount', colWashing: 'colWashingCount', colReady: 'colReadyCount', colDone: 'colDoneCount' };
+      for (const [colId, list] of Object.entries(buckets)) {
+        const col = document.getElementById(colId);
+        const count = document.getElementById(countIds[colId]);
+        const moreBtn = document.getElementById(colId + 'MoreBtn');
+        if (count) count.textContent = list.length + ' đơn';
+        if (col) {
+          const visibleList = list.slice(0, 2);
+          col.innerHTML = list.length === 0
+            ? `<p class="text-xs text-secondary text-center py-8 font-medium">${term ? 'Không tìm thấy đơn phù hợp' : 'Chưa có đơn hàng nào'}</p>`
+            : visibleList.map(buildOrderCard).join('');
+        }
+        if (moreBtn) {
+          const hasMore = list.length > 2;
+          moreBtn.classList.toggle('hidden', !hasMore);
+          moreBtn.textContent = `Xem thêm (${list.length} đơn)`;
+          moreBtn.setAttribute('aria-expanded', String(activeAllOrdersColumn === colId));
+        }
+      }
+
+      const panel = document.getElementById('allOrdersPanel');
+      const panelTitle = document.getElementById('allOrdersPanelTitle');
+      const panelSubtitle = document.getElementById('allOrdersPanelSubtitle');
+      const panelList = document.getElementById('allOrdersList');
+      if (panel && panelList && activeAllOrdersColumn) {
+        const selectedOrders = (buckets[activeAllOrdersColumn] || []).filter(o => {
+          const panelTerm = (allOrdersSearchTerm || '').trim().toLocaleLowerCase('vi');
+          return !panelTerm || orderSearchText(o).includes(panelTerm);
+        });
+        if (panelTitle) panelTitle.textContent = 'Toàn bộ đơn — ' + orderColumnTitles[activeAllOrdersColumn];
+        if (panelSubtitle) panelSubtitle.textContent = `${selectedOrders.length} đơn hàng${allOrdersSearchTerm.trim() ? ' phù hợp với nội dung tìm kiếm' : ''}. Mỗi hàng hiển thị một đơn; danh sách mới nhất ở trên.`;
+        panelList.innerHTML = selectedOrders.length
+          ? selectedOrders.map(buildOrderCard).join('')
+          : `<div class="text-center py-10 text-secondary">${allOrdersSearchTerm.trim() ? 'Không tìm thấy đơn phù hợp.' : 'Trạng thái này chưa có đơn hàng nào.'}</div>`;
+      }
+    }
+
+    async function loadOrders(manualRefresh = false) {
+      const errBox = document.getElementById('kanbanError');
+      const syncStatusEl = document.getElementById('syncStatus');
+      const refreshButtons = [...document.querySelectorAll('button[onclick="loadOrders(true)"]')];
+      if (isLoadingOrders) return;
+      isLoadingOrders = true;
+      if (manualRefresh) {
+        refreshButtons.forEach(btn => { btn.disabled = true; btn.classList.add('opacity-60'); });
+        if (syncStatusEl) syncStatusEl.textContent = 'Đang cập nhật đơn mới nhất...';
+      }
+
+      try {
+        const response = await Api.Orders.all();
+        if (!Array.isArray(response)) throw new Error('API không trả về danh sách đơn hàng hợp lệ.');
+        allOrders = response;
+        if (errBox) errBox.classList.add('hidden');
+        if (syncStatusEl) syncStatusEl.textContent = 'Hoạt động (' + allOrders.length + ' đơn)';
+        calculateDashboardMetrics(allOrders);
+        renderOrderColumns(lastOrderSearchTerm);
+      } catch (err) {
+        if (syncStatusEl) syncStatusEl.textContent = 'Mất kết nối C# API';
+        if (errBox) {
+          errBox.querySelector('#kanbanErrorText').textContent = 'Không tải được danh sách đơn hàng từ C# API: ' + err.message;
+          errBox.classList.remove('hidden');
+        }
+      } finally {
+        isLoadingOrders = false;
+        if (manualRefresh) refreshButtons.forEach(btn => { btn.disabled = false; btn.classList.remove('opacity-60'); });
+      }
+    }
+
+    function calculateDashboardMetrics(orders) {
+      const totalOrders = orders.length;
+      let pendingOrders = 0;
+      let washingOrders = 0;
+      let completedRevenue = 0;
+
+      orders.forEach(o => {
+        const st = getNormalizedStatus(o.status || o.Status);
+        const amt = Number(o.totalAmount || o.TotalAmount || 0);
+
+        if (st === 'Completed') completedRevenue += amt;
+        else if (st === 'Washing' || st === 'Received') washingOrders++;
+        else if (st !== 'Cancelled') pendingOrders++;
+      });
+
+      document.getElementById('metricTotalOrders').textContent = totalOrders + ' đơn';
+      document.getElementById('metricPendingOrders').textContent = pendingOrders + ' đơn';
+      document.getElementById('metricWashingOrders').textContent = washingOrders + ' đơn';
+      document.getElementById('metricCompletedRevenue').textContent = formatMoney(completedRevenue);
+    }
+
+    function dispatchShipper(orderId) { window.location.href = 'dispatch.html?order=' + orderId; }
+
+    function openCancelModal(orderId) {
+      activeTargetOrderId = orderId;
+      document.getElementById('cancelModalOrderId').textContent = '#' + orderCode(orderId);
+      document.getElementById('cancelOrderModal')?.classList.remove('hidden');
+      document.getElementById('cancelOrderModal')?.classList.add('flex');
+    }
+
+    function closeCancelModal() {
+      document.getElementById('cancelOrderModal')?.classList.add('hidden');
+      document.getElementById('cancelOrderModal')?.classList.remove('flex');
+    }
+
+    async function confirmCancelOrder() {
+      if (!activeTargetOrderId) return;
+      const extraNote = document.getElementById('cancelNoteInput')?.value.trim() || '';
+      try {
+        await Api.Orders.updateStatus(activeTargetOrderId, 'Cancelled', 'Hủy đơn từ web: ' + extraNote);
+        closeCancelModal();
+        await loadOrders();
+    const urlParams = new URLSearchParams(window.location.search);
+    const autoOpenId = urlParams.get('auto_open');
+    if (autoOpenId) {
+      }
+      } catch (err) { alert('Hủy đơn thất bại: ' + err.message); }
+    }
+
+    function openPrintModal(orderId) {
+      document.getElementById('printTagTargetId').textContent = '#WS3T-' + orderId;
+      document.getElementById('printTagModal')?.classList.remove('hidden');
+      document.getElementById('printTagModal')?.classList.add('flex');
+    }
+
+    function closePrintModal() {
+      document.getElementById('printTagModal')?.classList.add('hidden');
+      document.getElementById('printTagModal')?.classList.remove('flex');
+    }
+
+    function executePrint() { alert('Lệnh in tag nhiệt đã gửi thành công tới máy in POS-80.'); closePrintModal(); }
+
+    async function advanceOrder(orderId, nextStatus) {
+      try {
+        await Api.Orders.updateStatus(orderId, nextStatus, 'Chuyển trạng thái từ Web Admin');
+        await loadOrders();
+      } catch (err) { alert('Chuyển trạng thái thất bại: ' + err.message); }
+    }
+
+    function openCreateOrderModal() { window.location.href = 'pos.html'; }
+
+    const searchInput = document.getElementById('orderSearchInput');
+    if (searchInput) {
+      searchInput.addEventListener('input', function (e) {
+        lastOrderSearchTerm = e.target.value || '';
+        renderOrderColumns(lastOrderSearchTerm);
+      });
+    }
+
+    const allOrdersSearchInput = document.getElementById('allOrdersSearchInput');
+    if (allOrdersSearchInput) {
+      allOrdersSearchInput.addEventListener('input', function (e) {
+        allOrdersSearchTerm = e.target.value || '';
+        renderOrderColumns(lastOrderSearchTerm);
+      });
+    }
+
+    (async () => {
+      if (typeof Auth !== 'undefined') {
+        const me = await Auth.requireAdminOrStaff();
+        if (!me) return;
+      }
+      await loadOrders();
+      setInterval(loadOrders, 3000);
+    })();
+  </script>
+</body>
+
+</html>

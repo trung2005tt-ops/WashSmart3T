@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Đăng Nhập Quản Lý - WashSmart 3T</title>
+
+  <!-- Fonts & Icons -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
+    rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      overscroll-behavior: none;
+    }
+
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+
+  <!-- Tailwind CSS Config -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#8e0028",
+            "primary-container": "#b90538",
+            "primary-fixed": "#ffdadb",
+            "surface": "#fff8f9",
+            "surface-container-low": "#f9f2f3",
+            "surface-container": "#f3eced",
+            "surface-container-high": "#ede7e8",
+            "surface-card": "#ffffff",
+            "on-surface": "#1d1b1c",
+            "secondary": "#6a5b5e",
+            "outline": "#8f6f70",
+            "outline-variant": "#e3bdbf",
+            "error": "#ba1a1a"
+          }
+        }
+      }
+    };
+  </script>
+</head>
+
+<body class="bg-surface text-on-surface antialiased min-h-screen flex items-center justify-center p-4">
+
+  <!-- Center Card -->
+  <div
+    class="w-full max-w-md bg-surface-card rounded-xl border border-surface-container shadow-xl p-6 sm:p-8 space-y-6">
+
+    <!-- Header Logo & Title -->
+    <div class="text-center space-y-2">
+      <div
+        class="w-12 h-12 rounded-xl bg-primary text-white flex items-center justify-center font-bold shadow-sm mx-auto">
+        <span class="material-symbols-outlined text-2xl">local_laundry_service</span>
+      </div>
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight text-on-surface">WashSmart 3T</h1>
+        <p class="text-xs text-secondary mt-1">Hệ Thống Quản Lý & Điều Phối Cửa Hàng</p>
+      </div>
+    </div>
+
+    <!-- Login Form -->
+    <form id="loginForm" class="space-y-4">
+
+      <!-- Phone Field -->
+      <div>
+        <label class="block font-semibold text-secondary text-xs mb-1" for="phoneInput">Số điện thoại</label>
+        <div class="relative">
+          <span
+            class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-lg">smartphone</span>
+          <input id="phoneInput" type="tel" autocomplete="username" placeholder="Nhập số điện thoại..."
+            class="w-full pl-9 pr-4 py-2 rounded-lg bg-surface-container-low text-xs text-on-surface focus:outline-none focus:ring-1 focus:ring-primary border border-surface-container transition-all">
+        </div>
+      </div>
+
+      <!-- Password Field -->
+      <div>
+        <label class="block font-semibold text-secondary text-xs mb-1" for="passwordInput">Mật khẩu</label>
+        <div class="relative">
+          <span
+            class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-lg">lock</span>
+          <input id="passwordInput" type="password" autocomplete="current-password" placeholder="••••••••"
+            class="w-full pl-9 pr-9 py-2 rounded-lg bg-surface-container-low text-xs text-on-surface focus:outline-none focus:ring-1 focus:ring-primary border border-surface-container transition-all">
+          <button type="button" id="togglePasswordBtn"
+            class="absolute right-3 top-1/2 -translate-y-1/2 text-secondary hover:text-on-surface">
+            <span class="material-symbols-outlined text-base" id="passwordEyeIcon">visibility</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Error Alert Message -->
+      <div id="loginError"
+        class="hidden p-3 rounded-lg bg-red-50 border border-red-200 text-error text-xs font-semibold flex items-center gap-2">
+        <span class="material-symbols-outlined text-base shrink-0">error</span>
+        <span id="loginErrorText">Số điện thoại hoặc mật khẩu không chính xác.</span>
+      </div>
+
+      <!-- Submit Button -->
+      <button id="loginBtn" type="submit"
+        class="w-full py-2.5 rounded-lg bg-primary hover:bg-primary-container text-white font-semibold text-xs transition-colors shadow-sm flex items-center justify-center gap-2 active:scale-[0.99]">
+        <span class="material-symbols-outlined text-base">login</span>
+        <span id="loginBtnText">Đăng Nhập</span>
+      </button>
+    </form>
+
+  </div>
+
+  <!-- Include Backend API Script -->
+  <script src="api.js"></script>
+
+  <!-- Login Logic -->
+  <script>
+    const form = document.getElementById('loginForm');
+    const btn = document.getElementById('loginBtn');
+    const btnText = document.getElementById('loginBtnText');
+    const errBox = document.getElementById('loginError');
+
+    // Bật/Tắt hiển thị mật khẩu
+    const passwordInput = document.getElementById('passwordInput');
+    const togglePasswordBtn = document.getElementById('togglePasswordBtn');
+    const passwordEyeIcon = document.getElementById('passwordEyeIcon');
+
+    togglePasswordBtn?.addEventListener('click', () => {
+      const isPassword = passwordInput.type === 'password';
+      passwordInput.type = isPassword ? 'text' : 'password';
+      passwordEyeIcon.textContent = isPassword ? 'visibility_off' : 'visibility';
+    });
+
+    // Hàm giải mã JWT Token an toàn
+    function parseJwt(token) {
+      try {
+        const base64Url = token.split('.')[1];
+        if (!base64Url) return null;
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split('')
+            .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        );
+        return JSON.parse(jsonPayload);
+      } catch (e) {
+        console.error('Lỗi giải mã Token:', e);
+        return null;
+      }
+    }
+
+    // Tự động chuyển hướng nếu đã đăng nhập
+    if (window.Auth && Auth.getToken()) {
+      window.location.href = 'index.html';
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const phone = document.getElementById('phoneInput').value.trim();
+      const password = document.getElementById('passwordInput').value;
+
+      errBox.classList.add('hidden');
+
+      if (!phone || !password) {
+        errBox.querySelector('span:last-child').textContent = 'Vui lòng nhập đầy đủ số điện thoại và mật khẩu.';
+        errBox.classList.remove('hidden');
+        return;
+      }
+
+      btn.disabled = true;
+      btnText.textContent = 'Đang kiểm tra quyền...';
+
+      try {
+        // 1. Gọi API đăng nhập từ api.js
+        await Auth.login(phone, password);
+
+        // 2. Lấy token JWT vừa lưu
+        const token = Auth.getToken();
+
+        if (token) {
+          const payload = parseJwt(token);
+
+          if (payload) {
+            const rawRole = payload.role
+              || payload.Role
+              || payload['http://schemas.microsoft.com/ws/2008/06/identity/claims/role']
+              || '';
+
+            const roleStr = Array.isArray(rawRole) ? rawRole.join(',') : String(rawRole);
+
+            const isAuthorized = roleStr.toLowerCase().includes('admin') ||
+              roleStr.toLowerCase().includes('manager') ||
+              roleStr.toLowerCase().includes('staff');
+
+            if (!isAuthorized && roleStr !== '') {
+              if (typeof Auth.logout === 'function') {
+                Auth.logout();
+              } else {
+                localStorage.clear();
+              }
+              throw new Error("Tài khoản này không có quyền truy cập hệ thống quản lý.");
+            }
+          }
+        }
+
+        // 3. Đăng nhập thành công -> Vào Dashboard
+        window.location.href = 'index.html';
+
+      } catch (err) {
+        const errorMsg = err.message ? err.message.replace('Exception: ', '') : 'Số điện thoại hoặc mật khẩu không chính xác.';
+        errBox.querySelector('span:last-child').textContent = errorMsg;
+        errBox.classList.remove('hidden');
+        btn.disabled = false;
+        btnText.textContent = 'Đăng Nhập';
+      }
+    });
+  </script>
+</body>
+
+</html>

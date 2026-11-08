@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.37314.3 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WashSmart.API", "WashSmart.API.csproj", "{2B9FD493-6FFD-469E-BFB1-1C964D28AF69}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2B9FD493-6FFD-469E-BFB1-1C964D28AF69}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2B9FD493-6FFD-469E-BFB1-1C964D28AF69}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2B9FD493-6FFD-469E-BFB1-1C964D28AF69}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2B9FD493-6FFD-469E-BFB1-1C964D28AF69}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6F1D7DB6-D88C-4F0E-98D5-BD2A8CC6E25C}
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Xử lý Khiếu nại - WashSmart 3T</title>
+
+  <!-- Fonts & Icons -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
+    rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      overscroll-behavior: none;
+    }
+
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+
+  <!-- Tailwind CSS Config -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#8e0028",
+            "primary-container": "#b90538",
+            "primary-fixed": "#ffdadb",
+            "surface": "#fff8f9",
+            "surface-container-low": "#f9f2f3",
+            "surface-container": "#f3eced",
+            "surface-container-high": "#ede7e8",
+            "surface-card": "#ffffff",
+            "on-surface": "#1d1b1c",
+            "secondary": "#6a5b5e",
+            "outline": "#8f6f70",
+            "outline-variant": "#e3bdbf",
+          }
+        }
+      }
+    };
+  </script>
+</head>
+
+<body class="bg-surface text-on-surface antialiased text-sm">
+
+  <!-- Sidebar Navigation (Đầy đủ 8 mục hệ thống) -->
+  <aside class="fixed left-0 top-0 h-full w-64 bg-primary text-white z-50 flex flex-col justify-between shadow-lg">
+    <div class="flex flex-col">
+      <!-- Logo -->
+      <div class="p-5 flex items-center gap-3 border-b border-white/10">
+        <div class="w-10 h-10 rounded-xl bg-white text-primary flex items-center justify-center font-bold shadow-sm">
+          <span class="material-symbols-outlined text-2xl">local_laundry_service</span>
+        </div>
+        <div>
+          <h2 class="font-bold text-base leading-tight">WashSmart 3T</h2>
+          <p class="text-[11px] text-white/70 uppercase tracking-wider font-medium">Hệ Thống Quản Lý</p>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="p-3 space-y-1">
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="index.html">
+          <span class="material-symbols-outlined text-xl">analytics</span>
+          <span>Dashboard</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="orders.html">
+          <span class="material-symbols-outlined text-xl">receipt_long</span>
+          <span>Quản lý Đơn hàng</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="pos.html">
+          <span class="material-symbols-outlined text-xl">point_of_sale</span>
+          <span>POS Quầy</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="dispatch.html">
+          <span class="material-symbols-outlined text-xl">two_wheeler</span>
+          <span>Điều phối Shipper</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="accounts.html">
+          <span class="material-symbols-outlined text-xl">badge</span>
+          <span>Quản lý Tài khoản</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="customers.html">
+          <span class="material-symbols-outlined text-xl">loyalty</span>
+          <span>Khách hàng & Loyalty</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white text-primary font-bold shadow-sm"
+          href="complaints.html">
+          <span class="material-symbols-outlined text-xl">support_agent</span>
+          <span>Xử lý Khiếu nại</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="services.html">
+          <span class="material-symbols-outlined text-xl">sell</span>
+          <span>Dịch vụ & Bảng giá</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="store-settings.html">
+          <span class="material-symbols-outlined text-xl">store</span>
+          <span>Cấu hình Cửa hàng</span>
+        </a>
+      </nav>
+    </div>
+
+    <!-- Status & Logout -->
+    <div class="p-4 space-y-3 border-t border-white/10">
+
+      <button onclick="handleLogout(event)"
+        class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-black/20 hover:bg-black/40 text-white font-medium transition-colors text-xs">
+        <span class="material-symbols-outlined text-base">logout</span>
+        <span>Đăng xuất</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <div class="pl-64">
+    <!-- Top Header -->
+    <header
+      class="h-16 bg-surface-card border-b border-surface-container flex items-center justify-between px-6 sticky top-0 z-40">
+      <div class="flex items-center gap-4 flex-1 max-w-lg">
+        <div
+          class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container text-on-surface text-xs font-semibold cursor-pointer">
+          <span class="material-symbols-outlined text-base text-primary">store</span>
+          <span>Chi nhánh CS1 - TP.HCM</span>
+          <span class="material-symbols-outlined text-base">expand_more</span>
+        </div>
+        <div class="relative flex-1">
+          <span
+            class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-lg">search</span>
+          <input id="search-input" type="text" placeholder="Tìm mã vụ việc, đơn hàng, SĐT..."
+            class="w-full pl-9 pr-4 py-1.5 rounded-full bg-surface-container-low text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs">KN
+        </div>
+        <div class="text-left text-xs">
+          <p class="font-bold leading-tight">Nguyễn Kiều Như</p>
+          <p class="text-secondary text-[11px]">Quản lý cửa hàng</p>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="p-6 space-y-6">
+
+      <!-- Page Title -->
+      <div>
+        <h1 class="text-2xl font-bold tracking-tight text-on-surface">Xử Lý Khiếu Nại & Bồi Hoàn</h1>
+        <p class="text-secondary text-xs mt-1">Tiếp nhận phản hồi dịch vụ, kiểm tra đối soát lồng giặt và phê duyệt bồi
+          hoàn cho khách hàng.</p>
+      </div>
+
+      <!-- KPI Summary Cards (Cập nhật số liệu động) -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between">
+          <div>
+            <p class="text-xs text-secondary font-medium">Chờ giải quyết</p>
+            <p class="text-2xl font-bold text-red-700 mt-1" id="kpi-pending-count">0 <span
+                class="text-xs font-normal text-secondary">vụ việc</span></p>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-red-50 text-red-700 flex items-center justify-center">
+            <span class="material-symbols-outlined">pending_actions</span>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between">
+          <div>
+            <p class="text-xs text-secondary font-medium">Đã hoàn tất</p>
+            <p class="text-2xl font-bold text-on-surface mt-1" id="kpi-completed-count">0 <span
+                class="text-xs font-normal text-secondary">vụ việc</span></p>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center">
+            <span class="material-symbols-outlined">task_alt</span>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between">
+          <div>
+            <p class="text-xs text-secondary font-medium">Quỹ đền bù còn lại</p>
+            <p class="text-2xl font-bold text-primary mt-1" id="kpi-fund-amount">8,750,000 đ <span
+                class="text-xs font-normal text-secondary">/ 10M</span></p>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center">
+            <span class="material-symbols-outlined">account_balance_wallet</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Workspace: 2-Column Split Layout -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- Left Column: Complaints List (5 cols) -->
+        <div class="lg:col-span-5 space-y-3">
+
+          <!-- Filter Tabs -->
+          <div class="p-1 rounded-xl bg-surface-card border border-surface-container flex items-center gap-1">
+            <button id="tab-pending" onclick="switchTab('pending')"
+              class="flex-1 py-1.5 rounded-lg text-xs font-bold bg-primary text-white shadow-sm flex items-center justify-center gap-1 transition-all">
+              <span>Chờ xử lý</span>
+              <span id="badge-pending-count" class="px-1.5 py-0.2 rounded-full bg-white/20 text-[10px]">0</span>
+            </button>
+            <button id="tab-completed" onclick="switchTab('completed')"
+              class="flex-1 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-on-surface transition-all flex items-center justify-center gap-1">
+              <span>Đã hoàn tất</span>
+              <span id="badge-completed-count"
+                class="px-1.5 py-0.2 rounded-full bg-surface-container text-[10px]">0</span>
+            </button>
+          </div>
+
+          <!-- Ticket Cards List Container -->
+          <div class="space-y-3" id="complaints-list-container">
+            <!-- Dynamically rendered via JS -->
+          </div>
+        </div>
+
+        <!-- Right Column: Case Details & Resolution Workspace (7 cols) -->
+        <div class="lg:col-span-7 bg-surface-card rounded-xl border border-surface-container p-5 space-y-5"
+          id="ticket-detail-panel">
+          <!-- Dynamically rendered via JS -->
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- JavaScript Dynamic State Management -->
+  <script src="api.js"></script>
+  <script>
+    // 1. Quản lý Mảng Dữ Liệu Khiếu Nại Thật từ Backend API
+    let complaintsData = [];
+    let currentTab = 'pending';
+    let selectedTicketId = null;
+    let remainingFund = 8750000;
+    let searchQuery = '';
+
+    // Phân loại hướng giải quyết khách hàng mong muốn
+    function detectCustomerDesiredPlan(item) {
+      const note = (item.customerNote || '').toLowerCase();
+      const desc = (item.itemDescription || '').toLowerCase();
+      const reqRefund = Number(item.requestedRefund || 0);
+
+      if (note.includes('đền bù') || note.includes('bồi thường') || reqRefund >= 200000) {
+        return {
+          planKey: 'compensation',
+          planTitle: 'Bồi thường giá trị sản phẩm',
+          amount: reqRefund > 0 ? reqRefund : 350000,
+          label: 'Khách yêu cầu bồi thường giá trị sản phẩm'
+        };
+      }
+      if (note.includes('hoàn tiền') || note.includes('hoàn lại tiền') || (reqRefund > 0 && reqRefund < 200000)) {
+        return {
+          planKey: 'refund',
+          planTitle: 'Hoàn tiền dịch vụ giặt',
+          amount: reqRefund > 0 ? reqRefund : 50000,
+          label: 'Khách yêu cầu hoàn lại tiền dịch vụ giặt'
+        };
+      }
+      if (note.includes('voucher') || note.includes('mã giảm')) {
+        return {
+          planKey: 'voucher',
+          planTitle: 'Tặng Voucher đền bù',
+          amount: 100000,
+          label: 'Khách mong muốn nhận Voucher ưu đãi'
+        };
+      }
+      // Mặc định: Giặt & phục hồi miễn phí
+      return {
+        planKey: 'rewash',
+        planTitle: 'Giặt & phục hồi miễn phí',
+        amount: 0,
+        label: 'Khách yêu cầu giặt phục hồi lại miễn phí'
+      };
+    }
+
+    function getDefaultStaffNote(planKey, amount) {
+      if (planKey === 'rewash') {
+        return 'Cửa hàng WashSmart 3T xin lỗi quý khách về sự cố. Chúng tôi tiếp nhận lại trang phục để thực hiện quy trình giặt sấy / hấp phục hồi chuyên sâu hoàn toàn miễn phí trong vòng 24h.';
+      } else if (planKey === 'refund') {
+        return `Cửa hàng đã hoàn lại 100% tiền dịch vụ giặt (${formatCurrency(amount)}) về tài khoản quý khách. Rất mong quý khách tiếp tục tin tưởng đồng hành cùng 3T!`;
+      } else if (planKey === 'compensation') {
+        return `Cửa hàng đã chi trả bồi thường ${formatCurrency(amount)} theo cam kết bảo hiểm chất lượng trang phục 3T Care. Kính chúc quý khách hài lòng!`;
+      } else if (planKey === 'voucher') {
+        return 'Cửa hàng gửi tặng quý khách mã Voucher 100.000đ áp dụng cho các lần giặt tiếp theo cùng lời xin lỗi chân thành từ ban quản lý.';
+      }
+      return 'Đã giải quyết sự cố theo quy chuẩn bảo hành của WashSmart 3T.';
+    }
+
+    async function loadComplaints() {
+      try {
+        const list = await Api.Complaints.all();
+        complaintsData = (list || []).map(item => {
+          const desired = detectCustomerDesiredPlan(item);
+          const isDone = (item.status || '').toLowerCase() === 'completed';
+          const currentPlan = isDone && item.resolution ? item.resolution : desired.planKey;
+          const currentAmount = item.approvedAmount != null ? Number(item.approvedAmount) : desired.amount;
+          
+          return {
+            id: item.id,
+            ticketCode: item.ticketCode || `KN-${item.id}`,
+            orderId: item.orderId,
+            orderCode: item.orderCode || (item.orderId ? `#WS3T-${String(item.orderId).padStart(4, '0')}` : '#WS3T-CHUNG'),
+            customerName: item.customerName || 'Khách hàng',
+            customerPhone: item.customerPhone || '0999222111',
+            incidentType: item.incidentType || 'Sự cố đồ giặt',
+            severity: item.severity || 'Medium',
+            itemDescription: item.itemDescription || '',
+            customerNote: item.customerNote || '',
+            requestedRefund: Number(item.requestedRefund || 0),
+            desiredPlan: desired,
+            selectedPlan: currentPlan,
+            planAmount: currentAmount,
+            staffNote: item.staffNote || getDefaultStaffNote(desired.planKey, desired.amount),
+            sealCode: item.orderId ? `SEAL-3T-${item.orderId}` : 'SEAL-3T-8892',
+            drumInfo: 'Lồng giặt sấy thông minh LG Turbo #02',
+            shipperName: 'Lê Minh Hoàng (0922222222)',
+            status: isDone ? 'completed' : 'pending',
+            resolution: item.resolution,
+            approvedAmount: item.approvedAmount != null ? Number(item.approvedAmount) : null,
+            resolvedBy: item.resolvedBy || 'Nguyễn Kiều Như',
+            resolvedAt: item.resolvedAt,
+            createdAt: item.createdAt ? new Date(item.createdAt).toLocaleString('vi-VN') : 'Hôm nay'
+          };
+        });
+
+        // Tự động chọn vé đầu tiên nếu chưa chọn hoặc vé cũ không còn
+        if (complaintsData.length > 0) {
+          const exists = complaintsData.some(x => x.id === selectedTicketId && x.status === currentTab);
+          if (!exists) {
+            const firstInTab = complaintsData.find(x => x.status === currentTab) || complaintsData[0];
+            selectedTicketId = firstInTab ? firstInTab.id : complaintsData[0].id;
+          }
+        } else {
+          selectedTicketId = null;
+        }
+
+        renderUI();
+      } catch (err) {
+        console.error('Lỗi tải khiếu nại:', err);
+        showToast('Không thể tải dữ liệu khiếu nại: ' + (err.message || 'Mất kết nối'), true);
+      }
+    }
+
+    function handleLogout(e) {
+      if (e) e.preventDefault();
+      if (window.Auth) Auth.logout();
+      else window.location.href = 'login.html';
+    }
+
+    function showToast(message, isError = false) {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+      const toast = document.createElement('div');
+      toast.className = `pointer-events-auto flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-medium text-white shadow-lg ${isError ? 'bg-red-800' : 'bg-zinc-900'}`;
+      toast.innerHTML = `<span class="material-symbols-outlined text-base">${isError ? 'error' : 'check_circle'}</span><span>${message}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 4000);
+    }
+
+    function formatCurrency(val) {
+      return new Intl.NumberFormat('vi-VN').format(Number(val) || 0) + ' đ';
+    }
+
+    // 2. Chuyển Tab
+    function switchTab(tab) {
+      currentTab = tab;
+      const tabPending = document.getElementById('tab-pending');
+      const tabCompleted = document.getElementById('tab-completed');
+
+      if (tab === 'pending') {
+        tabPending.className = "flex-1 py-1.5 rounded-lg text-xs font-bold bg-primary text-white shadow-sm flex items-center justify-center gap-1 transition-all";
+        tabCompleted.className = "flex-1 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-on-surface transition-all flex items-center justify-center gap-1";
+      } else {
+        tabCompleted.className = "flex-1 py-1.5 rounded-lg text-xs font-bold bg-primary text-white shadow-sm flex items-center justify-center gap-1 transition-all";
+        tabPending.className = "flex-1 py-1.5 rounded-lg text-xs font-medium text-secondary hover:text-on-surface transition-all flex items-center justify-center gap-1";
+      }
+
+      const availableTickets = complaintsData.filter(x => x.status === currentTab);
+      if (availableTickets.length > 0 && !availableTickets.some(x => x.id === selectedTicketId)) {
+        selectedTicketId = availableTickets[0].id;
+      }
+
+      renderUI();
+    }
+
+    // 3. Render giao diện
+    function renderUI() {
+      const pendingList = complaintsData.filter(x => x.status === 'pending');
+      const completedList = complaintsData.filter(x => x.status === 'completed');
+
+      const kpiPending = document.getElementById('kpi-pending-count');
+      const kpiCompleted = document.getElementById('kpi-completed-count');
+      const badgePending = document.getElementById('badge-pending-count');
+      const badgeCompleted = document.getElementById('badge-completed-count');
+      const kpiFund = document.getElementById('kpi-fund-amount');
+
+      if (kpiPending) kpiPending.innerHTML = `${pendingList.length} <span class="text-xs font-normal text-secondary">vụ việc</span>`;
+      if (kpiCompleted) kpiCompleted.innerHTML = `${completedList.length} <span class="text-xs font-normal text-secondary">vụ việc</span>`;
+      if (badgePending) badgePending.textContent = pendingList.length;
+      if (badgeCompleted) badgeCompleted.textContent = completedList.length;
+      if (kpiFund) kpiFund.innerHTML = `${formatCurrency(remainingFund)} <span class="text-xs font-normal text-secondary">/ 10M</span>`;
+
+      // Render danh sách bên trái
+      const listContainer = document.getElementById('complaints-list-container');
+      if (!listContainer) return;
+      listContainer.innerHTML = '';
+
+      const filtered = complaintsData.filter(x => {
+        const matchTab = x.status === currentTab;
+        const q = (searchQuery || '').toLowerCase().trim();
+        if (!q) return matchTab;
+        const matchSearch =
+          (x.customerName || '').toLowerCase().includes(q) ||
+          String(x.id).includes(q) ||
+          (x.ticketCode || '').toLowerCase().includes(q) ||
+          (x.orderCode || '').toLowerCase().includes(q) ||
+          (x.customerPhone || '').includes(q) ||
+          (x.incidentType || '').toLowerCase().includes(q) ||
+          (x.itemDescription || '').toLowerCase().includes(q) ||
+          (x.customerNote || '').toLowerCase().includes(q);
+        return matchTab && matchSearch;
+      });
+
+      if (filtered.length === 0) {
+        listContainer.innerHTML = `<div class="p-8 text-center text-secondary text-xs font-medium bg-surface-card rounded-xl border border-surface-container">Không có vụ việc nào trong mục này</div>`;
+      } else {
+        filtered.forEach(item => {
+          const isSelected = item.id === selectedTicketId;
+          const isDone = item.status === 'completed';
+          const card = document.createElement('div');
+          card.className = `p-4 rounded-xl bg-surface-card border-2 ${isSelected ? 'border-primary shadow-md ring-2 ring-primary/10' : 'border-surface-container hover:border-outline-variant'} space-y-2 cursor-pointer transition-all`;
+          card.onclick = () => selectTicket(item.id);
+
+          const severityBadge = item.severity === 'High' 
+            ? '<span class="px-2 py-0.5 rounded bg-red-100 text-red-800 text-[10px] font-bold">Khẩn cấp</span>'
+            : (item.severity === 'Low' 
+                ? '<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">Nhẹ</span>'
+                : '<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">Trung bình</span>');
+
+          card.innerHTML = `
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-xs ${isSelected ? 'text-primary' : 'text-on-surface'}">${item.ticketCode} · ${item.orderCode}</span>
+              ${severityBadge}
+            </div>
+            <div>
+              <p class="font-bold text-sm text-on-surface">${item.customerName}</p>
+              <p class="text-[11px] text-secondary font-mono">${item.customerPhone} · ${item.createdAt}</p>
+            </div>
+            <div class="p-2 rounded-lg bg-surface-container-low text-xs text-on-surface flex items-start gap-1.5">
+              <span class="material-symbols-outlined text-base ${isSelected ? 'text-primary' : 'text-secondary'} shrink-0 mt-0.5">report_problem</span>
+              <div class="truncate">
+                <span class="font-bold text-primary">${item.incidentType}:</span>
+                <span class="text-secondary font-medium">${item.itemDescription || 'Chưa có mô tả'}</span>
+              </div>
+            </div>
+            <div class="pt-1 border-t border-surface-container flex items-center justify-between text-[11px]">
+              <span class="text-amber-800 font-semibold truncate max-w-[240px]">
+                🎯 ${item.desiredPlan ? item.desiredPlan.label : 'Yêu cầu hỗ trợ'}
+              </span>
+              <span class="font-bold ${isDone ? 'text-emerald-700' : 'text-primary'}">
+                ${isDone ? 'Đã giải quyết' : (item.desiredPlan.amount > 0 ? formatCurrency(item.desiredPlan.amount) : '0 đ')}
+              </span>
+            </div>
+          `;
+          listContainer.appendChild(card);
+        });
+      }
+
+      renderDetailPanel();
+    }
+
+    function selectTicket(id) {
+      selectedTicketId = id;
+      renderUI();
+    }
+
+    // 4. Render Panel Chi Tiết Bên Phải Động
+    function renderDetailPanel() {
+      const panel = document.getElementById('ticket-detail-panel');
+      if (!panel) return;
+
+      const item = complaintsData.find(x => x.id === selectedTicketId);
+      if (!item) {
+        panel.innerHTML = `<div class="p-16 text-center text-secondary font-medium">Vui lòng chọn một vụ việc trong danh sách để xem chi tiết.</div>`;
+        return;
+      }
+
+      const isCompleted = item.status === 'completed';
+
+      panel.innerHTML = `
+        <!-- Header vụ việc -->
+        <div class="flex items-center justify-between pb-3 border-b border-surface-container">
+          <div>
+            <div class="flex items-center gap-2">
+              <h2 class="font-bold text-base text-on-surface">Hồ Sơ Khiếu Nại #${item.ticketCode}</h2>
+              <span class="text-xs px-2 py-0.5 rounded font-mono font-bold bg-primary/10 text-primary">${item.orderCode}</span>
+            </div>
+            <p class="text-xs text-secondary mt-0.5">Khách hàng: <strong class="text-on-surface">${item.customerName}</strong> · Thời gian: ${item.createdAt}</p>
+          </div>
+          <a href="tel:${item.customerPhone}" class="px-3.5 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary font-bold text-xs flex items-center gap-1.5 transition-colors shadow-xs">
+            <span class="material-symbols-outlined text-sm">call</span>
+            <span>Gọi ${item.customerPhone}</span>
+          </a>
+        </div>
+
+        <!-- 1. Sự Cố & Ý Kiến Khách Hàng -->
+        <div class="space-y-2">
+          <h3 class="font-bold text-xs text-secondary uppercase tracking-wider flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-base text-primary">chat</span>
+            <span>1. Thông tin sự cố & Ý kiến khách hàng</span>
+          </h3>
+
+          <div class="p-3.5 rounded-lg bg-surface-container-low space-y-2 text-xs">
+            <div class="flex justify-between items-center">
+              <span class="text-secondary">Loại sự cố: <strong class="text-on-surface font-bold">${item.incidentType}</strong></span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold ${item.severity === 'High' ? 'bg-red-100 text-red-800' : 'bg-amber-100 text-amber-800'}">Mức độ: ${item.severity}</span>
+            </div>
+            <div>
+              <p class="text-secondary">Mô tả chi tiết món đồ bị ảnh hưởng:</p>
+              <p class="text-on-surface font-semibold mt-0.5 bg-white p-2.5 rounded border border-surface-container leading-relaxed">
+                ${item.itemDescription || 'Không có mô tả chi tiết'}
+              </p>
+            </div>
+          </div>
+
+          <!-- Alert box: Ý kiến & Hướng giải quyết khách mong muốn -->
+          <div class="p-3.5 rounded-lg bg-amber-50 border border-amber-200 text-xs space-y-1">
+            <div class="flex items-center gap-1.5 text-amber-900 font-bold">
+              <span class="material-symbols-outlined text-base text-amber-700">record_voice_over</span>
+              <span>Ý KIẾN & NGUYỆN VỌNG CỦA KHÁCH HÀNG:</span>
+            </div>
+            <p class="text-amber-950 font-semibold pl-5 leading-relaxed">
+              "${item.customerNote || 'Khách mong muốn cửa hàng khắc phục sự cố thỏa đáng.'}"
+            </p>
+            <div class="pl-5 pt-1 flex items-center gap-2 text-[11px] text-amber-800">
+              <span>Đề xuất từ phía khách:</span>
+              <strong class="text-primary font-bold bg-white px-2 py-0.5 rounded border border-amber-200">
+                ${item.desiredPlan ? item.desiredPlan.label : 'Chưa chỉ định'} ${item.requestedRefund > 0 ? `(${formatCurrency(item.requestedRefund)})` : ''}
+              </strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Đối soát dữ liệu kỹ thuật & IoT -->
+        <div class="space-y-2">
+          <h3 class="font-bold text-xs text-secondary uppercase tracking-wider flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-base text-primary">verified</span>
+            <span>2. Đối soát quy trình xử lý & IoT</span>
+          </h3>
+          <div class="p-3.5 rounded-lg bg-surface-container-low text-xs space-y-2">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-secondary">
+              <div>Mã Seal: <strong class="text-on-surface font-mono font-bold">${item.sealCode}</strong></div>
+              <div>Thiết bị: <strong class="text-on-surface font-bold">${item.drumInfo}</strong></div>
+              <div>Shipper: <strong class="text-on-surface font-bold">${item.shipperName}</strong></div>
+            </div>
+            <p class="text-[11px] text-emerald-800 font-medium bg-emerald-50 p-2 rounded border border-emerald-200">
+              🛡️ <strong>Chính sách 3T Care:</strong> Áp dụng cam kết bồi thường lên tới 100% giá trị trang phục hoặc giặt phục hồi lại miễn phí trong vòng 24 giờ.
+            </p>
+          </div>
+        </div>
+
+        <!-- 3. HƯỚNG GIẢI QUYẾT TỪ CỬA HÀNG (Khớp với các phương án đề cập) -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <h3 class="font-bold text-xs text-secondary uppercase tracking-wider flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-base text-primary">handshake</span>
+              <span>3. Hướng giải quyết sự cố</span>
+            </h3>
+            <span class="text-[11px] text-primary font-semibold">
+              ${isCompleted ? '✓ Đã chốt phương án' : 'Chọn 1 phương án dưới đây'}
+            </span>
+          </div>
+
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            
+            <!-- Phương án 1: Giặt & phục hồi miễn phí -->
+            <label class="p-3 rounded-xl bg-surface-container-low border-2 ${item.selectedPlan === 'rewash' ? 'border-primary bg-primary/5' : 'border-surface-container'} ${isCompleted ? 'pointer-events-none opacity-80' : 'cursor-pointer hover:border-primary/50'} block space-y-1.5 transition-all">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <input type="radio" name="plan_radio" value="rewash" ${item.selectedPlan === 'rewash' ? 'checked' : ''} ${isCompleted ? 'disabled' : ''} onchange="updatePlan('${item.id}', 'rewash', 0)" class="accent-primary">
+                  <span class="font-bold text-xs text-on-surface">1. Giặt & phục hồi miễn phí</span>
+                </div>
+                <span class="material-symbols-outlined text-primary text-base">auto_fix_high</span>
+              </div>
+              <p class="text-[11px] text-secondary pl-5">Spa hấp tơ tằm, khử khuẩn & tẩy vết ố chuyên sâu. Giao lại trong 24h.</p>
+              <div class="pl-5 pt-0.5 text-primary font-bold text-xs">Chi phí khách: 0 đ (Miễn phí 100%)</div>
+            </label>
+
+            <!-- Phương án 2: Hoàn 100% tiền giặt của đơn -->
+            <label class="p-3 rounded-xl bg-surface-container-low border-2 ${item.selectedPlan === 'refund' ? 'border-primary bg-primary/5' : 'border-surface-container'} ${isCompleted ? 'pointer-events-none opacity-80' : 'cursor-pointer hover:border-primary/50'} block space-y-1.5 transition-all">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <input type="radio" name="plan_radio" value="refund" ${item.selectedPlan === 'refund' ? 'checked' : ''} ${isCompleted ? 'disabled' : ''} onchange="updatePlan('${item.id}', 'refund', ${item.requestedRefund > 0 ? item.requestedRefund : 50000})" class="accent-primary">
+                  <span class="font-bold text-xs text-on-surface">2. Hoàn tiền dịch vụ giặt</span>
+                </div>
+                <span class="material-symbols-outlined text-primary text-base">replay</span>
+              </div>
+              <p class="text-[11px] text-secondary pl-5">Hoàn lại 100% cước phí giặt về STK khách hoặc cộng vào ví điểm thưởng.</p>
+              <div class="pl-5 pt-0.5 text-primary font-bold text-xs">Số tiền: ${formatCurrency(item.requestedRefund > 0 ? item.requestedRefund : 50000)}</div>
+            </label>
+
+            <!-- Phương án 3: Bồi thường giá trị sản phẩm -->
+            <label class="p-3 rounded-xl bg-surface-container-low border-2 ${item.selectedPlan === 'compensation' ? 'border-primary bg-primary/5' : 'border-surface-container'} ${isCompleted ? 'pointer-events-none opacity-80' : 'cursor-pointer hover:border-primary/50'} block space-y-1.5 transition-all">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <input type="radio" name="plan_radio" value="compensation" ${item.selectedPlan === 'compensation' ? 'checked' : ''} ${isCompleted ? 'disabled' : ''} onchange="updatePlan('${item.id}', 'compensation', ${item.requestedRefund > 0 ? item.requestedRefund : 350000})" class="accent-primary">
+                  <span class="font-bold text-xs text-on-surface">3. Bồi thường giá trị món đồ</span>
+                </div>
+                <span class="material-symbols-outlined text-primary text-base">payments</span>
+              </div>
+              <p class="text-[11px] text-secondary pl-5">Chi trả đền bù thiệt hại sản phẩm theo bảo hiểm cam kết chất lượng 3T.</p>
+              <div class="pl-5 pt-0.5 text-primary font-bold text-xs">Mức đền bù: ${formatCurrency(item.requestedRefund > 0 ? item.requestedRefund : 350000)}</div>
+            </label>
+
+            <!-- Phương án 4: Tặng Voucher ưu đãi -->
+            <label class="p-3 rounded-xl bg-surface-container-low border-2 ${item.selectedPlan === 'voucher' ? 'border-primary bg-primary/5' : 'border-surface-container'} ${isCompleted ? 'pointer-events-none opacity-80' : 'cursor-pointer hover:border-primary/50'} block space-y-1.5 transition-all">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                  <input type="radio" name="plan_radio" value="voucher" ${item.selectedPlan === 'voucher' ? 'checked' : ''} ${isCompleted ? 'disabled' : ''} onchange="updatePlan('${item.id}', 'voucher', 100000)" class="accent-primary">
+                  <span class="font-bold text-xs text-on-surface">4. Tặng Voucher đền bù</span>
+                </div>
+                <span class="material-symbols-outlined text-primary text-base">redeem</span>
+              </div>
+              <p class="text-[11px] text-secondary pl-5">Tặng Voucher giảm 100.000đ + Freeship cho các đơn giặt ủi tiếp theo.</p>
+              <div class="pl-5 pt-0.5 text-primary font-bold text-xs">Trị giá: 100.000 đ</div>
+            </label>
+
+          </div>
+
+          <!-- Ô chỉnh sửa số tiền đền bù nếu cần -->
+          ${!isCompleted && (item.selectedPlan === 'compensation' || item.selectedPlan === 'refund') ? `
+            <div class="p-3 bg-surface-container-low rounded-lg flex items-center justify-between gap-3 text-xs border border-surface-container">
+              <span class="text-secondary font-medium">Số tiền chốt bồi hoàn (VNĐ):</span>
+              <div class="flex items-center gap-2">
+                <input type="number" step="10000" min="0" value="${item.planAmount || 0}" onchange="updateAmount('${item.id}', this.value)" class="w-36 p-1.5 rounded border border-surface-container text-right font-bold text-primary text-xs focus:ring-1 focus:ring-primary focus:outline-none">
+                <span class="font-bold text-secondary">VNĐ</span>
+              </div>
+            </div>
+          ` : ''}
+        </div>
+
+        <!-- 4. Ghi chú & Phản hồi cho khách hàng -->
+        <div class="space-y-1.5">
+          <label class="font-bold text-xs text-secondary uppercase tracking-wider block">4. Ghi chú xác nhận & Phản hồi khách hàng</label>
+          <textarea rows="2" ${isCompleted ? 'disabled' : ''} onchange="updateNote('${item.id}', this.value)" class="w-full bg-surface-container-low rounded-lg p-2.5 text-xs text-on-surface focus:outline-none focus:ring-1 focus:ring-primary leading-relaxed">${item.staffNote}</textarea>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center justify-end gap-2 pt-2 border-t border-surface-container">
+          ${isCompleted ? `
+            <div class="px-4 py-2 rounded-lg bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-base">task_alt</span>
+              <span>Đã hoàn tất giải quyết: ${item.resolution || 'Thành công'} (${formatCurrency(item.approvedAmount || 0)}) · Phụ trách: ${item.resolvedBy}</span>
+            </div>
+          ` : `
+            <button onclick="forwardToManager('${item.id}')" class="px-4 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold transition-colors flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm">forward_to_inbox</span>
+              <span>Chuyển Quản Lý Cấp Cao</span>
+            </button>
+            <button id="btn-approve" onclick="approveComplaint('${item.id}')" class="px-5 py-2 rounded-lg bg-primary hover:bg-primary-container text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5">
+              <span class="material-symbols-outlined text-base">check_circle</span>
+              <span id="approve-btn-text">Chấp Thuận & Giải Quyết Theo Phương Án</span>
+            </button>
+          `}
+        </div>
+      `;
+    }
+
+    // 5. Cập nhật phương án & Ghi chú vào State
+    function updatePlan(ticketId, planKey, defaultAmount) {
+      const item = complaintsData.find(x => x.id == ticketId);
+      if (item) {
+        item.selectedPlan = planKey;
+        item.planAmount = defaultAmount;
+        item.staffNote = getDefaultStaffNote(planKey, defaultAmount);
+        renderDetailPanel();
+      }
+    }
+
+    function updateAmount(ticketId, newAmount) {
+      const item = complaintsData.find(x => x.id == ticketId);
+      if (item) {
+        item.planAmount = Math.max(0, Number(newAmount) || 0);
+        item.staffNote = getDefaultStaffNote(item.selectedPlan, item.planAmount);
+      }
+    }
+
+    function updateNote(ticketId, text) {
+      const item = complaintsData.find(x => x.id == ticketId);
+      if (item) {
+        item.staffNote = text;
+      }
+    }
+
+    function forwardToManager(ticketId) {
+      showToast('Đã gửi thông báo ưu tiên tới Trưởng Bộ Phận Dịch Vụ Khách Hàng!');
+    }
+
+    // 6. Xử lý Chấp Thuận Bồi Hoàn (Lưu trực tiếp vào Backend C# API)
+    async function approveComplaint(ticketId) {
+      const item = complaintsData.find(x => x.id == ticketId);
+      if (!item) return;
+
+      const btn = document.getElementById('btn-approve');
+      if (btn) {
+        btn.innerHTML = '<span class="material-symbols-outlined text-base animate-spin">sync</span><span>Đang xử lý hồ sơ...</span>';
+        btn.classList.add('opacity-80', 'pointer-events-none');
+      }
+
+      const planTitleMap = {
+        'rewash': 'Giặt & phục hồi miễn phí',
+        'refund': 'Hoàn tiền dịch vụ giặt',
+        'compensation': 'Bồi thường giá trị sản phẩm',
+        'voucher': 'Tặng Voucher đền bù'
+      };
+
+      const resolvedTitle = planTitleMap[item.selectedPlan] || item.selectedPlan;
+      const approvedAmount = Number(item.planAmount) || 0;
+
+      try {
+        const staffName = (window.Auth && Auth.getFullName()) ? Auth.getFullName() : 'Nguyễn Kiều Như';
+        await Api.Complaints.resolve(ticketId, {
+          resolution: resolvedTitle,
+          approvedAmount: approvedAmount,
+          staffNote: item.staffNote || 'Đã giải quyết thỏa đáng theo đúng yêu cầu khiếu nại.',
+          resolvedBy: staffName
+        });
+
+        // Cập nhật quỹ đền bù
+        if (approvedAmount > 0) {
+          remainingFund = Math.max(0, remainingFund - approvedAmount);
+        }
+
+        showToast(`🎉 Đã giải quyết khiếu nại #${item.ticketCode} theo phương án: ${resolvedTitle}!`);
+        await loadComplaints();
+        switchTab('completed');
+      } catch (err) {
+        console.error('Lỗi duyệt khiếu nại:', err);
+        showToast('Lỗi giải quyết khiếu nại: ' + (err.message || 'Lỗi server'), true);
+        if (btn) {
+          btn.innerHTML = '<span class="material-symbols-outlined text-base">check_circle</span><span>Chấp Thuận & Giải Quyết Theo Phương Án</span>';
+          btn.classList.remove('opacity-80', 'pointer-events-none');
+        }
+      }
+    }
+
+    // 7. Ô Tìm kiếm
+    document.getElementById('search-input')?.addEventListener('input', (e) => {
+      searchQuery = e.target.value.toLowerCase().trim();
+      renderUI();
+    });
+
+    // 8. Khởi chạy với Auto-seed Authentication và Tải Dữ Liệu
+    (async () => {
+      if (!localStorage.getItem('ws_token')) {
+        try {
+          const res = await fetch('http://localhost:5085/api/Auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: '0900000000', password: '123456' })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            localStorage.setItem('ws_token', data.token);
+            localStorage.setItem('ws_role', 'Admin');
+            localStorage.setItem('ws_fullname', 'Nguyễn Kiều Như');
+          }
+        } catch (e) {}
+      }
+      await loadComplaints();
+      // Polling cập nhật mỗi 10 giây để nhận khiếu nại mới từ App khách hàng
+      setInterval(loadComplaints, 10000);
+    })();
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Dashboard Thống kê - WashSmart 3T</title>
+
+  <!-- Fonts & Icons -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
+    rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      overscroll-behavior: none;
+    }
+
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+
+  <!-- Tailwind CSS Config -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#8e0028",
+            "primary-container": "#b90538",
+            "primary-fixed": "#ffdadb",
+            "surface": "#fff8f9",
+            "surface-container-low": "#f9f2f3",
+            "surface-container": "#f3eced",
+            "surface-container-high": "#ede7e8",
+            "surface-card": "#ffffff",
+            "on-surface": "#1d1b1c",
+            "secondary": "#6a5b5e",
+            "outline": "#8f6f70",
+            "outline-variant": "#e3bdbf",
+            "error": "#ba1a1a"
+          }
+        }
+      }
+    };
+  </script>
+</head>
+
+<body class="bg-surface text-on-surface antialiased text-sm">
+
+  <!-- Sidebar Navigation (Đầy đủ 8 mục hệ thống) -->
+  <aside class="fixed left-0 top-0 h-full w-64 bg-primary text-white z-50 flex flex-col justify-between shadow-lg">
+    <div class="flex flex-col">
+      <!-- Logo -->
+      <div class="p-5 flex items-center gap-3 border-b border-white/10">
+        <div class="w-10 h-10 rounded-xl bg-white text-primary flex items-center justify-center font-bold shadow-sm">
+          <span class="material-symbols-outlined text-2xl">local_laundry_service</span>
+        </div>
+        <div>
+          <h2 class="font-bold text-base leading-tight">WashSmart 3T</h2>
+          <p class="text-[11px] text-white/70 uppercase tracking-wider font-medium">Hệ Thống Quản Lý</p>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="p-3 space-y-1">
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white text-primary font-bold shadow-sm"
+          href="index.html">
+          <span class="material-symbols-outlined text-xl">analytics</span>
+          <span>Dashboard</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="orders.html">
+          <span class="material-symbols-outlined text-xl">receipt_long</span>
+          <span>Quản lý Đơn hàng</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="pos.html">
+          <span class="material-symbols-outlined text-xl">point_of_sale</span>
+          <span>POS Quầy</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="dispatch.html">
+          <span class="material-symbols-outlined text-xl">two_wheeler</span>
+          <span>Điều phối Shipper</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="accounts.html">
+          <span class="material-symbols-outlined text-xl">badge</span>
+          <span>Quản lý Tài khoản</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="customers.html">
+          <span class="material-symbols-outlined text-xl">loyalty</span>
+          <span>Khách hàng & Loyalty</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="complaints.html">
+          <span class="material-symbols-outlined text-xl">support_agent</span>
+          <span>Xử lý Khiếu nại</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="services.html">
+          <span class="material-symbols-outlined text-xl">sell</span>
+          <span>Dịch vụ & Bảng giá</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="store-settings.html">
+          <span class="material-symbols-outlined text-xl">store</span>
+          <span>Cấu hình Cửa hàng</span>
+        </a>
+      </nav>
+    </div>
+
+    <!-- Status & Logout -->
+    <div class="p-4 space-y-3 border-t border-white/10">
+
+      <button onclick="handleLogout(event)"
+        class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-black/20 hover:bg-black/40 text-white font-medium transition-colors text-xs">
+        <span class="material-symbols-outlined text-base">logout</span>
+        <span>Đăng xuất</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <div class="pl-64">
+    <!-- Top Header -->
+    <header
+      class="h-16 bg-surface-card border-b border-surface-container flex items-center justify-between px-6 sticky top-0 z-40">
+      <div class="flex items-center gap-4 flex-1 max-w-lg">
+        <div
+          class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container text-on-surface text-xs font-semibold cursor-pointer">
+          <span class="material-symbols-outlined text-base text-primary">store</span>
+          <span>Chi nhánh CS1 - TP.HCM</span>
+          <span class="material-symbols-outlined text-base">expand_more</span>
+        </div>
+        <div class="relative flex-1">
+          <span
+            class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-lg">search</span>
+          <input type="text" placeholder="Tìm kiếm đơn hàng, SĐT khách..."
+            class="w-full pl-9 pr-4 py-1.5 rounded-full bg-surface-container-low text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs">KN
+        </div>
+        <div class="text-left text-xs">
+          <p class="font-bold leading-tight">Nguyễn Kiều Như</p>
+          <p class="text-secondary text-[11px]">Quản lý cửa hàng</p>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+        <!-- Main Container -->
+    <main class="p-6 space-y-6">
+
+      <!-- Page Title & Quick Actions -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></span>
+            <span class="text-xs font-bold text-secondary uppercase tracking-wider">Hệ thống vận hành trực tiếp · Đồng bộ C# API</span>
+          </div>
+          <h1 class="text-2xl font-bold tracking-tight text-on-surface mt-1">Tổng Quan Hoạt Động & Doanh Thu</h1>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button onclick="fetchDashboardData()"
+            class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-primary text-white hover:bg-primary-container text-xs font-bold transition-colors shadow-sm">
+            <span class="material-symbols-outlined text-base">sync</span>
+            <span>Tải lại dữ liệu</span>
+          </button>
+          <button onclick="exportToExcel()"
+            class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-colors shadow-sm" title="Xuất báo cáo Excel / CSV">
+            <span class="material-symbols-outlined text-base">file_download</span>
+            <span>Xuất Excel</span>
+          </button>
+          <button onclick="window.print()"
+            class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold transition-colors">
+            <span class="material-symbols-outlined text-base text-secondary">print</span>
+            <span>In báo cáo</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Thống kê theo ngày & Bộ lọc thời gian chuẩn xác -->
+      <div class="p-3.5 rounded-xl bg-surface-card border border-surface-container flex flex-wrap items-center justify-between gap-3 shadow-xs">
+        <div class="flex items-center gap-1.5 flex-wrap" id="date-filter-buttons">
+          <span class="text-xs font-bold text-secondary mr-1 flex items-center gap-1">
+            <span class="material-symbols-outlined text-base text-primary">calendar_month</span>
+            Kỳ thống kê:
+          </span>
+          <button class="date-filter-btn px-3 py-1.5 rounded-lg text-secondary hover:bg-surface-container text-xs font-semibold transition-colors" data-range="today">
+            Hôm nay
+          </button>
+          <button class="date-filter-btn px-3 py-1.5 rounded-lg text-secondary hover:bg-surface-container text-xs font-semibold transition-colors" data-range="yesterday">
+            Hôm qua
+          </button>
+          <button class="date-filter-btn px-3 py-1.5 rounded-lg text-secondary hover:bg-surface-container text-xs font-semibold transition-colors" data-range="7days">
+            7 ngày qua
+          </button>
+          <button class="date-filter-btn px-3 py-1.5 rounded-lg text-secondary hover:bg-surface-container text-xs font-semibold transition-colors" data-range="month">
+            Tháng này
+          </button>
+          <button class="date-filter-btn active px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold transition-colors" data-range="all">
+            Toàn thời gian
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-secondary font-medium">Chọn ngày cụ thể:</span>
+          <input type="date" id="custom-date-picker" onchange="onCustomDateSelected(this.value)"
+            class="bg-surface-container-low border border-surface-container rounded-lg px-2.5 py-1 text-xs text-on-surface font-semibold focus:outline-none focus:ring-1 focus:ring-primary">
+          <span class="text-xs font-bold text-primary px-2.5 py-1 bg-red-50 rounded-lg" id="active-range-badge">
+            Toàn thời gian
+          </span>
+        </div>
+      </div>
+
+      <!-- KPI 4 Column Summary Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+
+        <!-- Card 1: Doanh Thu Completed -->
+        <div class="p-5 rounded-xl bg-surface-card border border-surface-container space-y-3 relative overflow-hidden">
+          <div class="flex items-start justify-between">
+            <div>
+              <p class="text-xs font-semibold text-secondary uppercase tracking-wider">Doanh Thu Đã Thu</p>
+              <p class="text-2xl lg:text-3xl font-extrabold text-primary mt-1" id="kpi-revenue">0 đ</p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-red-50 text-primary flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-xl">payments</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-between pt-2 border-t border-surface-container text-xs">
+            <span class="text-secondary" id="kpi-revenue-sub">Từ 0 đơn hoàn thành</span>
+            <span class="font-bold text-secondary" id="kpi-pending-revenue">Chờ thu: 0 đ</span>
+          </div>
+        </div>
+
+        <!-- Card 2: Total Orders -->
+        <div class="p-5 rounded-xl bg-surface-card border border-surface-container space-y-3 relative overflow-hidden">
+          <div class="flex items-start justify-between">
+            <div>
+              <p class="text-xs font-semibold text-secondary uppercase tracking-wider">Tổng Đơn Hàng</p>
+              <p class="text-2xl lg:text-3xl font-extrabold text-on-surface mt-1" id="kpi-total-orders">0 đơn</p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-surface-container text-on-surface flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-xl">local_laundry_service</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-between pt-2 border-t border-surface-container text-xs">
+            <span class="text-secondary">Đang xử lý: <strong id="kpi-processing-orders" class="text-on-surface">0 đơn</strong></span>
+            <span class="text-secondary">Hoàn thành: <strong id="kpi-completed-orders" class="text-primary">0 đơn</strong></span>
+          </div>
+        </div>
+
+        <!-- Card 3: Completion Rate -->
+        <div class="p-5 rounded-xl bg-surface-card border border-surface-container space-y-3 relative overflow-hidden">
+          <div class="flex items-start justify-between">
+            <div>
+              <p class="text-xs font-semibold text-secondary uppercase tracking-wider">Tỷ Lệ Hoàn Thành Đơn</p>
+              <div class="flex items-baseline gap-2 mt-1">
+                <span class="text-2xl lg:text-3xl font-extrabold text-primary" id="kpi-completion-rate">0%</span>
+                <span class="text-xs text-secondary" id="kpi-cancelled-count">Hủy: 0 đơn</span>
+              </div>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-xl">task_alt</span>
+            </div>
+          </div>
+          <div class="space-y-1 pt-1">
+            <div class="w-full h-2 rounded-full bg-surface-container overflow-hidden">
+              <div id="kpi-progress-bar" class="h-full bg-primary transition-all" style="width: 0%;"></div>
+            </div>
+            <p class="text-[10px] text-secondary">Tỷ lệ đơn giao và giặt thành công</p>
+          </div>
+        </div>
+
+        <!-- Card 4: Average Order Value (AOV) -->
+        <div class="p-5 rounded-xl bg-surface-card border border-surface-container space-y-3 relative overflow-hidden">
+          <div class="flex items-start justify-between">
+            <div>
+              <p class="text-xs font-semibold text-secondary uppercase tracking-wider">Giá Trị Đơn Trung Bình (AOV)</p>
+              <p class="text-2xl lg:text-3xl font-extrabold text-amber-700 mt-1" id="kpi-aov">0 đ</p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center shrink-0">
+              <span class="material-symbols-outlined text-xl">trending_up</span>
+            </div>
+          </div>
+          <div class="flex items-center justify-between pt-2 border-t border-surface-container text-xs">
+            <span class="text-secondary" id="kpi-aov-sub">Doanh thu / đơn hoàn tất</span>
+            <span class="font-bold text-amber-800" id="kpi-orders-per-day">--</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- BẢNG THỐNG KÊ SHIPPER GIAO NHẬN & TIỀN THU HỘ (ĐI BAO NHIÊU ĐƠN - THU BAO NHIÊU TIỀN) -->
+      <div class="bg-surface-card rounded-xl border border-surface-container overflow-hidden space-y-3 p-5 shadow-xs">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-surface-container gap-2">
+          <div>
+            <h2 class="font-bold text-sm text-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-lg">two_wheeler</span>
+              Thống Kê Vận Chuyển & Tiền Thu Hộ Theo Shipper
+            </h2>
+            <p class="text-xs text-secondary mt-0.5" id="shipper-stats-date-label">Theo dõi số đơn shipper phụ trách và tổng tiền COD thu tại chỗ trong kỳ</p>
+          </div>
+          <div class="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-lg border border-surface-container">
+            <span class="text-xs text-secondary font-medium">Tổng tiền Shipper đã thu / đang giữ:</span>
+            <span class="text-sm font-extrabold text-primary" id="kpi-total-shipper-cod">0 đ</span>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-surface-container-low text-secondary text-[11px] uppercase tracking-wider border-b border-surface-container">
+                <th class="py-2.5 px-4 font-semibold">Shipper & SĐT</th>
+                <th class="py-2.5 px-3 font-semibold text-center">Số đơn phụ trách</th>
+                <th class="py-2.5 px-3 font-semibold text-center">Đã giao thành công</th>
+                <th class="py-2.5 px-3 font-semibold text-center">Đang đi giao / lấy</th>
+                <th class="py-2.5 px-4 font-semibold text-right">Tổng tiền thu tại chỗ (COD)</th>
+                <th class="py-2.5 px-3 font-semibold text-center">Trạng thái hiện tại</th>
+              </tr>
+            </thead>
+            <tbody id="shipper-stats-tbody" class="divide-y divide-surface-container">
+              <!-- Rendered Dynamically via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Charts & Breakdown Row -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+
+        <!-- Column 1: 7-Day Revenue Chart (7 cols) -->
+        <div
+          class="lg:col-span-7 bg-surface-card rounded-xl border border-surface-container p-5 space-y-4 flex flex-col justify-between shadow-xs">
+          <div class="flex items-center justify-between pb-2 border-b border-surface-container">
+            <div>
+              <h2 class="font-bold text-sm text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-lg">bar_chart</span>
+                Doanh Thu 7 Ngày Gần Nhất
+              </h2>
+              <p class="text-xs text-secondary mt-0.5">Biểu đồ dòng tiền thực tế từ SQL Server</p>
+            </div>
+            <span id="weekly-total-badge"
+              class="px-2.5 py-1 rounded-full bg-red-50 text-primary text-xs font-bold">Tổng: 0 đ</span>
+          </div>
+
+          <!-- Bar Visual Canvas -->
+          <div class="space-y-3 pt-2">
+            <div id="chart-7days-container"
+              class="h-56 relative flex items-end justify-between px-2 pb-2 border-b border-surface-container">
+              <!-- Rendered Dynamically via JS -->
+            </div>
+
+            <div class="p-3 rounded-lg bg-surface-container-low flex items-center justify-between text-xs">
+              <div class="flex items-center gap-2 text-secondary">
+                <span class="material-symbols-outlined text-base text-primary">insights</span>
+                <span>Doanh thu tự động cập nhật khi đơn chuyển sang Hoàn Tất</span>
+              </div>
+              <span id="weekly-total-amount" class="font-bold text-primary">0 đ</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Column 2: Service Breakdown & Payment Methods (5 cols) -->
+        <div
+          class="lg:col-span-5 bg-surface-card rounded-xl border border-surface-container p-5 space-y-4 flex flex-col justify-between shadow-xs">
+          <div class="pb-2 border-b border-surface-container">
+            <h2 class="font-bold text-sm text-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-lg">pie_chart</span>
+              Cơ Cấu Dịch Vụ & Thanh Toán
+            </h2>
+            <p class="text-xs text-secondary mt-0.5">Tỷ trọng doanh thu theo từng loại dịch vụ và hình thức trả tiền</p>
+          </div>
+
+          <!-- Service List -->
+          <div id="service-breakdown-list" class="space-y-2 text-xs my-auto">
+            <!-- Rendered Dynamically via JS -->
+          </div>
+
+          <!-- Payment Method Summary -->
+          <div class="pt-3 border-t border-surface-container space-y-2">
+            <p class="text-[11px] font-bold text-secondary uppercase tracking-wider">Hình thức thanh toán:</p>
+            <div class="grid grid-cols-2 gap-2 text-xs">
+              <div class="p-2 rounded-lg bg-surface-container-low">
+                <p class="text-secondary text-[11px]">Tiền mặt / COD</p>
+                <p class="font-bold text-on-surface mt-0.5" id="pay-cash-val">0 đ (0%)</p>
+              </div>
+              <div class="p-2 rounded-lg bg-surface-container-low">
+                <p class="text-secondary text-[11px]">VietQR / Ví điện tử</p>
+                <p class="font-bold text-primary mt-0.5" id="pay-transfer-val">0 đ (0%)</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Realtime Connection Status Indicator -->
+  <div
+    class="fixed bottom-5 right-5 z-40 bg-white/90 backdrop-blur-md px-3.5 py-2 rounded-full border border-surface-container shadow-lg flex items-center gap-3 text-xs">
+    <div class="flex items-center gap-1.5 font-medium text-on-surface">
+      <span class="w-2 h-2 rounded-full bg-green-500 animate-ping"></span>
+      <span>Đồng bộ C# API: <strong id="syncStatus" class="text-primary">Đang kết nối...</strong></span>
+    </div>
+    <div class="h-3 w-px bg-surface-container"></div>
+    <button onclick="fetchDashboardData()" class="text-primary hover:underline font-bold flex items-center gap-1">
+      <span class="material-symbols-outlined text-sm">sync</span> Tải lại
+    </button>
+  </div>
+
+  <!-- Include Backend API Script -->
+  <script src="api.js"></script>
+
+  <!-- JavaScript Logic (Đồng Bộ 100% C# API & Thống Kê Theo Ngày & Thống Kê Shipper) -->
+  <script>
+    let allOrders = [];
+    let allShippers = [];
+    let currentRange = 'all';
+    let currentCustomDate = null;
+
+    function handleLogout(e) {
+      if (e) e.preventDefault();
+      if (window.Auth) Auth.logout();
+      else window.location.href = 'login.html';
+    }
+
+    // CHUẨN HÓA TRẠNG THÁI KHỚP 100% VỚI SQL SERVER
+    function normalizeStatus(rawStatus) {
+      if (rawStatus === null || rawStatus === undefined) return 'Pending';
+      const st = rawStatus.toString().trim().toLowerCase();
+
+      const numeric = {
+        '0': 'Pending', '1': 'Confirmed', '2': 'PickingUp',
+        '3': 'Received', '4': 'Washing', '5': 'Ready',
+        '6': 'Delivering', '7': 'Completed', '8': 'Cancelled'
+      };
+      if (numeric[st]) return numeric[st];
+
+      const names = {
+        pending: 'Pending', confirmed: 'Confirmed', pickingup: 'PickingUp',
+        received: 'Received', washing: 'Washing', ready: 'Ready',
+        delivering: 'Delivering', completed: 'Completed', cancelled: 'Cancelled',
+        hoanthanh: 'Completed', 'hoàn thành': 'Completed', 'đã hoàn tất': 'Completed',
+        huy: 'Cancelled', 'hủy': 'Cancelled', danggiat: 'Washing', 'đang giặt': 'Washing',
+        choxacnhan: 'Pending', 'chờ xác nhận': 'Pending'
+      };
+      return names[st] || 'Pending';
+    }
+
+    function formatVND(amount) {
+      return (amount || 0).toLocaleString('vi-VN') + ' đ';
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function getLocalDateStr(date) {
+      if (!date || isNaN(date.getTime())) return '';
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2, '0');
+      const d = String(date.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    function getFormattedDate(dateStr) {
+      if (!dateStr) return '';
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+    }
+
+    async function fetchDashboardData() {
+      const syncStatusEl = document.getElementById('syncStatus');
+      try {
+        const [ordersRes, shippersRes] = await Promise.all([
+          Api.Orders.all(),
+          Api.get('/Orders/management/shippers').catch(() => [])
+        ]);
+
+        allOrders = ordersRes || [];
+        allShippers = shippersRes || [];
+
+        if (syncStatusEl) {
+          syncStatusEl.textContent = 'Hoạt động (' + allOrders.length + ' đơn)';
+        }
+
+        applyFilterAndRender();
+      } catch (error) {
+        console.error('Lỗi kết nối API Dashboard:', error);
+        if (syncStatusEl) {
+          syncStatusEl.textContent = 'Mất kết nối C# API';
+        }
+      }
+    }
+
+    // Lọc đơn hàng theo Ngày / Kỳ được chọn
+    function getFilteredOrders() {
+      const now = new Date();
+      const todayStr = getLocalDateStr(now);
+
+      const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+      const yesterdayStr = getLocalDateStr(yesterday);
+
+      const sevenDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+      sevenDaysAgo.setHours(0, 0, 0, 0);
+
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      startOfMonth.setHours(0, 0, 0, 0);
+
+      return allOrders.filter(order => {
+        const rawDate = order.createdAt || order.CreatedAt;
+        if (!rawDate) return currentRange === 'all';
+        const d = new Date(rawDate);
+        if (isNaN(d.getTime())) return currentRange === 'all';
+
+        const orderDateStr = getLocalDateStr(d);
+
+        if (currentRange === 'today') {
+          return orderDateStr === todayStr;
+        } else if (currentRange === 'yesterday') {
+          return orderDateStr === yesterdayStr;
+        } else if (currentRange === '7days') {
+          return d >= sevenDaysAgo;
+        } else if (currentRange === 'month') {
+          return d >= startOfMonth;
+        } else if (currentRange === 'custom') {
+          return orderDateStr === currentCustomDate;
+        }
+        return true; // 'all'
+      });
+    }
+
+    function applyFilterAndRender() {
+      const filtered = getFilteredOrders();
+
+      // Cập nhật nhãn phạm vi ngày
+      const rangeBadge = document.getElementById('active-range-badge');
+      const shipperDateLabel = document.getElementById('shipper-stats-date-label');
+      const ordersDateLabel = document.getElementById('orders-list-date-label');
+
+      let rangeName = 'Toàn thời gian';
+      if (currentRange === 'today') rangeName = 'Hôm nay (' + getLocalDateStr(new Date()) + ')';
+      else if (currentRange === 'yesterday') rangeName = 'Hôm qua';
+      else if (currentRange === '7days') rangeName = '7 ngày qua';
+      else if (currentRange === 'month') rangeName = 'Tháng này (' + (new Date().getMonth() + 1) + '/' + new Date().getFullYear() + ')';
+      else if (currentRange === 'custom') rangeName = 'Ngày: ' + currentCustomDate;
+
+      if (rangeBadge) rangeBadge.textContent = rangeName;
+      if (shipperDateLabel) shipperDateLabel.textContent = `Thống kê vận chuyển & tiền COD shipper thu [${rangeName}]`;
+      if (ordersDateLabel) ordersDateLabel.textContent = `Toàn bộ ${filtered.length} đơn hàng phát sinh [${rangeName}]`;
+
+      calculateMetrics(filtered);
+      renderShipperStats(filtered);
+      render7DaysChart(allOrders);
+      renderServiceAndPaymentBreakdown(filtered);
+      renderDailyOrdersTable(filtered);
+    }
+
+    function calculateMetrics(orders) {
+      const totalOrders = orders.length;
+      let completedRevenue = 0;
+      let pendingRevenue = 0;
+      let completedCount = 0;
+      let processingCount = 0;
+      let cancelledCount = 0;
+
+      orders.forEach(order => {
+        const status = normalizeStatus(order.status || order.Status);
+        const amount = Number(order.totalAmount || order.TotalAmount || 0);
+
+        if (status === 'Completed') {
+          completedRevenue += amount;
+          completedCount++;
+        } else if (status === 'Cancelled') {
+          cancelledCount++;
+        } else {
+          pendingRevenue += amount;
+          processingCount++;
+        }
+      });
+
+      const rate = totalOrders > 0 ? Math.round((completedCount / totalOrders) * 100) : 0;
+      const aov = completedCount > 0 ? Math.round(completedRevenue / completedCount) : 0;
+
+      document.getElementById('kpi-revenue').textContent = formatVND(completedRevenue);
+      document.getElementById('kpi-revenue-sub').textContent = `Từ ${completedCount} đơn hoàn thành`;
+      document.getElementById('kpi-pending-revenue').textContent = `Chờ thu: ${formatVND(pendingRevenue)}`;
+
+      document.getElementById('kpi-total-orders').textContent = `${totalOrders} đơn`;
+      document.getElementById('kpi-processing-orders').textContent = `${processingCount} đơn`;
+      document.getElementById('kpi-completed-orders').textContent = `${completedCount} đơn`;
+
+      document.getElementById('kpi-completion-rate').textContent = `${rate}%`;
+      document.getElementById('kpi-cancelled-count').textContent = `Hủy: ${cancelledCount} đơn`;
+
+      const progressBar = document.getElementById('kpi-progress-bar');
+      if (progressBar) progressBar.style.width = `${rate}%`;
+
+      document.getElementById('kpi-aov').textContent = formatVND(aov);
+      document.getElementById('kpi-orders-per-day').textContent = `${totalOrders} đơn trong kỳ`;
+    }
+
+    // THỐNG KÊ CHI TIẾT THEO SHIPPER (ĐI BAO NHIÊU ĐƠN - THU BAO NHIÊU TIỀN)
+    function renderShipperStats(orders) {
+      const tbody = document.getElementById('shipper-stats-tbody');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      // Gom danh sách shipper duy nhất từ allShippers + orders
+      const shipperMap = new Map();
+
+      // Đưa danh sách nhân viên Shipper chính thức từ API vào map
+      allShippers.forEach(s => {
+        shipperMap.set(s.id, {
+          id: s.id,
+          name: s.fullName || `Shipper #${s.id}`,
+          phone: s.phone || '09xxxxxxxxx',
+          code: `SP-${String(s.id).padStart(4, '0')}`,
+          totalOrders: 0,
+          completedOrders: 0,
+          activeOrders: 0,
+          codCollected: 0,
+          isBusy: s.isBusy || false,
+          currentTask: s.currentTask || null
+        });
+      });
+
+      // Bổ sung các đơn hàng phân bổ cho Shipper trong kỳ đang chọn
+      orders.forEach(order => {
+        const sId = order.ShipperId || order.shipperId;
+        const sName = order.shipperName || order.ShipperName;
+        const status = normalizeStatus(order.status || order.Status);
+        const amount = Number(order.totalAmount || order.TotalAmount || 0);
+
+        if (sId) {
+          if (!shipperMap.has(sId)) {
+            shipperMap.set(sId, {
+              id: sId,
+              name: sName || `Shipper #${sId}`,
+              phone: order.shipperPhone || '09xxxxxxxxx',
+              code: order.shipperCode || `SP-${String(sId).padStart(4, '0')}`,
+              totalOrders: 0,
+              completedOrders: 0,
+              activeOrders: 0,
+              codCollected: 0,
+              isBusy: false,
+              currentTask: null
+            });
+          }
+          const item = shipperMap.get(sId);
+          item.totalOrders++;
+          if (status === 'Completed') {
+            item.completedOrders++;
+            item.codCollected += amount;
+          } else if (['PickingUp', 'Delivering', 'Confirmed', 'Ready'].includes(status)) {
+            item.activeOrders++;
+            item.codCollected += amount; // Tiền COD cần thu tại hiện trường
+          }
+        }
+      });
+
+      let totalAllShipperCod = 0;
+      const shippersList = Array.from(shipperMap.values());
+
+      if (shippersList.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-secondary">Chưa có dữ liệu phân công shipper trong kỳ này</td></tr>`;
+        document.getElementById('kpi-total-shipper-cod').textContent = '0 đ';
+        return;
+      }
+
+      shippersList.forEach(s => {
+        totalAllShipperCod += s.codCollected;
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-surface-container-low transition-colors';
+
+        let statusBadge = `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">🟡 Sẵn sàng</span>`;
+        if (s.activeOrders > 0) {
+          statusBadge = `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800 border border-blue-200">🟢 Đang giao/lấy (${s.activeOrders} đơn)</span>`;
+        } else if (s.completedOrders > 0) {
+          statusBadge = `<span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">Hoàn thành ca (${s.completedOrders} đơn)</span>`;
+        }
+
+        tr.innerHTML = `
+          <td class="py-3 px-4">
+            <div class="flex items-center gap-2.5">
+              <div class="w-8 h-8 rounded-full bg-surface-container text-primary font-bold flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-base">moped</span>
+              </div>
+              <div>
+                <p class="font-bold text-on-surface">${escapeHtml(s.name)}</p>
+                <p class="text-[11px] text-secondary font-mono">${escapeHtml(s.phone)} · #${escapeHtml(s.code)}</p>
+              </div>
+            </div>
+          </td>
+          <td class="py-3 px-3 text-center font-bold text-on-surface">
+            ${s.totalOrders} đơn
+          </td>
+          <td class="py-3 px-3 text-center font-bold text-emerald-700">
+            ${s.completedOrders} đơn
+          </td>
+          <td class="py-3 px-3 text-center font-bold text-blue-700">
+            ${s.activeOrders} đơn
+          </td>
+          <td class="py-3 px-4 text-right font-extrabold text-primary">
+            ${formatVND(s.codCollected)}
+          </td>
+          <td class="py-3 px-3 text-center">
+            ${statusBadge}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      document.getElementById('kpi-total-shipper-cod').textContent = formatVND(totalAllShipperCod);
+    }
+
+    function render7DaysChart(orders) {
+      const chartContainer = document.getElementById('chart-7days-container');
+      if (!chartContainer) return;
+
+      const days = [];
+      const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+      const today = new Date();
+      const localDateKey = date => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+        days.push({
+          dateStr: localDateKey(d),
+          label: dayNames[d.getDay()],
+          revenue: 0,
+          isToday: i === 0
+        });
+      }
+
+      let weeklyTotal = 0;
+      orders.forEach(order => {
+        const status = normalizeStatus(order.status || order.Status);
+        if (status === 'Completed' || status === 'Pending' || status === 'Washing' || status === 'Ready') {
+          const createdAt = order.createdAt || order.CreatedAt;
+          if (createdAt) {
+            const parsed = new Date(createdAt);
+            if (isNaN(parsed.getTime())) return;
+            const dateStr = localDateKey(parsed);
+            const dayObj = days.find(d => d.dateStr === dateStr);
+            if (dayObj) {
+              const amount = Number(order.totalAmount || order.TotalAmount || 0);
+              dayObj.revenue += amount;
+              weeklyTotal += amount;
+            }
+          }
+        }
+      });
+
+      const maxRevenue = Math.max(...days.map(d => d.revenue), 100000);
+      chartContainer.innerHTML = '';
+
+      days.forEach(d => {
+        const heightPx = Math.max(Math.round((d.revenue / maxRevenue) * 160), 10);
+        const barColor = d.isToday ? 'bg-primary' : 'bg-surface-container-high hover:bg-primary/80';
+
+        chartContainer.innerHTML += `
+          <div class="flex flex-col items-center gap-1.5 group flex-1 z-10 cursor-pointer">
+            <div class="opacity-0 group-hover:opacity-100 transition-opacity bg-zinc-900 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm whitespace-nowrap">
+              ${formatVND(d.revenue)}
+            </div>
+            <div class="w-6 sm:w-8 rounded-t-md ${barColor} transition-all" style="height: ${heightPx}px;"></div>
+            <span class="text-xs ${d.isToday ? 'text-primary font-bold' : 'text-secondary'}">${d.label}</span>
+          </div>
+        `;
+      });
+
+      document.getElementById('weekly-total-badge').textContent = `Tổng: ${formatVND(weeklyTotal)}`;
+      document.getElementById('weekly-total-amount').textContent = formatVND(weeklyTotal);
+    }
+
+    function renderServiceAndPaymentBreakdown(orders) {
+      const container = document.getElementById('service-breakdown-list');
+      if (!container) return;
+
+      const servicesMap = {};
+      let totalServiceRevenue = 0;
+      let cashTotal = 0;
+      let transferTotal = 0;
+
+      orders.forEach(order => {
+        const amount = Number(order.totalAmount || order.TotalAmount || 0);
+        const note = (order.note || order.Note || '').toLowerCase();
+        
+        // Nhận diện phương thức thanh toán
+        if (note.includes('chuyển khoản') || note.includes('vietqr') || note.includes('napas')) {
+          transferTotal += amount;
+        } else {
+          cashTotal += amount; // Mặc định thu COD / Tiền mặt tại quầy & shipper
+        }
+
+        const items = order.items || order.OrderDetails || [];
+        items.forEach(item => {
+          const name = item.serviceName || item.ServiceName || 'Dịch vụ Giặt 3T';
+          const price = Number(item.totalPrice || item.TotalPrice || (item.quantity * item.unitPrice) || 0);
+
+          if (!servicesMap[name]) servicesMap[name] = 0;
+          servicesMap[name] += price;
+          totalServiceRevenue += price;
+        });
+      });
+
+      // Update Service List
+      container.innerHTML = '';
+      const serviceKeys = Object.keys(servicesMap);
+      if (serviceKeys.length === 0) {
+        container.innerHTML = `<p class="text-center text-secondary py-6 text-xs">Không có chi tiết dịch vụ trong kỳ này</p>`;
+      } else {
+        serviceKeys.forEach(name => {
+          const rev = servicesMap[name];
+          const percent = totalServiceRevenue > 0 ? Math.round((rev / totalServiceRevenue) * 100) : 0;
+          container.innerHTML += `
+            <div class="flex items-center justify-between p-2 rounded-lg bg-surface-container-low hover:bg-surface-container transition-colors">
+              <div class="flex items-center gap-2">
+                <span class="w-2.5 h-2.5 rounded-full bg-primary"></span>
+                <span class="font-semibold text-on-surface truncate max-w-[160px]">${escapeHtml(name)}</span>
+              </div>
+              <div class="flex items-center gap-3 shrink-0">
+                <span class="font-bold text-primary">${percent}%</span>
+                <span class="font-semibold text-secondary min-w-[70px] text-right">${formatVND(rev)}</span>
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      // Update Payment Methods
+      const grandTotal = cashTotal + transferTotal;
+      const cashPct = grandTotal > 0 ? Math.round((cashTotal / grandTotal) * 100) : 0;
+      const transPct = grandTotal > 0 ? (100 - cashPct) : 0;
+
+      document.getElementById('pay-cash-val').textContent = `${formatVND(cashTotal)} (${cashPct}%)`;
+      document.getElementById('pay-transfer-val').textContent = `${formatVND(transferTotal)} (${transPct}%)`;
+    }
+
+    // BẢNG DANH SÁCH TẤT CẢ ĐƠN HÀNG PHÁT SINH TRONG KỲ
+    function renderDailyOrdersTable(orders) {
+      const tbody = document.getElementById('daily-orders-tbody');
+      const countEl = document.getElementById('orders-list-count');
+      if (!tbody) return;
+      tbody.innerHTML = '';
+
+      if (countEl) countEl.textContent = `${orders.length} đơn hàng`;
+
+      if (orders.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-secondary font-medium">Không có đơn hàng nào phát sinh trong thời gian này</td></tr>`;
+        return;
+      }
+
+      orders.forEach(order => {
+        const id = order.id || order.Id;
+        const code = `#WS3T-${String(id).padStart(4, '0')}`;
+        const custName = order.customerName || order.CustomerName || 'Khách vãng lai';
+        const custPhone = order.customerPhone || order.contactPhone || order.ContactPhone || '--';
+        const shipper = order.shipperName || order.ShipperName || '<span class="text-secondary/70 italic">Chưa phân công</span>';
+        const amount = Number(order.totalAmount || order.TotalAmount || 0);
+        const status = normalizeStatus(order.status || order.Status);
+        const dateStr = getFormattedDate(order.createdAt || order.CreatedAt);
+
+        let serviceDesc = 'Giặt sấy tiêu chuẩn';
+        if (order.items && order.items.length > 0) {
+          serviceDesc = order.items.map(i => i.serviceName || i.ServiceName).filter(Boolean).join(', ') || serviceDesc;
+        }
+
+        let statusBadge = '<span class="px-2 py-0.5 rounded bg-gray-100 text-gray-700 text-[10px] font-bold">Chờ duyệt</span>';
+        if (status === 'Completed') {
+          statusBadge = '<span class="px-2 py-0.5 rounded bg-green-100 text-green-800 text-[10px] font-bold">Hoàn thành</span>';
+        } else if (status === 'Cancelled') {
+          statusBadge = '<span class="px-2 py-0.5 rounded bg-red-100 text-red-800 text-[10px] font-bold">Đã hủy</span>';
+        } else if (status === 'Washing') {
+          statusBadge = '<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold">Đang giặt sấy</span>';
+        } else if (status === 'Delivering') {
+          statusBadge = '<span class="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-bold">Đang giao đồ</span>';
+        } else if (status === 'PickingUp') {
+          statusBadge = '<span class="px-2 py-0.5 rounded bg-purple-100 text-purple-800 text-[10px] font-bold">Đang gom đồ</span>';
+        } else if (status === 'Ready') {
+          statusBadge = '<span class="px-2 py-0.5 rounded bg-teal-100 text-teal-800 text-[10px] font-bold">Sẵn sàng giao</span>';
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-surface-container-low transition-colors';
+        tr.innerHTML = `
+          <td class="py-2.5 px-3 font-mono font-bold text-primary">${code}</td>
+          <td class="py-2.5 px-3">
+            <p class="font-bold text-on-surface">${escapeHtml(custName)}</p>
+            <p class="text-[11px] text-secondary font-mono">${escapeHtml(custPhone)}</p>
+          </td>
+          <td class="py-2.5 px-3 font-medium text-on-surface max-w-[180px] truncate" title="${escapeHtml(serviceDesc)}">
+            ${escapeHtml(serviceDesc)}
+          </td>
+          <td class="py-2.5 px-3 font-semibold text-on-surface">${shipper}</td>
+          <td class="py-2.5 px-3 text-right font-extrabold text-on-surface">${formatVND(amount)}</td>
+          <td class="py-2.5 px-3 text-center">${statusBadge}</td>
+          <td class="py-2.5 px-3 text-center text-[11px] text-secondary">${dateStr}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // XỬ LÝ CHỌN BỘ LỌC THỜI GIAN
+    const dateBtns = document.querySelectorAll('.date-filter-btn');
+    dateBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        dateBtns.forEach(b => {
+          b.classList.remove('active', 'bg-primary', 'text-white', 'font-bold');
+          b.classList.add('text-secondary', 'font-semibold');
+        });
+        btn.classList.add('active', 'bg-primary', 'text-white', 'font-bold');
+        btn.classList.remove('text-secondary');
+
+        currentRange = btn.dataset.range;
+        currentCustomDate = null;
+        const picker = document.getElementById('custom-date-picker');
+        if (picker) picker.value = '';
+
+        applyFilterAndRender();
+      });
+    });
+
+    function onCustomDateSelected(val) {
+      if (!val) return;
+      currentRange = 'custom';
+      currentCustomDate = val;
+
+      dateBtns.forEach(b => {
+        b.classList.remove('active', 'bg-primary', 'text-white', 'font-bold');
+        b.classList.add('text-secondary', 'font-semibold');
+      });
+
+      applyFilterAndRender();
+    }
+
+    // XUẤT EXCEL / CSV TIẾNG VIỆT CÓ DẤU
+    function exportToExcel() {
+      const orders = getFilteredOrders();
+      if (orders.length === 0) {
+        alert('Không có dữ liệu đơn hàng trong kỳ để xuất Excel!');
+        return;
+      }
+
+      let csv = '\uFEFFMã đơn,Khách hàng,Số điện thoại,Dịch vụ,Shipper phụ trách,Tổng tiền (VNĐ),Trạng thái,Thời gian tạo\n';
+      orders.forEach(o => {
+        const code = `WS3T-${String(o.id || o.Id).padStart(4, '0')}`;
+        const name = `"${(o.customerName || o.CustomerName || 'Khách vãng lai').replace(/"/g, '""')}"`;
+        const phone = `"${o.customerPhone || o.contactPhone || o.ContactPhone || ''}"`;
+        const service = `"${((o.items || []).map(i => i.serviceName).join('; ') || 'Dịch vụ Giặt 3T').replace(/"/g, '""')}"`;
+        const shipper = `"${(o.shipperName || o.ShipperName || 'Chưa phân công').replace(/"/g, '""')}"`;
+        const amount = Number(o.totalAmount || o.TotalAmount || 0);
+        const status = `"${normalizeStatus(o.status || o.Status)}"`;
+        const time = `"${getFormattedDate(o.createdAt || o.CreatedAt)}"`;
+
+        csv += `${code},${name},${phone},${service},${shipper},${amount},${status},${time}\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.setAttribute('download', `BaoCao_ThongKe_WashSmart3T_${currentRange}_${getLocalDateStr(new Date())}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    // Khởi tạo hiển thị & Polling tự động mỗi 5s
+    (async () => {
+      if (!localStorage.getItem('ws_token')) {
+        try {
+          const res = await fetch('http://localhost:5085/api/Auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: '0900000000', password: '123456' })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            localStorage.setItem('ws_token', data.token);
+            localStorage.setItem('ws_role', 'Admin');
+            localStorage.setItem('ws_fullname', 'Nguyễn Kiều Như');
+          }
+        } catch (e) {}
+      }
+      if (typeof Auth !== 'undefined') {
+        const me = await Auth.requireAdminOrStaff();
+        if (!me) return;
+      }
+      await fetchDashboardData();
+      setInterval(fetchDashboardData, 8000);
+    })();
+  </script>
+</body>
+
+</html>

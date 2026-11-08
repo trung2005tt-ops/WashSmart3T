@@ -1,0 +1,1215 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>POS Tiếp nhận Quầy & In Hóa Đơn - WashSmart 3T</title>
+
+  <!-- Fonts & Icons -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
+    rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      overscroll-behavior: none;
+    }
+
+    ::-webkit-scrollbar {
+      display: none;
+    }
+
+    /* Quy chuẩn CSS In Hóa Đơn Thermal (80mm) */
+    @media print {
+      body * {
+        visibility: hidden !important;
+      }
+
+      #printable-receipt,
+      #printable-receipt * {
+        visibility: visible !important;
+      }
+
+      #printable-receipt {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        max-width: 320px !important;
+        margin: 0 auto !important;
+        padding: 10px !important;
+        background: #fff !important;
+        color: #000 !important;
+        box-shadow: none !important;
+        border: none !important;
+      }
+
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+
+  <!-- Tailwind CSS Config -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#8e0028",
+            "primary-container": "#b90538",
+            "primary-fixed": "#ffdadb",
+            "surface": "#fff8f9",
+            "surface-container-low": "#f9f2f3",
+            "surface-container": "#f3eced",
+            "surface-container-high": "#ede7e8",
+            "surface-card": "#ffffff",
+            "on-surface": "#1d1b1c",
+            "secondary": "#6a5b5e",
+            "outline": "#8f6f70",
+            "outline-variant": "#e3bdbf",
+          }
+        }
+      }
+    };
+  </script>
+</head>
+
+<body class="bg-surface text-on-surface antialiased text-sm">
+
+  <!-- Sidebar Navigation -->
+  <aside
+    class="fixed left-0 top-0 h-full w-64 bg-primary text-white z-50 flex flex-col justify-between shadow-lg no-print">
+    <div class="flex flex-col">
+      <!-- Logo -->
+      <div class="p-5 flex items-center gap-3 border-b border-white/10">
+        <div class="w-10 h-10 rounded-xl bg-white text-primary flex items-center justify-center font-bold shadow-sm">
+          <span class="material-symbols-outlined text-2xl">local_laundry_service</span>
+        </div>
+        <div>
+          <h2 class="font-bold text-base leading-tight">WashSmart 3T</h2>
+          <p class="text-[11px] text-white/70 uppercase tracking-wider font-medium">Hệ Thống Quản Lý</p>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="p-3 space-y-1">
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="index.html">
+          <span class="material-symbols-outlined text-xl">analytics</span>
+          <span>Dashboard</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="orders.html">
+          <span class="material-symbols-outlined text-xl">receipt_long</span>
+          <span>Quản lý Đơn hàng</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white text-primary font-bold shadow-sm"
+          href="pos.html">
+          <span class="material-symbols-outlined text-xl">point_of_sale</span>
+          <span>POS Quầy</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="dispatch.html">
+          <span class="material-symbols-outlined text-xl">two_wheeler</span>
+          <span>Điều phối Shipper</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="accounts.html">
+          <span class="material-symbols-outlined text-xl">badge</span>
+          <span>Quản lý Tài khoản</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="customers.html">
+          <span class="material-symbols-outlined text-xl">loyalty</span>
+          <span>Khách hàng & Loyalty</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="complaints.html">
+          <span class="material-symbols-outlined text-xl">support_agent</span>
+          <span>Xử lý Khiếu nại</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="services.html">
+          <span class="material-symbols-outlined text-xl">sell</span>
+          <span>Dịch vụ & Bảng giá</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="store-settings.html">
+          <span class="material-symbols-outlined text-xl">store</span>
+          <span>Cấu hình Cửa hàng</span>
+        </a>
+      </nav>
+    </div>
+
+    <!-- Status & Logout -->
+    <div class="p-4 space-y-3 border-t border-white/10">
+      <div class="bg-black/20 rounded-lg p-3 text-xs flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+          <span>Cân USB: COM3 Sẵn sàng</span>
+        </div>
+        <span class="font-bold" id="scale-sidebar-display">5.00 kg</span>
+      </div>
+
+      <button onclick="handleLogout(event)"
+        class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-black/20 hover:bg-black/40 text-white font-medium transition-colors text-xs">
+        <span class="material-symbols-outlined text-base">logout</span>
+        <span>Đăng xuất hệ thống</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <div class="pl-64 no-print">
+    <!-- Top Header -->
+    <header
+      class="h-16 bg-surface-card border-b border-surface-container flex items-center justify-between px-6 sticky top-0 z-40">
+      <div class="flex items-center gap-4 flex-1 max-w-lg">
+        <div
+          class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container text-on-surface text-xs font-semibold cursor-pointer">
+          <span class="material-symbols-outlined text-base text-primary">store</span>
+          <span>Chi nhánh CS1 - TP.HCM</span>
+          <span class="material-symbols-outlined text-base">expand_more</span>
+        </div>
+        <div class="relative flex-1">
+          <span
+            class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-lg">search</span>
+          <input type="text" placeholder="Tìm tên dịch vụ, đơn hàng..."
+            class="w-full pl-9 pr-4 py-1.5 rounded-full bg-surface-container-low text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs">KN
+        </div>
+        <div class="text-left text-xs">
+          <p class="font-bold leading-tight">Nguyễn Kiều Như</p>
+          <p class="text-secondary text-[11px]">Quản lý cửa hàng</p>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="p-6 space-y-6">
+
+      <!-- Status Bar Banner -->
+      <div
+        class="p-4 rounded-xl bg-surface-card border border-surface-container flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center font-bold shrink-0">
+            <span class="material-symbols-outlined text-xl">point_of_sale</span>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h1 class="font-bold text-base text-on-surface">Tiếp Nhận Đơn Tại Quầy (POS)</h1>
+              <span class="px-2 py-0.5 rounded bg-primary-fixed text-primary text-[10px] font-bold">Phiên
+                #CS1-084</span>
+            </div>
+            <p class="text-secondary text-xs mt-0.5">Lễ tân: Nguyễn Kiều Như · Kết nối cân điện tử USB RS-232 live</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 text-xs">
+          <div
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container text-on-surface font-semibold">
+            <span class="w-2 h-2 rounded-full bg-green-600 animate-ping"></span>
+            <span>Máy in nhiệt: Sẵn sàng</span>
+          </div>
+          <button onclick="window.location.href='orders.html'"
+            class="px-3.5 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-medium transition-colors flex items-center gap-1">
+            <span class="material-symbols-outlined text-base">history</span>
+            <span>Đơn chờ trả</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Layout: 2 Columns -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+
+        <!-- Left Column: Customer, Scale & Materials (7 cols) -->
+        <div class="lg:col-span-7 space-y-5">
+
+          <!-- 1. Customer Lookup Card -->
+          <div class="p-5 rounded-xl bg-surface-card border border-surface-container space-y-4">
+            <div class="flex items-center justify-between border-b border-surface-container pb-3">
+              <h2 class="font-bold text-sm text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-lg">person_search</span>
+                Khách Hàng Thành Viên
+              </h2>
+              <span class="text-[10px] px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-bold">Tra cứu khách
+                hàng</span>
+            </div>
+
+            <div class="flex items-center gap-2">
+              <div class="relative flex-1">
+                <span
+                  class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-primary text-lg">call</span>
+                <input id="customerPhoneInput" type="tel" autocomplete="tel" placeholder="Nhập số điện thoại khách hàng"
+                  class="w-full pl-9 pr-4 py-2 rounded-lg bg-surface-container-low text-xs font-bold text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                  value="">
+              </div>
+              <button id="btnSearchCustomer"
+                class="px-4 py-2 rounded-lg bg-primary hover:bg-primary-container text-white text-xs font-bold transition-colors flex items-center gap-1">
+                <span>Kiểm tra</span>
+                <span class="material-symbols-outlined text-sm">search</span>
+              </button>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label class="space-y-1 text-xs"><span class="font-semibold text-secondary">Họ tên khách hàng *</span>
+                <input id="customerNameInput" type="text" autocomplete="name" placeholder="Nhập họ tên khách hàng"
+                  class="w-full px-3 py-2 rounded-lg bg-surface-container-low focus:outline-none focus:ring-1 focus:ring-primary"
+                  required>
+              </label>
+              <div class="p-3 rounded-lg bg-surface-container-low text-xs flex items-center gap-3"
+                id="customer-info-box">
+                <div
+                  class="w-9 h-9 rounded-full bg-primary text-white font-bold flex items-center justify-center shrink-0"
+                  id="cust-avatar-text">KH</div>
+                <div class="min-w-0">
+                  <div class="font-bold text-on-surface" id="cust-name-text">Khách hàng mới / chưa tra cứu</div>
+                  <p class="text-secondary mt-1" id="customer-lookup-status">Thông tin sẽ được kiểm tra khi nhập số điện
+                    thoại.</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="border-t border-surface-container pt-4 space-y-3">
+              <h3 class="font-bold text-xs text-secondary uppercase">Hình thức nhận đồ sau khi giặt</h3>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <label
+                  class="flex items-start gap-2 p-3 rounded-lg bg-surface-container-low border border-surface-container cursor-pointer">
+                  <input type="radio" name="returnMethod" value="store" checked class="mt-0.5 accent-primary">
+                  <span><strong class="block">Khách tự đến cửa hàng lấy</strong><small class="text-secondary">Không tính
+                      phí giao hàng</small></span>
+                </label>
+                <label
+                  class="flex items-start gap-2 p-3 rounded-lg bg-surface-container-low border border-surface-container cursor-pointer">
+                  <input type="radio" name="returnMethod" value="home" class="mt-0.5 accent-primary">
+                  <span><strong class="block">Giao tận nhà sau khi giặt</strong><small id="deliverySubHint" class="text-secondary font-semibold text-primary">Tự động tính phí ship theo địa chỉ</small></span>
+                </label>
+              </div>
+              <div id="homeDeliveryAddressBox" class="hidden space-y-2">
+                <div class="flex items-center justify-between">
+                  <label for="homeDeliveryAddress" class="text-xs font-semibold text-secondary">Địa chỉ giao đồ sạch *</label>
+                  <span id="calculatedDistanceBadge" class="text-[11px] font-bold text-primary bg-red-50 border border-primary/30 px-2 py-0.5 rounded-full">Cách cửa hàng: 1.7 km</span>
+                </div>
+                <textarea id="homeDeliveryAddress" rows="2" placeholder="Số nhà, tên đường, phường, quận/huyện..."
+                  class="w-full px-3 py-2 rounded-lg bg-surface-container-low border border-surface-container focus:outline-none focus:ring-1 focus:ring-primary text-xs font-medium"></textarea>
+                
+                <!-- Quick Address Chips -->
+                <div class="space-y-1">
+                  <p class="text-[10px] text-secondary font-semibold uppercase tracking-wider">Chọn nhanh điểm giao để kiểm tra phí ship theo khoảng cách:</p>
+                  <div class="flex flex-wrap gap-1.5" id="addressQuickChips">
+                    <button type="button" class="addr-chip px-2.5 py-1 rounded-md bg-surface-container hover:bg-surface-container-high text-[11px] text-on-surface font-medium transition-colors" data-addr="2 Nguyễn Sỹ Sách, P.15, Tân Bình">
+                      📍 2 Nguyễn Sỹ Sách (1.7 km · 20k)
+                    </button>
+                    <button type="button" class="addr-chip px-2.5 py-1 rounded-md bg-surface-container hover:bg-surface-container-high text-[11px] text-on-surface font-medium transition-colors" data-addr="Chợ Tân Bình, Lý Thường Kiệt, Tân Bình">
+                      📍 Chợ Tân Bình (3.2 km · 30k)
+                    </button>
+                    <button type="button" class="addr-chip px-2.5 py-1 rounded-md bg-surface-container hover:bg-surface-container-high text-[11px] text-on-surface font-medium transition-colors" data-addr="Chợ Bến Thành, Quận 1, TP.HCM">
+                      📍 Chợ Bến Thành Q1 (11.5 km · 45k)
+                    </button>
+                    <button type="button" class="addr-chip px-2.5 py-1 rounded-md bg-surface-container hover:bg-surface-container-high text-[11px] text-on-surface font-medium transition-colors" data-addr="Lotte Mart, Quận 7, TP.HCM">
+                      📍 Lotte Mart Q7 (16.2 km · 45k)
+                    </button>
+                  </div>
+                </div>
+
+                <div class="p-2.5 rounded-lg bg-surface-container-low border border-surface-container flex items-center justify-between text-xs">
+                  <div class="flex items-center gap-1.5 text-secondary">
+                    <span class="material-symbols-outlined text-primary text-base">local_shipping</span>
+                    <span>Khoảng cách: <strong id="deliveryKmText" class="text-on-surface font-bold">1.7 km</strong> (<span id="deliveryMinutesText">~24 phút</span>)</span>
+                  </div>
+                  <div class="text-right">
+                    <span class="text-secondary text-[11px]">Phí ship theo khoảng cách: </span>
+                    <strong id="deliveryFeeText" class="text-primary font-bold text-sm">20.000 đ</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 2. Smart USB Scale Box -->
+          <div class="p-5 rounded-xl bg-surface-card border border-surface-container space-y-4">
+            <div class="flex items-center justify-between border-b border-surface-container pb-3">
+              <h2 class="font-bold text-sm text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-lg">scale</span>
+                Khung Cân Điện Tử Thông Minh
+              </h2>
+              <span class="text-[10px] px-2 py-0.5 rounded bg-surface-container text-secondary font-bold">Cổng COM3 (USB
+                Scale)</span>
+            </div>
+
+            <div
+              class="p-4 rounded-lg bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div>
+                <p class="text-[11px] text-secondary uppercase font-bold tracking-wider">Trọng lượng / Số lượng chốt</p>
+                <div class="flex items-baseline gap-1 mt-1">
+                  <span class="text-3xl font-extrabold text-primary" id="weightDisplay">0.00</span>
+                  <span class="text-base font-bold text-on-surface" id="weightUnit">kg</span>
+                </div>
+                <p class="text-[11px] text-secondary font-medium mt-0.5">Dịch vụ đang chỉnh: <strong id="scaleActiveServiceName" class="text-primary font-bold">Chưa chọn dịch vụ</strong></p>
+              </div>
+
+              <div class="flex items-center gap-2">
+                <button id="btnRescale"
+                  class="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-xs font-semibold transition-colors flex items-center gap-1">
+                  <span class="material-symbols-outlined text-base">sync</span>
+                  <span>Cân lại</span>
+                </button>
+                <button id="btnMinusWeight"
+                  class="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-bold text-sm flex items-center justify-center">-</button>
+                <button id="btnPlusWeight"
+                  class="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-bold text-sm flex items-center justify-center">+</button>
+                <button id="btnManualWeight"
+                  class="px-3 py-1.5 rounded-lg bg-primary text-white hover:bg-primary-container text-xs font-semibold transition-colors flex items-center gap-1">
+                  <span class="material-symbols-outlined text-base">edit</span>
+                  <span>Nhập tay</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- 3. Material Selection Cards (Được cài ID mặc định 1->6) -->
+          <div class="p-5 rounded-xl bg-surface-card border border-surface-container space-y-4">
+            <div class="flex items-center justify-between border-b border-surface-container pb-3">
+              <h2 class="font-bold text-sm text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-lg">dry_cleaning</span>
+                Phân Loại Chất Liệu Vải
+              </h2>
+              <span class="text-xs text-secondary" id="service-status-hint">Tự động kết nối dịch vụ CSDL</span>
+            </div>
+
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-3" id="fabricGroup">
+              <p class="col-span-full text-xs text-secondary py-4">Đang tải danh sách dịch vụ từ API...</p>
+            </div>
+          </div>
+
+          <!-- 4. Add-on Services -->
+          <div class="p-5 rounded-xl bg-surface-card border border-surface-container space-y-3">
+            <h2 class="font-bold text-sm text-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-lg">add_task</span>
+              Dịch Vụ & Tiện Ích Phụ Phí
+            </h2>
+
+            <div class="space-y-2 text-xs">
+              <label class="flex items-center justify-between p-2.5 bg-surface-container-low rounded-lg cursor-pointer">
+                <div class="flex items-center gap-2">
+                  <input id="addonUV" type="checkbox" checked class="accent-primary w-4 h-4">
+                  <div>
+                    <p class="font-semibold text-on-surface">Khử khuẩn buồng sấy UV 99.9%</p>
+                    <p class="text-[10px] text-secondary">Diệt nấm mốc sâu thớ vải chuẩn 3T</p>
+                  </div>
+                </div>
+                <span class="font-bold text-primary">MIỄN PHÍ</span>
+              </label>
+
+              <label class="flex items-center justify-between p-2.5 bg-surface-container-low rounded-lg cursor-pointer">
+                <div class="flex items-center gap-2">
+                  <input id="addonComfort" type="checkbox" class="accent-primary w-4 h-4">
+                  <div>
+                    <p class="font-semibold text-on-surface">Nước xả vải Comfort Tinh Tươm</p>
+                    <p class="text-[10px] text-secondary">Hương hoa dịu nhẹ lưu hương 7 ngày</p>
+                  </div>
+                </div>
+                <span class="font-bold text-on-surface">+10,000 đ</span>
+              </label>
+
+              <label class="flex items-center justify-between p-2.5 bg-surface-container-low rounded-lg cursor-pointer">
+                <div class="flex items-center gap-2">
+                  <input id="addonBag" type="checkbox" class="accent-primary w-4 h-4">
+                  <div>
+                    <p class="font-semibold text-on-surface">Túi giặt bảo vệ vải sợi cao cấp</p>
+                    <p class="text-[10px] text-secondary">Chống bai dão, sờn vải sợi mỏng</p>
+                  </div>
+                </div>
+                <span class="font-bold text-on-surface">+5,000 đ</span>
+              </label>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Right Column: Bill Breakdown & Checkout (5 cols) -->
+        <div
+          class="lg:col-span-5 bg-surface-card rounded-xl border border-surface-container p-5 space-y-4 sticky top-20">
+
+          <div class="flex items-center justify-between pb-2 border-b border-surface-container">
+            <h2 class="font-bold text-base text-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary">receipt</span>
+              Hóa Đơn Tiếp Nhận
+            </h2>
+            <span class="text-xs font-mono font-bold text-primary">Mã seal: <span id="seal-header-code">Chưa
+                tạo</span></span>
+          </div>
+
+          <!-- Bill Calculation List (Hỗ trợ nhiều loại dịch vụ trong 1 đơn) -->
+          <div class="p-3.5 rounded-lg bg-surface-container-low text-xs space-y-2.5">
+            <div>
+              <div class="flex items-center justify-between text-secondary text-[11px] font-bold uppercase tracking-wider pb-1.5 border-b border-surface-container">
+                <span>Dịch vụ trong đơn (<span id="cartCountBadge" class="text-primary">0</span>)</span>
+                <span>Thành tiền</span>
+              </div>
+              <div id="selectedServicesList" class="space-y-2 max-h-60 overflow-y-auto py-2">
+                <p id="emptyCartHint" class="text-secondary text-center py-3 italic">Chưa chọn dịch vụ nào. Bấm vào các thẻ dịch vụ bên trái để thêm vào đơn.</p>
+              </div>
+            </div>
+
+            <div class="flex justify-between items-center text-secondary">
+              <span>Khử khuẩn UV kháng nấm</span>
+              <span class="text-primary font-bold">0 đ</span>
+            </div>
+
+            <div id="summaryComfortRow" class="hidden justify-between items-center text-secondary">
+              <span>Nước xả Comfort Tinh Tươm</span>
+              <span class="font-bold text-on-surface">+10,000 đ</span>
+            </div>
+
+            <div id="summaryBagRow" class="hidden justify-between items-center text-secondary">
+              <span>Túi giặt chuyên dụng 3T</span>
+              <span class="font-bold text-on-surface">+5,000 đ</span>
+            </div>
+
+            <div class="pt-2 border-t border-surface-container space-y-1">
+              <div class="flex justify-between items-center">
+                <span class="text-secondary">Tạm tính:</span>
+                <span id="summarySubtotal" class="font-semibold text-on-surface">0 đ</span>
+              </div>
+              <div class="flex justify-between items-center">
+                <span id="vip-discount-label" class="text-primary font-semibold">Giảm VIP Gold (-10%):</span>
+                <span id="summaryVipDiscount" class="font-bold text-primary">0 đ</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Grand Total Display -->
+          <div
+            class="p-4 rounded-lg bg-surface-container-low border border-surface-container flex items-center justify-between">
+            <div>
+              <p class="text-[10px] uppercase font-bold text-secondary tracking-wider">Tổng thanh toán</p>
+              <p class="text-[10px] text-secondary">Đã gồm VAT & Ưu đãi VIP</p>
+            </div>
+            <span id="summaryGrandTotal" class="text-2xl font-extrabold text-primary">0 VNĐ</span>
+          </div>
+
+          <!-- Payment Time Options -->
+          <div class="space-y-1 text-xs">
+            <p class="font-bold text-secondary uppercase tracking-wider text-[10px]">Thời điểm thanh toán</p>
+            <div class="grid grid-cols-2 gap-2 p-1 bg-surface-container-low rounded-lg">
+              <button id="payNowBtn" class="py-1.5 rounded-md font-bold bg-primary text-white text-xs shadow-sm">Thanh
+                toán ngay</button>
+              <button id="payLaterBtn"
+                class="py-1.5 rounded-md font-medium text-secondary hover:text-on-surface text-xs transition-colors">Khi
+                nhận đồ (COD)</button>
+            </div>
+          </div>
+
+          <!-- Payment Method Options -->
+          <div id="paymentMethodsContainer" class="space-y-3 text-xs">
+            <p class="font-bold text-secondary uppercase tracking-wider text-[10px]">Phương thức thanh toán</p>
+            <div class="grid grid-cols-2 gap-2">
+              <button id="tabVietQR"
+                class="py-2 rounded-lg bg-primary text-white font-bold text-xs flex items-center justify-center gap-1 shadow-sm">
+                <span class="material-symbols-outlined text-base">qr_code_2</span>
+                <span>VietQR Động</span>
+              </button>
+              <button id="tabCash"
+                class="py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-medium text-xs flex items-center justify-center gap-1 transition-colors">
+                <span class="material-symbols-outlined text-base">payments</span>
+                <span>Tiền Mặt</span>
+              </button>
+            </div>
+
+            <!-- VietQR View Panel -->
+            <div id="qrPanel" class="p-3.5 rounded-lg bg-surface-container-low text-center space-y-2">
+              <div id="qrImgContainer"
+                class="hidden w-36 h-36 mx-auto bg-white p-1 rounded-lg border border-surface-container flex items-center justify-center shadow-sm">
+                <img id="posVietQrImg" src=""
+                  alt="VietQR Live POS" class="w-full h-full object-contain">
+              </div>
+              <div id="qrEmptyState"
+                class="w-36 h-36 mx-auto bg-white p-3 rounded-lg border border-surface-container flex flex-col items-center justify-center shadow-sm text-secondary">
+                <span class="material-symbols-outlined text-3xl text-secondary/40">qr_code_scanner</span>
+                <span class="text-[10px] mt-1 text-center font-medium leading-tight text-secondary">Chọn dịch vụ để tạo mã VietQR</span>
+              </div>
+              <p class="font-bold text-on-surface text-xs flex items-center justify-center gap-1">
+                <span class="material-symbols-outlined text-emerald-600 text-sm">verified</span>
+                Mã VietQR Chuyển Tiền Thật NAPAS 247
+              </p>
+              <p class="text-[10px] text-secondary" id="posBankInfo">MBBank · STK: 0818606505 · TRAN DIEP MINH TRUNG</p>
+              <p class="text-[10px] text-emerald-800 font-semibold bg-emerald-50 py-1 px-2 rounded border border-emerald-200">
+                Khách dùng bất kỳ App Ngân Hàng thật nào quét mã đều chuyển tiền thật chính xác vào tài khoản cửa hàng.
+              </p>
+            </div>
+
+            <!-- Cash View Panel -->
+            <div id="cashPanel" class="hidden p-3.5 rounded-lg bg-surface-container-low space-y-2">
+              <p class="font-bold text-on-surface text-xs">Khách đưa tiền mặt:</p>
+              <div class="grid grid-cols-3 gap-1.5">
+                <button
+                  class="cash-quick-btn py-1 rounded bg-white font-bold text-on-surface border border-surface-container hover:bg-surface-container">100.000đ</button>
+                <button
+                  class="cash-quick-btn py-1 rounded bg-white font-bold text-on-surface border border-surface-container hover:bg-surface-container">200.000đ</button>
+                <button
+                  class="cash-quick-btn py-1 rounded bg-white font-bold text-on-surface border border-surface-container hover:bg-surface-container">500.000đ</button>
+              </div>
+              <div class="flex items-center justify-between pt-1 border-t border-surface-container">
+                <span class="text-secondary">Tiền thừa trả khách:</span>
+                <span id="changeAmount" class="font-bold text-primary text-sm">32,500 VNĐ</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Checkout Action Buttons -->
+          <div class="space-y-2 pt-1">
+            <button id="btnPrintAndSeal"
+              class="w-full py-3 rounded-lg bg-primary hover:bg-primary-container text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-1.5 active:scale-[0.99]">
+              <span class="material-symbols-outlined text-lg">print</span>
+              <span>In Hóa đơn & Tem Mã Vạch Seal</span>
+            </button>
+            <button id="btnSyncApp"
+              class="w-full py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-bold text-xs transition-colors flex items-center justify-center gap-1">
+              <span class="material-symbols-outlined text-base">sync</span>
+              <span>Đồng bộ về App Khách Hàng (WashSmart 3T)</span>
+            </button>
+          </div>
+
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <!-- MODAL: HÓA ĐƠN XEM TRƯỚC & IN NHIỆT (RECEIPT PREVIEW & PRINT) -->
+  <div id="receipt-modal"
+    class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div
+      class="bg-white rounded-xl max-w-sm w-full p-6 text-on-surface space-y-4 shadow-2xl relative border border-gray-200"
+      id="printable-receipt">
+
+      <!-- Modal Header -->
+      <div class="text-center space-y-1 border-b border-dashed border-gray-300 pb-3">
+        <div class="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center font-bold mx-auto mb-1">
+          <span class="material-symbols-outlined text-2xl">local_laundry_service</span>
+        </div>
+        <h2 class="font-extrabold text-base text-gray-900 tracking-tight">WASHSMART 3T LAUNDRY</h2>
+        <p class="text-[11px] text-gray-600">Chi nhánh CS1: Quận 1, TP. Hồ Chí Minh</p>
+        <p class="text-[11px] text-gray-600">Hotline: 1900 3T3T · CSKH: 0908 123 456</p>
+      </div>
+
+      <!-- Receipt Meta Info -->
+      <div class="text-xs space-y-1 text-gray-700">
+        <div class="flex justify-between">
+          <span>Mã đơn hàng:</span>
+          <strong id="receipt-order-id" class="font-mono text-primary">#WS3T-8892</strong>
+        </div>
+        <div class="flex justify-between">
+          <span>Ngày tạo:</span>
+          <span id="receipt-date-time">—</span>
+        </div>
+        <div class="flex justify-between">
+          <span>Thu ngân / Nhân viên:</span>
+          <strong id="receipt-staff-info" class="font-bold text-gray-900">NV-0011 · Đặng Thùy Dương</strong>
+        </div>
+        <div class="flex justify-between">
+          <span>Khách hàng:</span>
+          <strong id="receipt-cust-name">—</strong>
+        </div>
+        <div class="flex justify-between">
+          <span>SĐT liên hệ:</span>
+          <span id="receipt-cust-phone">—</span>
+        </div>
+      </div>
+
+      <!-- Itemized Table -->
+      <div class="border-t border-b border-dashed border-gray-300 py-3 text-xs space-y-2">
+        <div class="flex justify-between font-bold text-gray-900 text-[11px] uppercase">
+          <span>Dịch vụ & Tiện ích</span>
+          <span>Thành tiền</span>
+        </div>
+        <div id="receipt-items-container" class="space-y-1.5">
+          <div class="flex justify-between text-gray-800">
+            <div>
+              <p class="font-semibold">—</p>
+              <p class="text-[10px] text-gray-500">—</p>
+            </div>
+            <span class="font-bold">0 đ</span>
+          </div>
+        </div>
+        <div id="receipt-addon-list" class="space-y-0.5 text-[11px] text-gray-600">
+          <div class="flex justify-between">
+            <span>• Khử khuẩn UV 99.9%</span>
+            <span>0 đ</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Total Calculations -->
+      <div class="text-xs space-y-1.5 pt-1">
+        <div class="flex justify-between text-gray-600">
+          <span>Tạm tính:</span>
+          <span id="receipt-subtotal">75,000 đ</span>
+        </div>
+        <div class="flex justify-between text-primary font-semibold">
+          <span id="receipt-vip-title">Giảm VIP Gold (-10%):</span>
+          <span id="receipt-vip-discount">0 đ</span>
+        </div>
+        <div class="flex justify-between text-sm font-extrabold text-gray-900 pt-1 border-t border-gray-200">
+          <span>TỔNG CỘNG:</span>
+          <span id="receipt-grand-total" class="text-primary text-base">0 VNĐ</span>
+        </div>
+        <div class="flex justify-between text-[11px] text-gray-600 pt-0.5">
+          <span>Thanh toán:</span>
+          <strong id="receipt-pay-method" class="uppercase">VietQR Napas247</strong>
+        </div>
+      </div>
+
+      <!-- Barcode & Seal Simulation -->
+      <div class="text-center pt-2 space-y-1 border-t border-dashed border-gray-300">
+        <p class="text-[10px] font-bold tracking-wider text-gray-500 uppercase">MÃ NIÊM PHONG TÚI GOM GIẶT</p>
+        <p id="receipt-seal-code" class="font-mono text-sm font-extrabold tracking-widest text-primary">#SEAL-3T-8892
+        </p>
+        <p class="text-[10px] text-gray-500">Quét mã QR trên App WashSmart 3T để theo dõi lộ trình mẻ giặt live.</p>
+      </div>
+
+      <!-- Action Buttons (no-print) -->
+      <div class="flex items-center justify-end gap-2 pt-3 border-t border-gray-200 no-print">
+        <button id="close-receipt-modal"
+          class="px-3.5 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-xs font-medium text-gray-700">Đóng</button>
+        <button id="btn-trigger-print"
+          class="px-4 py-1.5 rounded-lg bg-primary hover:bg-primary-container text-white text-xs font-bold flex items-center gap-1 shadow-sm">
+          <span class="material-symbols-outlined text-base">print</span>
+          <span>In Hóa Đơn Tức Thì</span>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Toast Container -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none no-print"></div>
+
+  <!-- Include Backend API Script -->
+  <script src="api.js"></script>
+
+  <!-- JavaScript POS Logic -->
+  <script>
+    let currentCustomer = { name: '', phone: '', tier: 'Khách hàng', points: 0, discount: 0, avatar: 'KH' };
+    let availableServices = [];
+    // Hỗ trợ chọn nhiều dịch vụ khác nhau trong 1 đơn hàng (Ví dụ: Giặt thường 3 kg + Áo lụa 2 cái + Comple 1 bộ)
+    let selectedCart = []; 
+    let activeServiceId = null; 
+    let selectedPaymentMethod = 'BankTransfer';
+    let isPayNow = true;
+    let cashReceived = 0;
+    // Tính phí giao hàng động theo khoảng cách từ địa chỉ khách nhập
+    let currentDeliveryFee = 20000;
+    let currentDistanceKm = 1.7;
+    const STORE_ADDRESS = 'Cửa hàng WashSmart 3T - Chi nhánh CS1, TP.HCM';
+    const HOME_DELIVERY_FEE = 20000;
+
+    function handleLogout(e) { if (e) e.preventDefault(); if (window.Auth) Auth.logout(); else window.location.href = 'login.html'; }
+    function showToast(message, isError = false) {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `pointer-events-auto flex items-center gap-2 px-4 py-2.5 rounded-lg text-xs font-medium text-white shadow-lg ${isError ? 'bg-red-800' : 'bg-zinc-900'}`;
+      const icon = document.createElement('span'); icon.className = 'material-symbols-outlined text-base'; icon.textContent = isError ? 'error' : 'check_circle';
+      const text = document.createElement('span'); text.textContent = message; toast.append(icon, text); container.appendChild(toast); setTimeout(() => toast.remove(), 4000);
+    }
+    function formatCurrency(val) { return new Intl.NumberFormat('vi-VN').format(Math.round(Number(val) || 0)) + ' đ'; }
+    function getNestedPrice(service) {
+      const p = service?.price ?? service?.Price ?? service?.currentPrice ?? service?.CurrentPrice ?? {};
+      return { price: Number(p.price ?? p.Price ?? service.pricePerUnit ?? 0), unit: String(p.unit ?? p.Unit ?? service.unit ?? 'kg'), minimumPrice: Number(p.minimumPrice ?? p.MinimumPrice ?? 0) };
+    }
+    function getServiceId(service) { return Number(service.id ?? service.Id ?? service.serviceId ?? service.ServiceId); }
+    function getServiceName(service) { return String(service.name ?? service.Name ?? service.serviceName ?? service.ServiceName ?? 'Dịch vụ'); }
+
+    async function loadRealServicesFromApi() {
+      const hint = document.getElementById('service-status-hint');
+      const group = document.getElementById('fabricGroup');
+      group.innerHTML = '<p class="col-span-full text-xs text-secondary py-4">Đang tải dịch vụ...</p>';
+      try {
+        if (!window.Api?.Services?.all) throw new Error('Không tìm thấy module API dịch vụ.');
+        const response = await Api.Services.all();
+        const services = Array.isArray(response) ? response : (response?.data ?? response?.items ?? response?.result ?? []);
+        availableServices = services.filter(x => getServiceId(x) > 0 && getNestedPrice(x).price >= 0);
+        if (!availableServices.length) {
+          group.innerHTML = '<p class="col-span-full text-xs text-red-700 py-4">API chưa có dịch vụ đang hoạt động.</p>';
+          hint.textContent = 'Không có dịch vụ'; selectedCart = []; activeServiceId = null; updateBillCalculations(); return;
+        }
+        // Khởi tạo giỏ hàng trống - không tự động gán dịch vụ mặc định
+        selectedCart = [];
+        activeServiceId = null;
+        hint.textContent = `Đã tải ${availableServices.length} dịch vụ từ API`;
+        renderFabricCards();
+      } catch (error) {
+        console.error(error); availableServices = []; selectedCart = []; activeServiceId = null;
+        group.innerHTML = '<p class="col-span-full text-xs text-red-700 py-4">Không tải được dịch vụ từ API. Kiểm tra backend và nhấn tải lại trang.</p>';
+        hint.textContent = 'Lỗi kết nối API'; showToast('Không tải được dịch vụ từ máy chủ.', true);
+      }
+      updateBillCalculations();
+    }
+
+    function renderFabricCards() {
+      const group = document.getElementById('fabricGroup');
+      if (!group) return;
+      group.replaceChildren();
+      availableServices.forEach((service) => {
+        const price = getNestedPrice(service); 
+        const id = getServiceId(service); 
+        const name = getServiceName(service);
+        const inCart = selectedCart.find(x => x.serviceId === id);
+        const isActive = activeServiceId === id;
+
+        const card = document.createElement('button'); 
+        card.type = 'button';
+        card.className = `fabric-card text-left cursor-pointer p-3 rounded-lg text-on-surface flex flex-col justify-between min-h-28 transition-all relative ${
+          inCart 
+            ? (isActive ? 'bg-red-50 border-2 border-primary shadow-sm' : 'bg-red-50/60 border-2 border-primary/60') 
+            : 'bg-surface-container-low border border-surface-container hover:border-outline'
+        }`;
+        card.dataset.serviceId = String(id);
+
+        const top = document.createElement('div'); 
+        top.className = 'flex items-center justify-between w-full';
+        const icon = document.createElement('span'); 
+        icon.className = 'material-symbols-outlined text-primary text-xl'; 
+        icon.textContent = 'local_laundry_service';
+        
+        const topEnd = document.createElement('div');
+        topEnd.className = 'flex items-center gap-1';
+        if (inCart) {
+          const qtyBadge = document.createElement('span');
+          qtyBadge.className = 'px-1.5 py-0.5 rounded-full bg-primary text-white font-bold text-[10px] leading-tight';
+          qtyBadge.textContent = `${inCart.quantity} ${inCart.unit}`;
+          const badge = document.createElement('span'); 
+          badge.className = 'material-symbols-outlined text-primary text-base'; 
+          badge.textContent = 'check_circle';
+          topEnd.append(qtyBadge, badge);
+        }
+        top.append(icon, topEnd);
+
+        const info = document.createElement('div'); 
+        const title = document.createElement('p'); 
+        title.className = 'font-bold text-xs text-on-surface'; 
+        title.textContent = name;
+        const cost = document.createElement('p'); 
+        cost.className = 'text-[11px] text-secondary font-semibold'; 
+        cost.textContent = `${formatCurrency(price.price)} / ${price.unit}${price.minimumPrice > 0 ? ` · tối thiểu ${formatCurrency(price.minimumPrice)}` : ''}`;
+        info.append(title, cost); 
+        
+        card.append(top, info); 
+        card.addEventListener('click', () => toggleOrSelectService(service)); 
+        group.appendChild(card);
+      });
+    }
+
+    function toggleOrSelectService(service) {
+      const id = getServiceId(service);
+      const existing = selectedCart.find(x => x.serviceId === id);
+      if (!existing) {
+        const price = getNestedPrice(service);
+        const isKg = (price.unit || '').toLowerCase().includes('kg');
+        selectedCart.push({
+          serviceId: id,
+          name: getServiceName(service),
+          price: price.price,
+          unit: price.unit || 'kg',
+          minimumPrice: price.minimumPrice || 0,
+          quantity: isKg ? 3.0 : 1.0
+        });
+        activeServiceId = id;
+        showToast(`Đã thêm "${getServiceName(service)}" vào đơn.`);
+      } else {
+        // Đã có trong đơn -> chọn làm dịch vụ kích hoạt cho cân
+        activeServiceId = id;
+      }
+      renderFabricCards();
+      updateBillCalculations();
+    }
+
+    function changeServiceQuantity(serviceId, delta, event) {
+      if (event) event.stopPropagation();
+      const item = selectedCart.find(x => x.serviceId === serviceId);
+      if (!item) return;
+      const isKg = item.unit.toLowerCase().includes('kg');
+      const step = isKg ? 0.5 : 1.0;
+      const newQty = Math.max(isKg ? 0.5 : 1.0, Math.round((item.quantity + (delta > 0 ? step : -step)) * 10) / 10);
+      item.quantity = newQty;
+      activeServiceId = serviceId;
+      renderFabricCards();
+      updateBillCalculations();
+    }
+
+    function setServiceQuantityManual(serviceId, val) {
+      const num = parseFloat(val);
+      const item = selectedCart.find(x => x.serviceId === serviceId);
+      if (!item) return;
+      if (Number.isFinite(num) && num > 0) {
+        item.quantity = Math.round(num * 100) / 100;
+      }
+      activeServiceId = serviceId;
+      renderFabricCards();
+      updateBillCalculations();
+    }
+
+    function removeServiceFromCart(serviceId, event) {
+      if (event) event.stopPropagation();
+      const item = selectedCart.find(x => x.serviceId === serviceId);
+      selectedCart = selectedCart.filter(x => x.serviceId !== serviceId);
+      if (activeServiceId === serviceId) {
+        activeServiceId = selectedCart.length ? selectedCart[0].serviceId : null;
+      }
+      showToast(`Đã bỏ "${item?.name || 'dịch vụ'}" khỏi đơn.`);
+      renderFabricCards();
+      updateBillCalculations();
+    }
+
+    function isHomeDelivery() { return document.querySelector('input[name="returnMethod"]:checked')?.value === 'home'; }
+
+    function updateBillCalculations() {
+      // 1. Dịch vụ đang kích hoạt trên cân
+      const activeItem = selectedCart.find(x => x.serviceId === activeServiceId) || (selectedCart.length ? selectedCart[0] : null);
+      if (activeItem && activeServiceId !== activeItem.serviceId) {
+        activeServiceId = activeItem.serviceId;
+      }
+      const weightEl = document.getElementById('weightDisplay'); 
+      if (weightEl) weightEl.textContent = activeItem ? Number(activeItem.quantity).toFixed(2) : '0.00';
+      const unitEl = document.getElementById('weightUnit'); 
+      if (unitEl) unitEl.textContent = activeItem?.unit || 'kg';
+      const activeNameEl = document.getElementById('scaleActiveServiceName');
+      if (activeNameEl) activeNameEl.textContent = activeItem ? activeItem.name : 'Chưa chọn dịch vụ';
+      const side = document.getElementById('scale-sidebar-display'); 
+      if (side) side.textContent = activeItem ? `${Number(activeItem.quantity).toFixed(2)} ${activeItem.unit}` : '0.00 kg';
+
+      // 2. Tính tiền các dịch vụ trong đơn
+      let serviceTotal = 0;
+      const listContainer = document.getElementById('selectedServicesList');
+      if (listContainer) {
+        listContainer.replaceChildren();
+        if (selectedCart.length === 0) {
+          const empty = document.createElement('p');
+          empty.className = 'text-secondary text-center py-3 italic';
+          empty.textContent = 'Chưa chọn dịch vụ nào. Bấm vào các thẻ dịch vụ bên trái để thêm vào đơn.';
+          listContainer.appendChild(empty);
+        } else {
+          selectedCart.forEach(item => {
+            const rawBase = item.quantity * item.price;
+            const lineTotal = item.quantity > 0 ? Math.max(rawBase, item.minimumPrice || 0) : 0;
+            item.totalPrice = lineTotal;
+            serviceTotal += lineTotal;
+
+            const row = document.createElement('div');
+            const isActive = item.serviceId === activeServiceId;
+            row.className = `p-2.5 rounded-lg bg-white border ${isActive ? 'border-primary ring-1 ring-primary/30' : 'border-surface-container'} flex items-start justify-between gap-2 shadow-xs transition-all`;
+            row.innerHTML = `
+              <div class="min-w-0 flex-1">
+                <div class="flex items-center gap-1.5 cursor-pointer" onclick="activeServiceId = ${item.serviceId}; renderFabricCards(); updateBillCalculations();">
+                  <span class="material-symbols-outlined text-primary text-sm">local_laundry_service</span>
+                  <p class="font-bold text-on-surface text-xs truncate ${isActive ? 'text-primary' : ''}">${item.name}</p>
+                </div>
+                <div class="flex items-center gap-1 mt-1.5">
+                  <button type="button" onclick="changeServiceQuantity(${item.serviceId}, -0.5, event)" class="w-6 h-6 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-bold text-xs flex items-center justify-center transition-colors">-</button>
+                  <input type="number" step="any" min="0.1" value="${item.quantity}" onchange="setServiceQuantityManual(${item.serviceId}, this.value)" class="w-14 text-center text-xs font-bold text-primary bg-surface-container-low border border-surface-container rounded py-0.5" />
+                  <span class="text-[11px] font-semibold text-secondary mr-1">${item.unit}</span>
+                  <button type="button" onclick="changeServiceQuantity(${item.serviceId}, 0.5, event)" class="w-6 h-6 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-bold text-xs flex items-center justify-center transition-colors">+</button>
+                  <span class="text-[10px] text-secondary ml-1">× ${formatCurrency(item.price)}</span>
+                </div>
+              </div>
+              <div class="text-right flex flex-col items-end justify-between self-stretch">
+                <span class="font-bold text-on-surface text-xs">${formatCurrency(lineTotal)}</span>
+                <button type="button" onclick="removeServiceFromCart(${item.serviceId}, event)" class="text-[10px] text-red-600 hover:text-red-800 font-semibold flex items-center gap-0.5 mt-1">
+                  <span class="material-symbols-outlined text-xs">delete</span> Xóa
+                </button>
+              </div>
+            `;
+            listContainer.appendChild(row);
+          });
+        }
+      }
+
+      const cartBadge = document.getElementById('cartCountBadge');
+      if (cartBadge) cartBadge.textContent = selectedCart.length;
+
+      // 3. Phụ phí & Giao nhận (Tính phí ship theo địa chỉ giao tận nhà thực tế)
+      const addonUV = document.getElementById('addonUV')?.checked ? 0 : 0;
+      const addonComfort = document.getElementById('addonComfort')?.checked ? 10000 : 0;
+      const addonBag = document.getElementById('addonBag')?.checked ? 5000 : 0;
+      const deliveryFee = isHomeDelivery() ? currentDeliveryFee : 0;
+      const subtotal = serviceTotal + addonComfort + addonBag + deliveryFee;
+      const discount = 0, grandTotal = subtotal;
+
+      const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+      set('summarySubtotal', formatCurrency(subtotal));
+      set('summaryVipDiscount', formatCurrency(-discount)); 
+      set('summaryGrandTotal', formatCurrency(grandTotal).replace('đ', 'VNĐ'));
+      set('vip-discount-label', 'Ưu đãi thành viên');
+
+      const cr = document.getElementById('summaryComfortRow'); if (cr) cr.style.display = addonComfort ? 'flex' : 'none';
+      const br = document.getElementById('summaryBagRow'); if (br) br.style.display = addonBag ? 'flex' : 'none';
+      let deliveryRow = document.getElementById('summaryDeliveryRow');
+      if (!deliveryRow) { 
+        const parent = document.getElementById('summarySubtotal')?.parentElement?.parentElement; 
+        if (parent) { 
+          deliveryRow = document.createElement('div'); 
+          deliveryRow.id = 'summaryDeliveryRow'; 
+          deliveryRow.className = 'hidden justify-between items-center text-secondary'; 
+          deliveryRow.innerHTML = '<span>Phí giao tận nhà</span><span id="summaryDeliveryFee" class="font-bold"></span>'; 
+          parent.insertBefore(deliveryRow, parent.firstChild); 
+        } 
+      }
+      if (deliveryRow) { 
+        deliveryRow.classList.toggle('hidden', !deliveryFee); 
+        deliveryRow.innerHTML = `<span>Phí giao tận nhà (${currentDistanceKm} km)</span><span id="summaryDeliveryFee" class="font-bold">${formatCurrency(deliveryFee)}</span>`;
+      }
+      const change = Math.max(0, cashReceived - grandTotal); set('changeAmount', formatCurrency(change).replace('đ', 'VNĐ'));
+      const posQr = document.getElementById('posVietQrImg');
+      const qrContainer = document.getElementById('qrImgContainer');
+      const qrEmpty = document.getElementById('qrEmptyState');
+      if (grandTotal > 0) {
+        if (posQr) {
+          posQr.src = 'https://img.vietqr.io/image/' + currentBankConfig.bankBin + '-' + currentBankConfig.bankAccountNo + '-compact2.png?amount=' + grandTotal + '&addInfo=WS3T%20QUAY&accountName=' + encodeURIComponent(currentBankConfig.bankAccountHolder);
+        }
+        if (qrContainer) qrContainer.classList.remove('hidden');
+        if (qrEmpty) qrEmpty.classList.add('hidden');
+      } else {
+        if (qrContainer) qrContainer.classList.add('hidden');
+        if (qrEmpty) qrEmpty.classList.remove('hidden');
+      }
+      return { subtotal, discount, grandTotal, serviceTotal, addonUV, addonComfort, addonBag, deliveryFee };
+    }
+    async function lookupCustomer() {
+      const phone = document.getElementById('customerPhoneInput').value.replace(/\D/g, '');
+      const name = document.getElementById('customerNameInput').value.trim();
+      const status = document.getElementById('customer-lookup-status');
+      if (phone.length < 9 || phone.length > 11) { showToast('Vui lòng nhập số điện thoại hợp lệ.', true); return; }
+      try {
+        const found = await Api.get(`/Orders/pos/customer?phone=${encodeURIComponent(phone)}`);
+        if (found && (found.found ?? found.Found)) {
+          const foundName = found.fullName ?? found.FullName ?? '';
+          document.getElementById('customerNameInput').value = foundName || name;
+          document.getElementById('cust-name-text').textContent = foundName || 'Đã tìm thấy khách hàng';
+          document.getElementById('cust-avatar-text').textContent = (foundName || 'KH').trim().split(/\s+/).slice(-1)[0].slice(0, 2).toUpperCase();
+          status.textContent = 'Đã tìm thấy khách hàng trong hệ thống.';
+        } else { document.getElementById('cust-name-text').textContent = name || 'Khách hàng mới'; document.getElementById('cust-avatar-text').textContent = 'KH'; status.textContent = 'Chưa có hồ sơ theo số điện thoại; sẽ tạo hồ sơ khi lập đơn.'; }
+      } catch (e) { status.textContent = 'Chưa tra cứu được. Có thể tiếp tục nhập thông tin; máy chủ sẽ kiểm tra khi tạo đơn.'; showToast(e.message || 'Không tra cứu được khách hàng.', true); }
+    }
+    document.getElementById('btnSearchCustomer')?.addEventListener('click', lookupCustomer);
+    document.getElementById('customerNameInput')?.addEventListener('input', e => { document.getElementById('cust-name-text').textContent = e.target.value.trim() || 'Khách hàng mới / chưa tra cứu'; });
+    document.getElementById('btnPlusWeight')?.addEventListener('click', () => {
+      const activeItem = selectedCart.find(x => x.serviceId === activeServiceId) || (selectedCart.length ? selectedCart[0] : null);
+      if (!activeItem) { showToast('Vui lòng chọn dịch vụ trước khi cân.', true); return; }
+      changeServiceQuantity(activeItem.serviceId, 0.5);
+    });
+    document.getElementById('btnMinusWeight')?.addEventListener('click', () => {
+      const activeItem = selectedCart.find(x => x.serviceId === activeServiceId) || (selectedCart.length ? selectedCart[0] : null);
+      if (!activeItem) return;
+      changeServiceQuantity(activeItem.serviceId, -0.5);
+    });
+    document.getElementById('btnRescale')?.addEventListener('click', () => { 
+      const activeItem = selectedCart.find(x => x.serviceId === activeServiceId) || (selectedCart.length ? selectedCart[0] : null);
+      if (!activeItem) { showToast('Vui lòng chọn dịch vụ cần cân.', true); return; }
+      showToast(`Cân điện tử kết nối COM3: Đang đọc trọng lượng cho ${activeItem.name}...`);
+      document.getElementById('btnManualWeight')?.click(); 
+    });
+    document.getElementById('btnManualWeight')?.addEventListener('click', () => { 
+      const activeItem = selectedCart.find(x => x.serviceId === activeServiceId) || (selectedCart.length ? selectedCart[0] : null);
+      if (!activeItem) { showToast('Vui lòng chọn dịch vụ cần nhập số lượng.', true); return; }
+      const input = prompt(`Nhập ${activeItem.unit} thực tế cho "${activeItem.name}":`, activeItem.quantity > 0 ? activeItem.quantity : ''); 
+      if (input !== null && input.trim() !== '' && Number.isFinite(Number(input)) && Number(input) > 0) { 
+        setServiceQuantityManual(activeItem.serviceId, input);
+      } else if (input !== null) { 
+        showToast('Số lượng phải lớn hơn 0.', true); 
+      } 
+    });
+    document.getElementById('addonComfort')?.addEventListener('change', updateBillCalculations);
+    document.getElementById('addonBag')?.addEventListener('change', updateBillCalculations);
+    
+    async function recalculateDeliveryFeeFromAddress(address) {
+      const addr = (address || '').trim();
+      if (!addr) {
+        currentDeliveryFee = 20000;
+        currentDistanceKm = 1.7;
+        updateBillCalculations();
+        return;
+      }
+      try {
+        const res = await Api.get('/Orders/calculate-shipping-fee?address=' + encodeURIComponent(addr));
+        if (res && res.shippingFee != null) {
+          currentDeliveryFee = Number(res.shippingFee);
+          currentDistanceKm = Number(res.distanceKm || 1.7);
+          const minText = document.getElementById('deliveryMinutesText');
+          if (minText && res.estimatedMinutes) minText.textContent = `~${res.estimatedMinutes} phút`;
+        }
+      } catch (_) {
+        const q = addr.toLowerCase();
+        if (q.includes('nguyễn sỹ sách')) { currentDistanceKm = 1.7; currentDeliveryFee = 20000; }
+        else if (q.includes('tân bình') || q.includes('tân phú') || q.includes('trường chinh')) { currentDistanceKm = 3.2; currentDeliveryFee = 30000; }
+        else if (q.includes('quận 1') || q.includes('quận 3') || q.includes('bến thành') || q.includes('quận 10')) { currentDistanceKm = 5.8; currentDeliveryFee = 30000; }
+        else if (q.includes('quận 7') || q.includes('thủ đức') || q.includes('lotte') || q.includes('quận 2')) { currentDistanceKm = 11.5; currentDeliveryFee = 45000; }
+        else { currentDistanceKm = 2.0; currentDeliveryFee = 20000; }
+      }
+
+      const kmEl = document.getElementById('deliveryKmText');
+      if (kmEl) kmEl.textContent = `${currentDistanceKm} km`;
+      const badgeEl = document.getElementById('calculatedDistanceBadge');
+      if (badgeEl) badgeEl.textContent = `Cách cửa hàng: ${currentDistanceKm} km`;
+      const feeEl = document.getElementById('deliveryFeeText');
+      if (feeEl) feeEl.textContent = formatCurrency(currentDeliveryFee);
+
+      updateBillCalculations();
+    }
+document.querySelectorAll('input[name="returnMethod"]').forEach(el => el.addEventListener('change', () => { 
+      const isHome = isHomeDelivery();
+      document.getElementById('homeDeliveryAddressBox').classList.toggle('hidden', !isHome); 
+      if (isHome) {
+        const addr = document.getElementById('homeDeliveryAddress')?.value || '';
+        recalculateDeliveryFeeFromAddress(addr);
+      } else {
+        updateBillCalculations();
+      }
+    }));
+
+    // Gắn sự kiện tính phí ship theo địa chỉ
+    document.querySelectorAll('.addr-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const addr = btn.dataset.addr;
+        const input = document.getElementById('homeDeliveryAddress');
+        if (input) {
+          input.value = addr;
+          recalculateDeliveryFeeFromAddress(addr);
+          showToast(`Đã chọn địa chỉ: ${addr}`);
+        }
+      });
+    });
+
+    let addrDebounce = null;
+    document.getElementById('homeDeliveryAddress')?.addEventListener('input', (e) => {
+      clearTimeout(addrDebounce);
+      addrDebounce = setTimeout(() => {
+        recalculateDeliveryFeeFromAddress(e.target.value);
+      }, 400);
+    });
+
+
+    const tabVietQR = document.getElementById('tabVietQR'), tabCash = document.getElementById('tabCash');
+    const qrPanel = document.getElementById('qrPanel'), cashPanel = document.getElementById('cashPanel');
+    tabVietQR?.addEventListener('click', () => { selectedPaymentMethod = 'BankTransfer'; tabVietQR.className = 'py-2 rounded-lg bg-primary text-white font-bold text-xs flex items-center justify-center gap-1 shadow-sm'; tabCash.className = 'py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-medium text-xs flex items-center justify-center gap-1 transition-colors'; qrPanel.classList.remove('hidden'); cashPanel.classList.add('hidden'); });
+    tabCash?.addEventListener('click', () => { selectedPaymentMethod = 'Cash'; tabCash.className = 'py-2 rounded-lg bg-primary text-white font-bold text-xs flex items-center justify-center gap-1 shadow-sm'; tabVietQR.className = 'py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-medium text-xs flex items-center justify-center gap-1 transition-colors'; cashPanel.classList.remove('hidden'); qrPanel.classList.add('hidden'); });
+    document.querySelectorAll('.cash-quick-btn').forEach(btn => btn.addEventListener('click', () => { cashReceived = Number(btn.textContent.replace(/\D/g, '')) || 0; document.querySelectorAll('.cash-quick-btn').forEach(b => b.classList.remove('active', 'bg-primary', 'text-white')); btn.classList.add('active', 'bg-primary', 'text-white'); updateBillCalculations(); }));
+    const payNowBtn = document.getElementById('payNowBtn'), payLaterBtn = document.getElementById('payLaterBtn');
+    payNowBtn?.addEventListener('click', () => { isPayNow = true; payNowBtn.className = 'py-1.5 rounded-md font-bold bg-primary text-white text-xs shadow-sm'; payLaterBtn.className = 'py-1.5 rounded-md font-medium text-secondary hover:text-on-surface text-xs transition-colors'; });
+    payLaterBtn?.addEventListener('click', () => { isPayNow = false; payLaterBtn.className = 'py-1.5 rounded-md font-bold bg-primary text-white text-xs shadow-sm'; payNowBtn.className = 'py-1.5 rounded-md font-medium text-secondary hover:text-on-surface text-xs transition-colors'; showToast('Đã chọn thu tiền khi giao đồ (COD).'); });
+
+    const receiptModal = document.getElementById('receipt-modal'); const btnPrintAndSeal = document.getElementById('btnPrintAndSeal');
+    btnPrintAndSeal?.addEventListener('click', async () => {
+      const phone = document.getElementById('customerPhoneInput').value.replace(/\D/g, '').trim();
+      const customerName = document.getElementById('customerNameInput').value.trim();
+      const address = document.getElementById('homeDeliveryAddress').value.trim();
+      const calc = updateBillCalculations();
+      if (!customerName) { showToast('Vui lòng nhập họ tên khách hàng.', true); return; }
+      if (phone.length < 9 || phone.length > 11) { showToast('Vui lòng nhập số điện thoại hợp lệ.', true); return; }
+      if (selectedCart.length === 0) { showToast('Vui lòng chọn ít nhất một dịch vụ giặt.', true); return; }
+      if (selectedCart.some(x => !(x.quantity > 0))) { showToast('Tất cả các dịch vụ phải có số lượng lớn hơn 0.', true); return; }
+      if (isHomeDelivery() && !address) { showToast('Vui lòng nhập địa chỉ giao đồ sạch.', true); return; }
+      if (selectedPaymentMethod === 'Cash' && isPayNow && cashReceived < calc.grandTotal) { showToast('Chọn mệnh giá tiền khách đã đưa đủ tổng thanh toán.', true); return; }
+      btnPrintAndSeal.disabled = true; btnPrintAndSeal.innerText = 'Đang tạo đơn trên máy chủ...';
+      try {
+        const orderItemsPayload = selectedCart.map(item => ({
+          serviceId: item.serviceId,
+          quantity: item.quantity
+        }));
+        const servicesSummaryText = selectedCart.map(item => `${item.name}: ${item.quantity} ${item.unit}`).join(', ');
+        const notes = [`Nguồn: POS quầy`, `Họ tên khách: ${customerName}`, `Chi tiết dịch vụ: ${servicesSummaryText}`, `Hình thức nhận đồ sau giặt: ${isHomeDelivery() ? 'Giao tận nhà' : 'Khách tự đến cửa hàng lấy'}`, `Phương thức thanh toán: ${selectedPaymentMethod}`, `Thời điểm thu tiền: ${isPayNow ? 'Tại quầy khi tiếp nhận' : 'COD khi giao đồ'}`, `Tiện ích: ${[document.getElementById('addonUV').checked ? 'Khử khuẩn UV' : null, calc.addonComfort ? 'Nước xả Comfort (+10.000đ)' : null, calc.addonBag ? 'Túi giặt bảo vệ (+5.000đ)' : null].filter(Boolean).join(', ') || 'Không có'}`, `Phụ phí tiện ích: ${calc.addonComfort + calc.addonBag}đ`, `Phí giao hàng: ${calc.deliveryFee}đ`];
+        const newOrder = await Api.post('/Orders/pos', { customerName, contactPhone: phone, pickupAddress: STORE_ADDRESS, deliveryAddress: isHomeDelivery() ? address : STORE_ADDRESS, deliveryMethod: isHomeDelivery() ? 'HomeDelivery' : 'StorePickup', deliveryFee: calc.deliveryFee, addonFee: calc.addonComfort + calc.addonBag, cashReceived, paymentMethod: selectedPaymentMethod, paymentTiming: isPayNow ? 'PayNow' : 'COD', note: notes.join('\n'), items: orderItemsPayload });
+        const orderId = newOrder.orderId ?? newOrder.id ?? newOrder.Id;
+        if (!orderId) throw new Error('Máy chủ không trả về mã đơn. Không thể xác nhận tạo đơn.');
+        const now = new Date(); const dateTimeStr = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(now);
+        const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
+        const savedCustomerName = newOrder.customerName ?? customerName; set('receipt-order-id', '#WS3T-' + String(orderId).padStart(4, '0')); set('receipt-seal-code', '#SEAL-3T-' + orderId); set('seal-header-code', '#SEAL-3T-' + orderId); set('receipt-date-time', dateTimeStr); set('receipt-cust-name', savedCustomerName); const curStaffName = (window.Auth && Auth.getFullName()) ? Auth.getFullName() : 'Đặng Thùy Dương'; set('receipt-staff-info', 'NV-0011 · ' + curStaffName); set('receipt-cust-phone', phone);
+        
+        // Render itemized services in Receipt Modal
+        const itemsContainer = document.getElementById('receipt-items-container');
+        if (itemsContainer) {
+          itemsContainer.replaceChildren();
+          selectedCart.forEach(item => {
+            const row = document.createElement('div');
+            row.className = 'flex justify-between text-gray-800 py-0.5 border-b border-gray-100 last:border-0';
+            row.innerHTML = `
+              <div>
+                <p class="font-semibold text-gray-900">${item.name}</p>
+                <p class="text-[10px] text-gray-500">${item.quantity} ${item.unit} × ${formatCurrency(item.price)}</p>
+              </div>
+              <span class="font-bold">${formatCurrency(item.totalPrice)}</span>
+            `;
+            itemsContainer.appendChild(row);
+          });
+        }
+        
+        const addonList = document.getElementById('receipt-addon-list'); addonList.replaceChildren();
+        const rows = [['Khử khuẩn UV', document.getElementById('addonUV').checked ? 0 : null], ['Nước xả Comfort', calc.addonComfort || null], ['Túi giặt bảo vệ', calc.addonBag || null], ['Phí giao tận nhà (' + currentDistanceKm + ' km)', calc.deliveryFee || null]].filter(x => x[1] !== null);
+        rows.forEach(([name, amount]) => { const row = document.createElement('div'); row.className = 'flex justify-between'; const left = document.createElement('span'); left.textContent = '• ' + name; const right = document.createElement('span'); right.textContent = formatCurrency(amount); row.append(left, right); addonList.appendChild(row); });
+        set('receipt-subtotal', formatCurrency(calc.grandTotal)); set('receipt-vip-title', 'Ưu đãi thành viên:'); set('receipt-vip-discount', formatCurrency(0)); set('receipt-grand-total', formatCurrency(newOrder.totalAmount ?? newOrder.TotalAmount ?? calc.grandTotal).replace('đ', 'VNĐ')); set('receipt-pay-method', `${selectedPaymentMethod} · ${isPayNow ? 'Thu tại quầy' : 'COD khi giao đồ'}`);
+        receiptModal.classList.remove('hidden'); receiptModal.classList.add('flex'); showToast(`Đã tạo đơn #WS3T-${orderId}. ${newOrder.paymentStatus === 'Pending' ? 'Thanh toán đang chờ xác nhận.' : 'Đã ghi nhận thanh toán tiền mặt tại quầy.'}`);
+      } catch (err) { showToast('Không tạo được đơn: ' + (err.message || 'Lỗi API'), true); }
+      finally { btnPrintAndSeal.disabled = false; btnPrintAndSeal.innerHTML = '<span class="material-symbols-outlined text-lg">print</span><span>In Hóa đơn & Tem Mã Vạch Seal</span>'; }
+    });
+    document.getElementById('close-receipt-modal')?.addEventListener('click', () => { receiptModal.classList.add('hidden'); receiptModal.classList.remove('flex'); });
+    document.getElementById('btn-trigger-print')?.addEventListener('click', () => window.print());
+    document.getElementById('btnSyncApp')?.addEventListener('click', () => showToast('Chức năng đồng bộ App chưa có API backend tương ứng.', true));
+    let currentBankConfig = {
+      bankName: 'MBBank (Ngân hàng Quân Đội)',
+      bankBin: '970422',
+      bankAccountNo: '0818606505',
+      bankAccountHolder: 'TRAN DIEP MINH TRUNG'
+    };
+    async function loadStoreBankConfig() {
+      try {
+        const cfg = await Api.get('/StoreConfig');
+        if (cfg) {
+          if (cfg.bankBin) currentBankConfig.bankBin = cfg.bankBin;
+          if (cfg.bankAccountNo) currentBankConfig.bankAccountNo = cfg.bankAccountNo;
+          if (cfg.bankAccountHolder) currentBankConfig.bankAccountHolder = cfg.bankAccountHolder;
+          if (cfg.bankName) currentBankConfig.bankName = cfg.bankName;
+          const posBankInfo = document.getElementById('posBankInfo');
+          if (posBankInfo) {
+            posBankInfo.textContent = currentBankConfig.bankName + ' · STK: ' + currentBankConfig.bankAccountNo + ' · ' + currentBankConfig.bankAccountHolder;
+          }
+        }
+      } catch (e) {}
+    }
+
+    (async () => {
+      await loadStoreBankConfig();
+      if (!localStorage.getItem('ws_token')) {
+        try {
+          const res = await fetch('http://localhost:5085/api/Auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: '0900000000', password: '123456' })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            localStorage.setItem('ws_token', data.token);
+            localStorage.setItem('ws_role', 'Admin');
+            localStorage.setItem('ws_fullname', 'Nguyễn Kiều Như');
+          }
+        } catch (e) {}
+      }
+      await loadRealServicesFromApi();
+      updateBillCalculations();
+    })();
+  </script>
+</body>
+
+</html>

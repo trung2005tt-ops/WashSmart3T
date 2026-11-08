@@ -1,0 +1,87 @@
+# ==============================================================================
+# WashSmart 3T - Root .gitignore for Graduation Thesis Monorepo
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Operating System & Temp Files
+# ------------------------------------------------------------------------------
+Thumbs.db
+desktop.ini
+.DS_Store
+*.tmp
+*.temp
+chrome_temp_*
+
+# ------------------------------------------------------------------------------
+# 2. Visual Studio & .NET (WashSmart3T_Backend)
+# ------------------------------------------------------------------------------
+**/bin/
+**/obj/
+.vs/
+**/.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+WashSmart3T_Backend/bin/
+WashSmart3T_Backend/obj/
+WashSmart3T_Backend/.vs/
+
+# ------------------------------------------------------------------------------
+# 3. Flutter & Dart (WashSmart3T_Mobile)
+# ------------------------------------------------------------------------------
+.dart_tool/
+**/.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+**/build/
+WashSmart3T_Mobile/build/
+WashSmart3T_Mobile/.dart_tool/
+
+# Flutter Android
+**/android/.gradle/
+**/android/local.properties
+**/android/key.properties
+**/android/app/build/
+**/android/captures/
+*.keystore
+*.jks
+
+# Flutter iOS
+**/ios/Pods/
+**/ios/.symlinks/
+**/ios/Flutter/Flutter.framework
+**/ios/Flutter/Flutter.podspec
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/app.flx
+**/ios/Flutter/app.zip
+**/ios/Flutter/flutter_assets/
+**/ios/DerivedData/
+
+# Flutter Web & Symbol files
+*.js.map
+*.wasm.map
+
+# ------------------------------------------------------------------------------
+# 4. Web & Node.js (WashSmart3T_Web)
+# ------------------------------------------------------------------------------
+node_modules/
+**/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ------------------------------------------------------------------------------
+# 5. IDEs & Editors
+# ------------------------------------------------------------------------------
+.idea/
+**/.idea/
+*.iml
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json

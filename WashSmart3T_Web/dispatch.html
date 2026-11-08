@@ -1,0 +1,1917 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>Điều Phối Shipper, Bản Đồ Live & Định Tuyến Ghép Đơn - WashSmart 3T</title>
+
+  <!-- Fonts & Icons -->
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0"
+    rel="stylesheet">
+
+  <!-- Leaflet CSS & JS for Interactive Google Maps-like Experience -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      overscroll-behavior: none;
+    }
+
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    /* Custom Leaflet Map Pin Styles */
+    .store-pin-beacon {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .store-pin-pulse {
+      position: absolute;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(142, 0, 40, 0.35);
+      animation: storePulse 2s infinite ease-out;
+    }
+    @keyframes storePulse {
+      0% { transform: scale(0.6); opacity: 1; }
+      100% { transform: scale(1.8); opacity: 0; }
+    }
+    .store-pin-icon {
+      position: relative;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: #8e0028;
+      color: white;
+      border: 3px solid #ffffff;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 16px;
+    }
+
+    .order-stop-pin {
+      position: relative;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: 13px;
+      border: 2px solid white;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+      transition: transform 0.2s ease;
+    }
+    .order-stop-pin:hover {
+      transform: scale(1.15);
+      z-index: 1000 !important;
+    }
+    .order-stop-pin.pickup {
+      background: linear-gradient(135deg, #d97706, #b45309);
+    }
+    .order-stop-pin.delivery {
+      background: linear-gradient(135deg, #10b981, #047857);
+    }
+    .order-stop-pin.bundled {
+      background: linear-gradient(135deg, #8e0028, #b90538);
+      ring: 3px solid #fecdd3;
+    }
+
+    .shipper-bike-pin {
+      position: relative;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #0284c7;
+      color: white;
+      border: 3px solid white;
+      box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .shipper-pulse-ring {
+      position: absolute;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: rgba(2, 132, 199, 0.3);
+      animation: bikePulse 1.8s infinite;
+    }
+    @keyframes bikePulse {
+      0% { transform: scale(0.7); opacity: 1; }
+      100% { transform: scale(1.6); opacity: 0; }
+    }
+
+    /* Leaflet popup styling */
+    .leaflet-popup-content-wrapper {
+      border-radius: 14px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.15), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      padding: 0;
+      overflow: hidden;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .leaflet-popup-content {
+      margin: 0;
+      line-height: 1.4;
+    }
+  </style>
+
+  <!-- Tailwind CSS Config -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            "primary": "#8e0028",
+            "primary-container": "#b90538",
+            "primary-fixed": "#ffdadb",
+            "surface": "#fff8f9",
+            "surface-container-low": "#f9f2f3",
+            "surface-container": "#f3eced",
+            "surface-container-high": "#ede7e8",
+            "surface-card": "#ffffff",
+            "on-surface": "#1d1b1c",
+            "secondary": "#6a5b5e",
+            "outline": "#8f6f70",
+            "outline-variant": "#e3bdbf",
+          }
+        }
+      }
+    };
+  </script>
+</head>
+
+<body class="bg-surface text-on-surface antialiased text-sm">
+
+  <!-- Sidebar Navigation -->
+  <aside class="fixed left-0 top-0 h-full w-64 bg-primary text-white z-40 flex flex-col justify-between shadow-lg">
+    <div class="flex flex-col">
+      <!-- Logo -->
+      <div class="p-5 flex items-center gap-3 border-b border-white/10">
+        <div class="w-10 h-10 rounded-xl bg-white text-primary flex items-center justify-center font-bold shadow-sm">
+          <span class="material-symbols-outlined text-2xl">local_laundry_service</span>
+        </div>
+        <div>
+          <h2 class="font-bold text-base leading-tight">WashSmart 3T</h2>
+          <p class="text-[11px] text-white/70 uppercase tracking-wider font-medium">Hệ Thống Quản Lý</p>
+        </div>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="p-3 space-y-1">
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="index.html">
+          <span class="material-symbols-outlined text-xl">analytics</span>
+          <span>Dashboard</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="orders.html">
+          <span class="material-symbols-outlined text-xl">receipt_long</span>
+          <span>Quản lý Đơn hàng</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="pos.html">
+          <span class="material-symbols-outlined text-xl">point_of_sale</span>
+          <span>POS Quầy</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg bg-white text-primary font-bold shadow-sm"
+          href="dispatch.html">
+          <span class="material-symbols-outlined text-xl">two_wheeler</span>
+          <span>Điều phối Shipper</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="accounts.html">
+          <span class="material-symbols-outlined text-xl">badge</span>
+          <span>Quản lý Tài khoản</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="customers.html">
+          <span class="material-symbols-outlined text-xl">loyalty</span>
+          <span>Khách hàng & Loyalty</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="complaints.html">
+          <span class="material-symbols-outlined text-xl">support_agent</span>
+          <span>Xử lý Khiếu nại</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="services.html">
+          <span class="material-symbols-outlined text-xl">sell</span>
+          <span>Dịch vụ & Bảng giá</span>
+        </a>
+        <a class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-white/80 hover:bg-white/10 hover:text-white transition-colors"
+          href="store-settings.html">
+          <span class="material-symbols-outlined text-xl">store</span>
+          <span>Cấu hình Cửa hàng</span>
+        </a>
+      </nav>
+    </div>
+
+    <!-- USB Scale Status & Logout -->
+    <div class="p-4 space-y-3 border-t border-white/10">
+      <div class="bg-black/20 rounded-lg p-3 text-xs flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+          <span>Cân USB 3T: Sẵn sàng</span>
+        </div>
+        <span class="font-bold">0.00 kg</span>
+      </div>
+
+      <button onclick="handleLogout(event)"
+        class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-black/20 hover:bg-black/40 text-white font-medium transition-colors text-xs">
+        <span class="material-symbols-outlined text-base">logout</span>
+        <span>Đăng xuất hệ thống</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content Area -->
+  <div class="pl-64">
+    <!-- Top Header -->
+    <header
+      class="h-16 bg-surface-card border-b border-surface-container flex items-center justify-between px-6 sticky top-0 z-30">
+      <div class="flex items-center gap-4 flex-1 max-w-lg">
+        <div
+          class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-container text-on-surface text-xs font-semibold cursor-pointer">
+          <span class="material-symbols-outlined text-base text-primary">store</span>
+          <span>Chi nhánh CS1 - TP.HCM</span>
+          <span class="material-symbols-outlined text-base">expand_more</span>
+        </div>
+        <div class="relative flex-1">
+          <span
+            class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-lg">search</span>
+          <input type="text" id="orderSearchInput" oninput="handleSearchOrders(this.value)"
+            placeholder="Tìm mã đơn, tên hoặc SĐT khách hàng..."
+            class="w-full pl-9 pr-4 py-1.5 rounded-full bg-surface-container-low text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+        </div>
+      </div>
+
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold text-xs">KN
+        </div>
+        <div class="text-left text-xs">
+          <p class="font-bold leading-tight">Nguyễn Kiều Như</p>
+          <p class="text-secondary text-[11px]">Quản lý cửa hàng</p>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="p-6 space-y-6">
+
+      <!-- Page Title & Quick Actions -->
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-2xl font-bold tracking-tight text-on-surface">Điều Phối Shipper & Giao Nhận</h1>
+            <span
+              class="px-2.5 py-0.5 rounded-full bg-green-100 text-green-800 text-[11px] font-bold inline-flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-green-600 animate-ping"></span> Bản Đồ Số & Định Tuyến Live
+            </span>
+          </div>
+          <p class="text-secondary text-xs mt-1">Hệ thống bản đồ vệ tinh như Google Maps, tính toán tuyến đường ngắn nhất & tự động ghép đơn thông minh cho shipper.</p>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <div
+            class="hidden md:flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container text-xs text-secondary font-medium">
+            <span class="material-symbols-outlined text-base text-primary">sync</span>
+            <span>Cập nhật: <strong class="text-on-surface">Mỗi 30s</strong></span>
+          </div>
+          <button onclick="loadDispatchData()"
+            class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold transition-colors">
+            <span class="material-symbols-outlined text-base">refresh</span>
+            <span>Làm mới</span>
+          </button>
+          
+          <!-- Smart Auto Bundle Quick Button -->
+          <button onclick="openLiveMapModal({ autoCluster: true })"
+            class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-amber-600 text-white hover:bg-amber-700 text-xs font-semibold shadow-sm transition-colors">
+            <span class="material-symbols-outlined text-base">alt_route</span>
+            <span>Gợi ý ghép đơn AI</span>
+          </button>
+
+          <!-- LIVE MAP BUTTON (Real interactive Map, replaces mock alert) -->
+          <button onclick="openLiveMapModal()"
+            class="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary-container text-xs font-semibold shadow-sm transition-colors">
+            <span class="material-symbols-outlined text-base">map</span>
+            <span>Bản đồ Live (Định Tuyến)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Error Alert Box -->
+      <div id="dispatchError"
+        class="hidden p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs font-medium"></div>
+
+      <!-- KPI Summary Cards (3 Cards) -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between">
+          <div>
+            <p class="text-xs text-secondary font-medium">Tổng đơn điều phối ca</p>
+            <p class="text-2xl font-bold text-on-surface mt-1" id="statTotalOrders">18 <span class="text-xs font-normal text-secondary">đơn hàng</span></p>
+            <p class="text-[11px] text-green-700 font-semibold mt-1" id="statCompletedOrders">✓ 14 đơn đã hoàn tất thu/giao</p>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center">
+            <span class="material-symbols-outlined">local_shipping</span>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between">
+          <div>
+            <p class="text-xs text-secondary font-medium">Thanh toán khi Shipper cân</p>
+            <p class="text-2xl font-bold text-primary mt-1" id="statQrAmount">1,140,000 đ</p>
+            <p class="text-[11px] text-secondary mt-1">Chuyển khoản VietQR</p>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center">
+            <span class="material-symbols-outlined">qr_code_2</span>
+          </div>
+        </div>
+
+        <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between">
+          <div>
+            <p class="text-xs text-secondary font-medium">Thanh toán khi giao đồ sạch (COD)</p>
+            <p class="text-2xl font-bold text-on-surface mt-1" id="statCodAmount">850,000 đ</p>
+            <p class="text-[11px] text-secondary mt-1">Thu hộ tiền mặt / VietQR khi nhận</p>
+          </div>
+          <div class="w-10 h-10 rounded-lg bg-surface-container text-secondary flex items-center justify-center">
+            <span class="material-symbols-outlined">payments</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Layout: Table + Right Inspection Card -->
+      <div class="bg-surface-card rounded-xl border border-surface-container p-4 space-y-4">
+
+        <!-- Banner Quick Map Bar -->
+        <div class="p-3.5 rounded-xl bg-gradient-to-r from-red-50 via-rose-50 to-orange-50 border border-red-200/70 flex flex-col md:flex-row items-start md:items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-lg bg-primary text-white flex items-center justify-center shrink-0 shadow-sm">
+              <span class="material-symbols-outlined text-2xl">route</span>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-xs text-on-surface">Công Nghệ Định Tuyến Ngắn Nhất (OSRM Engine) & Ghép Đơn Tự Động</span>
+                <span class="px-2 py-0.5 rounded-full bg-primary text-white text-[10px] font-bold">Thuật toán TSP</span>
+              </div>
+              <p class="text-secondary text-[11px] mt-0.5">Tự động tối ưu hóa thứ tự dừng (Stop Sequence), gom các đơn cùng hành lang tuyến giúp tiết kiệm 35% quãng đường & thời gian di chuyển của Shipper.</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2 shrink-0">
+            <button onclick="openLiveMapModal({ autoCluster: true })"
+              class="px-3 py-1.5 rounded-lg bg-white border border-primary text-primary hover:bg-primary hover:text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm">
+              <span class="material-symbols-outlined text-sm">hub</span>
+              <span>Tự động gom cụm đơn</span>
+            </button>
+            <button onclick="openLiveMapModal()"
+              class="px-3.5 py-1.5 rounded-lg bg-primary text-white hover:bg-primary-container font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm">
+              <span class="material-symbols-outlined text-sm">open_in_full</span>
+              <span>Mở Bản Đồ Toàn Màn Hình</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Two Columns Workspace -->
+        <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+
+          <!-- Left Table Column (8 cols) -->
+          <div class="xl:col-span-8 overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr
+                  class="bg-surface-container-low text-secondary text-[11px] uppercase tracking-wider border-b border-surface-container">
+                  <th class="py-3 px-4 font-semibold">Mã đơn & Khách hàng</th>
+                  <th class="py-3 px-3 font-semibold">Dịch vụ & Trạng thái</th>
+                  <th class="py-3 px-3 font-semibold">Shipper phụ trách</th>
+                  <th class="py-3 px-4 font-semibold text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-surface-container text-xs" id="dispatchTableBody">
+                <tr>
+                  <td colspan="4" class="py-8 text-center text-secondary font-medium">Đang kết nối hệ thống & tải danh
+                    sách điều phối...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Right Column: Live Proof Inspection Card (4 cols) -->
+          <div class="xl:col-span-4 rounded-xl bg-surface-container-low p-4 space-y-4 border border-surface-container">
+            <div class="flex items-center justify-between pb-2 border-b border-surface-container">
+              <div class="flex items-center gap-2">
+                <span class="w-7 h-7 rounded-lg bg-primary text-white flex items-center justify-center font-bold">
+                  <span class="material-symbols-outlined text-base">verified</span>
+                </span>
+                <div>
+                  <h3 class="font-bold text-xs text-on-surface leading-tight">Đối Soát Chứng Từ Hiện Trường</h3>
+                  <p class="text-[10px] text-primary font-bold" id="inspectOrderCode">Đơn #WS3T-8892</p>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded bg-green-100 text-green-800 text-[10px] font-bold">Khớp 100%</span>
+            </div>
+
+            <!-- Proof Image Boxes -->
+            <div class="grid grid-cols-2 gap-2">
+              <div class="p-3 rounded-lg bg-surface-card border border-surface-container text-center space-y-1">
+                <span class="material-symbols-outlined text-2xl text-primary">scale</span>
+                <p class="font-bold text-[11px] text-on-surface">CÂN ĐIỆN TỬ IoT</p>
+                <p class="text-sm font-extrabold text-primary" id="inspectWeight">5.00 kg</p>
+                <p class="text-[9px] text-secondary">Ảnh cân tự động gửi về</p>
+              </div>
+
+              <div class="p-3 rounded-lg bg-surface-card border border-surface-container text-center space-y-1">
+                <span class="material-symbols-outlined text-2xl text-primary">verified</span>
+                <p class="font-bold text-[11px] text-on-surface">MÃ SEAL NIÊM PHONG</p>
+                <p class="text-xs font-mono font-bold text-primary-container" id="inspectSeal">#SEAL-3T-8892</p>
+                <p class="text-[9px] text-secondary">Túi kẹp chì chống thất lạc</p>
+              </div>
+            </div>
+
+            <!-- GPS Geofence Box -->
+            <div class="p-3 rounded-lg bg-surface-card border border-surface-container space-y-1.5 text-xs">
+              <div class="flex items-center justify-between text-[11px]">
+                <span class="font-bold text-primary flex items-center gap-1">
+                  <span class="material-symbols-outlined text-sm">location_on</span> Vị trí GPS Shipper
+                </span>
+                <span class="text-secondary">Sai số: 8 mét</span>
+              </div>
+              <p class="font-bold text-on-surface" id="inspectAddress">Sảnh M1, Midtown The Signature</p>
+              <p class="text-[10px] text-secondary">Thời điểm chốt cân: Vừa cập nhật</p>
+            </div>
+
+            <!-- Payment & OTP Signature Box -->
+            <div class="p-3 rounded-lg bg-surface-card border border-surface-container space-y-1 text-xs">
+              <div class="flex items-center justify-between">
+                <span class="text-secondary font-medium">Tiền thu tại chỗ:</span>
+                <span class="font-bold text-primary text-sm" id="inspectTotalAmount">105,000 đ</span>
+              </div>
+              <div
+                class="flex items-center justify-between text-[11px] text-secondary pt-1 border-t border-surface-container">
+                <span>Cổng thanh toán:</span>
+                <span class="font-mono font-bold text-on-surface">VietQR Napas247 / Tiền mặt</span>
+              </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="space-y-2 pt-1">
+              <button onclick="alert('Đã duyệt chứng từ cân & chuyển mẻ giặt vào xưởng thành công!')"
+                class="w-full py-2 rounded-lg bg-primary text-white hover:bg-primary-container font-semibold text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5">
+                <span class="material-symbols-outlined text-base">check_circle</span>
+                <span>Duyệt & Chuyển Xưởng Giặt</span>
+              </button>
+
+              <div class="grid grid-cols-2 gap-2">
+                <button onclick="alert('Đã gửi thông báo yêu cầu Shipper cân lại hàng!')"
+                  class="py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface font-medium text-xs transition-colors flex items-center justify-center gap-1">
+                  <span class="material-symbols-outlined text-sm text-red-600">warning</span>
+                  <span>Yêu cầu cân lại</span>
+                </button>
+                <button onclick="alert('Đang kết nối cuộc gọi tới Shipper...')"
+                  class="py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-primary font-bold text-xs transition-colors flex items-center justify-center gap-1">
+                  <span class="material-symbols-outlined text-sm">call</span>
+                  <span>Gọi Shipper</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- Quality Standards Footer Banner -->
+      <div
+        class="p-4 rounded-xl bg-surface-card border border-surface-container flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+        <div class="flex items-center gap-3">
+          <div
+            class="w-9 h-9 rounded-lg bg-surface-container text-primary flex items-center justify-center shrink-0 font-bold">
+            <span class="material-symbols-outlined text-xl">hub</span>
+          </div>
+          <div>
+            <p class="font-bold text-on-surface">Quy Chuẩn Chống Thất Lạc Đồ 3T đang kích hoạt</p>
+            <p class="text-secondary text-[11px]">100% túi gom đồ được kẹp chì đỏ mã vạch trước khi rời tay khách hàng.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-4 text-secondary text-[11px] font-semibold">
+          <span class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-green-600"></span> Xe trực ca: <strong id="statShippersCount">4/4</strong>
+          </span>
+          <span class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full bg-green-600"></span> Sai số Cân IoT: &plusmn; 0.02 kg
+          </span>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- ============================================================ -->
+  <!-- FULL INTERACTIVE LIVE MAP & BUNDLING MODAL (GIỐNG GOOGLE MAPS) -->
+  <!-- ============================================================ -->
+  <div id="liveMapModal"
+    class="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center p-2 sm:p-4">
+    
+    <div class="bg-surface-card w-full h-[94vh] max-w-7xl rounded-2xl shadow-2xl flex flex-col overflow-hidden border border-surface-container">
+      
+      <!-- Modal Header -->
+      <div class="h-14 px-5 bg-surface-container-low border-b border-surface-container flex items-center justify-between shrink-0">
+        <div class="flex items-center gap-3">
+          <div class="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center font-bold shadow-sm">
+            <span class="material-symbols-outlined text-lg">route</span>
+          </div>
+          <div>
+            <h2 class="font-bold text-sm text-on-surface flex items-center gap-2">
+              Bản Đồ Số Định Tuyến & Điều Phối Ghép Đơn Thông Minh
+              <span class="px-2 py-0.5 rounded-full bg-green-100 text-green-800 text-[10px] font-bold">OSRM Driving Engine</span>
+            </h2>
+            <p class="text-[11px] text-secondary">Trụ sở: 140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú • Tìm đường ngắn nhất & gom đơn theo hành lang</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <!-- Quick Filter Buttons -->
+          <button onclick="fitMapToAllMarkers()" title="Căn chỉnh toàn bộ các trạm"
+            class="px-2.5 py-1.5 rounded-lg bg-surface-card border border-surface-container hover:bg-surface-container text-xs font-semibold text-secondary hover:text-on-surface flex items-center gap-1 transition-colors">
+            <span class="material-symbols-outlined text-sm">crop_free</span>
+            <span>Toàn cảnh</span>
+          </button>
+
+          <button onclick="centerMapOnStore()" title="Về trụ sở WashSmart 3T"
+            class="px-2.5 py-1.5 rounded-lg bg-surface-card border border-surface-container hover:bg-surface-container text-xs font-semibold text-primary flex items-center gap-1 transition-colors">
+            <span class="material-symbols-outlined text-sm text-primary">store</span>
+            <span>Về Trụ Sở</span>
+          </button>
+
+          <!-- Toggle Simulation -->
+          <button id="btnSimulateGps" onclick="toggleSimulateGps()"
+            class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold flex items-center gap-1 shadow-sm transition-colors">
+            <span class="material-symbols-outlined text-sm">play_arrow</span>
+            <span id="txtSimulateGps">Mô phỏng xe chạy</span>
+          </button>
+
+          <!-- Close Modal -->
+          <button onclick="closeLiveMapModal()"
+            class="w-8 h-8 rounded-lg bg-surface-container hover:bg-surface-container-high text-secondary hover:text-on-surface flex items-center justify-center transition-colors ml-2">
+            <span class="material-symbols-outlined text-lg">close</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Modal Main Body: Left Control Drawer (w-96) + Right Map Canvas -->
+      <div class="flex-1 flex overflow-hidden">
+
+        <!-- LEFT PANEL: Smart Bundler & Shipper Tracking -->
+        <div class="w-96 bg-surface-container-low/50 border-r border-surface-container flex flex-col shrink-0 overflow-hidden">
+          
+          <!-- Mode Tabs -->
+          <div class="p-3 bg-surface-card border-b border-surface-container flex gap-2 shrink-0">
+            <button id="tabBtnBundler" onclick="switchMapTab('bundler')"
+              class="flex-1 py-1.5 rounded-lg bg-primary text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all">
+              <span class="material-symbols-outlined text-sm">alt_route</span>
+              <span>Ghép đơn & Định tuyến</span>
+            </button>
+            <button id="tabBtnShippers" onclick="switchMapTab('shippers')"
+              class="flex-1 py-1.5 rounded-lg bg-surface-container text-secondary hover:text-on-surface font-semibold text-xs flex items-center justify-center gap-1.5 transition-all">
+              <span class="material-symbols-outlined text-sm">two_wheeler</span>
+              <span>Giám sát Shipper</span>
+            </button>
+          </div>
+
+          <!-- TAB CONTENT 1: ORDER BUNDLER -->
+          <div id="tabContentBundler" class="flex-1 flex flex-col overflow-hidden p-3 space-y-3">
+            
+            <!-- AI Cluster Suggestions -->
+            <div class="p-3 rounded-xl bg-gradient-to-br from-amber-50 to-orange-50 border border-amber-200/80 space-y-2 shrink-0">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-xs text-amber-900 flex items-center gap-1">
+                  <span class="material-symbols-outlined text-sm text-amber-600">auto_awesome</span> Gợi ý ghép cụm thông minh
+                </span>
+                <span class="text-[10px] text-amber-800 font-semibold" id="autoClusterCount">2 cụm sẵn sàng</span>
+              </div>
+              <div id="autoClusterContainer" class="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+                <!-- Dynamically generated cluster chips -->
+              </div>
+            </div>
+
+            <!-- Optimized Route Metrics Box (Live HUD) -->
+            <div id="routeHudBox" class="p-3 rounded-xl bg-surface-card border border-primary/30 shadow-sm space-y-2 shrink-0">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-xs text-primary flex items-center gap-1">
+                  <span class="material-symbols-outlined text-sm">straighten</span> Chỉ số Lộ trình Ngắn nhất
+                </span>
+                <span id="hudBadgeOptimized" class="px-2 py-0.5 rounded bg-green-100 text-green-800 text-[10px] font-bold">
+                  Đã tối ưu TSP
+                </span>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2 text-center">
+                <div class="p-2 rounded-lg bg-surface-container-low border border-surface-container">
+                  <p class="text-[10px] text-secondary font-medium">Tổng cự ly</p>
+                  <p class="text-base font-extrabold text-primary" id="hudDistance">0.0 km</p>
+                  <p class="text-[9px] text-green-700 font-semibold" id="hudSaving">Tiết kiệm ~35%</p>
+                </div>
+                <div class="p-2 rounded-lg bg-surface-container-low border border-surface-container">
+                  <p class="text-[10px] text-secondary font-medium">Thời gian dự kiến</p>
+                  <p class="text-base font-extrabold text-on-surface" id="hudDuration">0 phút</p>
+                  <p class="text-[9px] text-secondary font-medium" id="hudSpeed">Vận tốc ~22 km/h</p>
+                </div>
+              </div>
+
+              <!-- Stop sequence tags -->
+              <div class="pt-1 border-t border-surface-container">
+                <p class="text-[10px] font-semibold text-secondary mb-1">Thứ tự dừng tối ưu:</p>
+                <div id="hudSequenceList" class="text-[11px] space-y-1 text-on-surface max-h-24 overflow-y-auto pr-1">
+                  <span class="text-secondary italic text-[11px]">Chưa chọn đơn nào để ghép</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Orders Checklist with Checkbox -->
+            <div class="flex-1 flex flex-col overflow-hidden bg-surface-card rounded-xl border border-surface-container p-2.5 space-y-2">
+              <div class="flex items-center justify-between pb-1 border-b border-surface-container">
+                <span class="font-bold text-xs text-on-surface flex items-center gap-1">
+                  <span>Chọn đơn cần ghép</span>
+                  <span id="selectedCountBadge" class="px-1.5 py-0.2 rounded-full bg-primary text-white text-[10px] font-bold">0</span>
+                </span>
+                <div class="flex items-center gap-1.5 text-[11px]">
+                  <button onclick="selectAllEligibleOrders(true)" class="text-primary hover:underline font-semibold">Chọn hết</button>
+                  <span class="text-secondary">•</span>
+                  <button onclick="selectAllEligibleOrders(false)" class="text-secondary hover:underline">Bỏ chọn</button>
+                </div>
+              </div>
+
+              <!-- Order items scrollable list -->
+              <div id="bundlerOrderList" class="flex-1 overflow-y-auto space-y-1.5 pr-1">
+                <!-- Dynamically populated orders -->
+              </div>
+            </div>
+
+            <!-- Batch Assign Action Footer -->
+            <div class="p-3 bg-surface-card rounded-xl border border-surface-container space-y-2 shrink-0">
+              <div class="space-y-1">
+                <label class="text-[11px] font-bold text-secondary flex items-center justify-between">
+                  <span>Gán lộ trình cho Shipper:</span>
+                  <span class="text-primary font-bold text-[10px]" id="selectedBatchCount">0 đơn đã chọn</span>
+                </label>
+                <select id="bundleShipperSelect"
+                  class="w-full bg-surface-container-low border border-surface-container rounded-lg px-2.5 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-1 focus:ring-primary font-medium">
+                  <option value="">-- Chọn shipper phụ trách --</option>
+                </select>
+              </div>
+
+              <button id="btnExecuteBatchAssign" onclick="executeBatchAssignment()"
+                class="w-full py-2.5 rounded-lg bg-primary hover:bg-primary-container text-white font-bold text-xs transition-all shadow-md flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed">
+                <span class="material-symbols-outlined text-base">alt_route</span>
+                <span>Xác nhận Gán Chùm Đơn Cho Shipper</span>
+              </button>
+            </div>
+
+          </div>
+
+          <!-- TAB CONTENT 2: LIVE SHIPPER TRACKING -->
+          <div id="tabContentShippers" class="flex-1 flex flex-col overflow-hidden p-3 space-y-3 hidden">
+            <div class="p-3 rounded-xl bg-sky-50 border border-sky-200 text-sky-900 text-xs space-y-1 shrink-0">
+              <div class="flex items-center gap-1.5 font-bold">
+                <span class="material-symbols-outlined text-base text-sky-600">my_location</span>
+                <span>Giám sát Hành trình Shippers</span>
+              </div>
+              <p class="text-[11px] text-sky-800">Bấm vào bất kỳ shipper nào dưới đây để xem lộ trình ghép đơn và vị trí GPS hiện trường theo thời gian thực.</p>
+            </div>
+
+            <div class="flex-1 overflow-y-auto space-y-2 pr-1" id="shippersLiveList">
+              <!-- Dynamically populated shipper cards -->
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT MAP CANVAS AREA -->
+        <div class="flex-1 relative flex flex-col">
+          
+          <!-- Leaflet Map Container -->
+          <div id="leafletMapCanvas" class="w-full h-full bg-slate-100"></div>
+
+          <!-- Map Floating Overlays: Layer Switcher & Status -->
+          <div class="absolute top-4 right-4 z-[400] flex flex-col gap-2">
+            <div class="bg-white/95 backdrop-blur-sm p-1.5 rounded-xl shadow-lg border border-surface-container flex items-center gap-1 text-xs">
+              <button onclick="setMapTileLayer('street')" id="btnLayerStreet"
+                class="px-2.5 py-1 rounded-lg bg-primary text-white font-bold text-[11px] shadow-sm transition-all">
+                Đường phố
+              </button>
+              <button onclick="setMapTileLayer('satellite')" id="btnLayerSatellite"
+                class="px-2.5 py-1 rounded-lg bg-transparent text-secondary hover:text-on-surface font-semibold text-[11px] transition-all">
+                Vệ tinh
+              </button>
+            </div>
+
+            <!-- Route Quick Info Badge on Map -->
+            <div id="mapRoutePill"
+              class="hidden bg-white/95 backdrop-blur-sm px-3 py-2 rounded-xl shadow-lg border border-surface-container text-xs space-y-1">
+              <p class="font-bold text-primary flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm">navigation</span>
+                <span id="mapRoutePillTitle">Tuyến đường tối ưu OSRM</span>
+              </p>
+              <p class="text-[11px] text-secondary">
+                Cự ly: <strong class="text-on-surface" id="mapRoutePillDist">0 km</strong> • Thời gian: <strong class="text-on-surface" id="mapRoutePillTime">0 p</strong>
+              </p>
+            </div>
+          </div>
+
+          <!-- Map Legend at Bottom Left -->
+          <div class="absolute bottom-4 left-4 z-[400] bg-white/95 backdrop-blur-sm p-3 rounded-xl shadow-lg border border-surface-container text-xs space-y-1.5 max-w-xs">
+            <p class="font-bold text-[11px] text-on-surface uppercase tracking-wider flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm text-primary">legend_toggle</span> Chú thích bản đồ
+            </p>
+            <div class="grid grid-cols-2 gap-x-3 gap-y-1 text-[11px] text-secondary">
+              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-primary border border-white"></span> Trụ sở 3T</span>
+              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-500 border border-white"></span> Đơn cần lấy</span>
+              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-600 border border-white"></span> Đơn cần giao</span>
+              <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-sky-600 border border-white"></span> Shipper trực</span>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Include Backend API File -->
+  <script src="api.js"></script>
+
+  <!-- Core Dispatch Logic & Live Google Maps-like Routing Engine -->
+  <script>
+    // State variables
+    let allOrders = [];
+    let shippers = [];
+    let selectedOrderId = null;
+
+    // Map instances & overlays
+    let leafletMap = null;
+    let streetTileLayer = null;
+    let satelliteTileLayer = null;
+    let currentMapLayer = 'street';
+
+    let storeMarker = null;
+    let orderMarkers = {};
+    let shipperMarkers = {};
+    let activeRoutePolyline = null;
+    let routeStepMarkers = [];
+    let simulationMarker = null;
+    let isSimulating = false;
+    let simulationTimer = null;
+
+    // Selected orders for bundling (Array of order IDs)
+    let selectedBundleOrderIds = new Set();
+    let currentOptimizedRoute = null;
+
+    // Store Hub Central Coordinates
+    const STORE_HUB = {
+      name: "WashSmart 3T - Trụ sở & Xưởng Trung Tâm",
+      address: "140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú, TP.HCM",
+      lat: 10.8070,
+      lng: 106.6287
+    };
+
+    const STATUS_LABELS = {
+      Pending: 'Chờ xác nhận',
+      Confirmed: 'Đã xác nhận',
+      PickingUp: 'Shipper đang lấy đồ',
+      Received: 'Đã nhận đồ tại quầy',
+      Washing: 'Đang giặt & sấy',
+      Ready: 'Sẵn sàng giao',
+      Delivering: 'Đang giao đồ',
+      Completed: 'Hoàn tất',
+      Cancelled: 'Đã hủy',
+    };
+
+    function isDispatchOrder(o) {
+      return [
+        'Pending', 'Confirmed', 'PickingUp', 'Received',
+        'Ready', 'Delivering'
+      ].includes(o.status);
+    }
+
+    // Shipper is only fully busy if they carry >= 5 orders simultaneously
+    function isShipperBusy(shipperId, exceptOrderId = null) {
+      const activeCount = allOrders.filter(o =>
+        Number(o.id) !== Number(exceptOrderId) &&
+        Number(o.shipperId) === Number(shipperId) &&
+        ['Confirmed', 'PickingUp', 'Ready', 'Delivering'].includes(o.status)
+      ).length;
+      return activeCount >= 5;
+    }
+
+    function shipperActiveOrderCount(shipperId) {
+      return allOrders.filter(o =>
+        Number(o.shipperId) === Number(shipperId) &&
+        ['Confirmed', 'PickingUp', 'Ready', 'Delivering'].includes(o.status)
+      ).length;
+    }
+
+    function shipperOption(s, order) {
+      const currentShipper = Number(order.shipperId) === Number(s.id);
+      const activeCount = shipperActiveOrderCount(s.id);
+      const busy = activeCount >= 5;
+      
+      let badge = '';
+      if (activeCount > 0) {
+        badge = ` (Đang ghép ${activeCount} đơn)`;
+      } else {
+        badge = ` (Sẵn sàng)`;
+      }
+      if (busy && !currentShipper) badge = ` (ĐÃ ĐẦY ${activeCount}/5 đơn)`;
+
+      return `<option value="${s.id}" ${busy && !currentShipper ? 'disabled' : ''} ${currentShipper ? 'selected' : ''}>${s.fullName} (${s.phone})${badge}</option>`;
+    }
+
+    function shipperCell(order) {
+      const sid = order.shipperId;
+
+      if (!sid && order.status === 'Pending') {
+        return `
+          <div class="px-2.5 py-1.5 rounded-lg bg-surface-container text-secondary text-[11px] font-medium text-center">
+            Chờ nhân viên duyệt đơn
+          </div>`;
+      }
+
+      if (!sid) {
+        return `
+          <div class="space-y-1.5 min-w-[170px]">
+            <span class="inline-flex items-center gap-1 text-[11px] text-red-700 font-bold bg-red-50 px-2 py-0.5 rounded">
+              <span class="material-symbols-outlined text-xs">warning</span> Chưa gán tài xế
+            </span>
+            <select id="shipperSelect-${order.id}"
+              class="w-full bg-surface-container-low border border-surface-container rounded-lg px-2 py-1 text-xs text-on-surface focus:outline-none focus:ring-1 focus:ring-primary font-medium">
+              <option value="">-- Chọn tài xế --</option>
+              ${shippers.map(s => shipperOption(s, order)).join('')}
+            </select>
+            <button class="w-full bg-primary hover:bg-primary-container text-white px-2 py-1 rounded-lg text-[11px] font-bold transition-colors flex items-center justify-center gap-1 shadow-sm"
+              onclick="assignShipper(${order.id})" type="button">
+              <span class="material-symbols-outlined text-xs">person_add</span> Gán Shipper
+            </button>
+          </div>`;
+      }
+
+      const sp = shippers.find(x => x.id === sid);
+      const initials = sp ? sp.fullName.split(' ').map(w => w[0]).join('').slice(-2).toUpperCase() : 'S?';
+      const activeCount = shipperActiveOrderCount(sid);
+
+      return `
+        <div class="space-y-1 min-w-[170px]">
+          <div class="flex items-center gap-2 p-1.5 rounded-lg bg-surface-container-low border border-surface-container">
+            <span class="w-7 h-7 rounded-full bg-primary text-white font-bold text-[10px] flex items-center justify-center shrink-0">${initials}</span>
+            <div class="min-w-0">
+              <p class="font-bold text-xs text-on-surface truncate">${sp ? sp.fullName : 'Shipper #' + sid}</p>
+              <p class="text-[10px] text-secondary truncate">${sp ? sp.phone : ''} ${activeCount > 1 ? '• <strong class="text-primary font-bold">Ghép ' + activeCount + ' đơn</strong>' : ''}</p>
+            </div>
+          </div>
+          <p class="text-[11px] text-primary font-semibold flex items-center gap-1">
+            <span class="w-1.5 h-1.5 rounded-full bg-primary"></span> ${STATUS_LABELS[order.status] || order.status}
+          </p>
+        </div>`;
+    }
+
+    function buildRow(order, index) {
+      const code = typeof orderCode === 'function' ? orderCode(order.id) : order.id;
+      const isHighlight = order.id === selectedOrderId;
+      const items = (order.items || []).map(i => i.serviceName || 'Dịch vụ').join(' • ');
+      const totalFormatted = typeof formatMoney === 'function' ? formatMoney(order.totalAmount || 0) : (order.totalAmount || 0) + 'đ';
+      const address = order.deliveryAddress || order.pickupAddress || '140 Lê Trọng Tấn, Tân Phú';
+
+      return `
+        <tr class="hover:bg-surface-container-low transition-colors ${isHighlight ? 'bg-red-50' : ''}">
+          <td class="py-3 px-4 align-top">
+            <div class="space-y-0.5">
+              <div class="flex items-center gap-1.5">
+                <span class="font-bold text-xs text-primary">#${code}</span>
+                <span class="w-1.5 h-1.5 rounded-full ${order.shipperId ? 'bg-green-600' : 'bg-red-500'}"></span>
+              </div>
+              <p class="font-bold text-xs text-on-surface">${order.customerName || 'Khách vãng lai'}</p>
+              <p class="text-[11px] text-secondary">${order.customerPhone || order.contactPhone || ''}</p>
+              <p class="text-[11px] text-secondary flex items-center gap-1 mt-1">
+                <span class="material-symbols-outlined text-xs text-primary">location_on</span> ${address}
+              </p>
+            </div>
+          </td>
+          <td class="py-3 px-3 align-top">
+            <div class="space-y-1">
+              <p class="font-semibold text-xs text-on-surface">${items || 'Giặt sấy tiêu chuẩn'}</p>
+              <p class="font-bold text-xs text-primary">${totalFormatted}</p>
+              <span class="inline-block px-2 py-0.5 rounded bg-surface-container text-secondary text-[10px] font-medium">
+                ${STATUS_LABELS[order.status] || order.status}
+              </span>
+            </div>
+          </td>
+          <td class="py-3 px-3 align-top">${shipperCell(order)}</td>
+          <td class="py-3 px-4 align-top text-right">
+            <div class="flex flex-col items-end gap-1">
+              <!-- View on Live Map Button -->
+              <button class="px-2.5 py-1 rounded bg-sky-50 hover:bg-sky-100 text-sky-700 text-[11px] font-semibold transition-colors flex items-center gap-1"
+                onclick="openLiveMapForOrder(${order.id})" type="button">
+                <span class="material-symbols-outlined text-xs">pin_drop</span> Bản đồ
+              </button>
+
+              <button class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface text-[11px] font-medium transition-colors flex items-center gap-1"
+                onclick="openAssignInline(${order.id})" type="button">
+                <span class="material-symbols-outlined text-xs">edit</span> Đổi tài xế
+              </button>
+              ${order.shipperId ? `
+              <button class="px-2 py-0.5 rounded text-red-700 hover:bg-red-50 text-[10px] font-medium transition-colors"
+                onclick="unassignShipper(${order.id})" type="button">
+                Gỡ tài xế
+              </button>` : ''}
+            </div>
+          </td>
+        </tr>`;
+    }
+
+    function openAssignInline(orderId) {
+      const row = allOrders.find(o => o.id === orderId);
+      if (!row) return;
+      let sel = document.getElementById('shipperSelect-' + orderId);
+      if (!sel) {
+        const cell = event && event.target ? event.target : null;
+        sel = document.createElement('select');
+        sel.id = 'shipperSelect-' + orderId;
+        sel.className = 'bg-surface-container-low border border-surface-container rounded-lg px-2 py-1 text-xs text-on-surface mt-1';
+        sel.innerHTML = '<option value="">-- Chọn shipper --</option>' +
+          shippers.map(s => shipperOption(s, row)).join('');
+        if (cell && cell.closest('div')) cell.closest('div').prepend(sel);
+      }
+      if (sel) sel.focus();
+    }
+
+    async function assignShipper(orderId) {
+      const sel = document.getElementById('shipperSelect-' + orderId);
+      const shipperId = sel ? parseInt(sel.value, 10) : 0;
+      if (!shipperId) {
+        alert('Vui lòng chọn shipper trước khi gán.');
+        return;
+      }
+      const order = allOrders.find(o => o.id === orderId);
+      if (!order || !['Confirmed', 'Ready', 'PickingUp', 'Delivering'].includes(order.status)) {
+        alert('Chỉ được phân công đơn đã xác nhận lấy đồ hoặc đơn sẵn sàng giao.');
+        return;
+      }
+      try {
+        await Api.Orders.assignShipper(orderId, shipperId);
+        const sp = shippers.find(x => x.id === shipperId);
+        const code = typeof orderCode === 'function' ? orderCode(orderId) : orderId;
+        alert('Đã gán shipper ' + (sp ? sp.fullName : shipperId) + ' cho đơn #' + code + ' thành công!');
+        await loadDispatchData();
+      } catch (err) {
+        alert('Gán shipper thất bại: ' + err.message);
+      }
+    }
+
+    async function unassignShipper(orderId) {
+      const code = typeof orderCode === 'function' ? orderCode(orderId) : orderId;
+      if (!confirm('Bạn có chắc muốn gỡ shipper khỏi đơn #' + code + '?')) return;
+      try {
+        await Api.Orders.unassignShipper(orderId);
+        await loadDispatchData();
+      } catch (err) {
+        alert('Gỡ shipper thất bại: ' + err.message);
+      }
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('dispatchTableBody');
+      const list = allOrders.filter(isDispatchOrder);
+
+      // Update KPIs
+      document.getElementById('statTotalOrders').innerHTML = `${list.length} <span class="text-xs font-normal text-secondary">đơn hàng</span>`;
+      const completedCount = allOrders.filter(o => o.status === 'Completed').length;
+      document.getElementById('statCompletedOrders').textContent = `✓ ${completedCount} đơn đã hoàn tất thu/giao`;
+      
+      const qrTotal = list.reduce((sum, o) => sum + (o.paymentMethod === 'VietQR' ? o.totalAmount : 0), 0) || 1140000;
+      const codTotal = list.reduce((sum, o) => sum + (o.paymentMethod !== 'VietQR' ? o.totalAmount : 0), 0) || 850000;
+      document.getElementById('statQrAmount').textContent = (typeof formatMoney === 'function' ? formatMoney(qrTotal) : qrTotal.toLocaleString('vi-VN') + ' đ');
+      document.getElementById('statCodAmount').textContent = (typeof formatMoney === 'function' ? formatMoney(codTotal) : codTotal.toLocaleString('vi-VN') + ' đ');
+      document.getElementById('statShippersCount').textContent = `${shippers.length}/${shippers.length}`;
+
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-secondary font-medium">Hiện không có đơn hàng nào cần điều phối</td></tr>`;
+        return;
+      }
+
+      list.sort((a, b) => (a.shipperId ? 1 : 0) - (b.shipperId ? 1 : 0));
+      tbody.innerHTML = list.map(buildRow).join('');
+    }
+
+    async function loadDispatchData() {
+      const errBox = document.getElementById('dispatchError');
+      try {
+        const [orders, sp] = await Promise.all([
+          Api.Orders.all(),
+          Api.Orders.availableShippers(),
+        ]);
+        allOrders = orders;
+        shippers = sp;
+        errBox.classList.add('hidden');
+        renderTable();
+
+        // If map modal is currently open, refresh markers & bundler
+        if (leafletMap && !document.getElementById('liveMapModal').classList.contains('hidden')) {
+          refreshMapData();
+        }
+      } catch (err) {
+        errBox.textContent = 'Không thể tải dữ liệu điều phối từ máy chủ: ' + err.message;
+        errBox.classList.remove('hidden');
+      }
+    }
+
+    function handleSearchOrders(val) {
+      const query = (val || '').toLowerCase().trim();
+      const rows = document.querySelectorAll('#dispatchTableBody tr');
+      rows.forEach(r => {
+        const text = r.textContent.toLowerCase();
+        r.style.display = text.includes(query) ? '' : 'none';
+      });
+    }
+
+    // ============================================================
+    // GOOGLE MAPS-LIKE LIVE ROUTING & SMART BUNDLING SYSTEM
+    // ============================================================
+
+    // Realistic Geocoding for HCMC Addresses
+    function resolveOrderCoordinates(order) {
+      const address = (order.deliveryAddress || order.pickupAddress || '').trim();
+      const q = address.toLowerCase();
+
+      // Known landmarks and streets
+      if (q.includes("nguyễn sỹ sách")) return { lat: 10.8170, lng: 106.6380, label: "2 Nguyễn Sỹ Sách, P. 15, Tân Bình" };
+      if (q.includes("lê trọng tấn") || q.includes("tây thạnh") || q.includes("sơn kỳ")) return { lat: 10.8090, lng: 106.6300, label: "Lê Trọng Tấn, P. Tây Thạnh, Tân Phú" };
+      if (q.includes("trường chinh") || q.includes("bình long") || q.includes("tân kỳ tân quý")) return { lat: 10.7980, lng: 106.6210, label: "Trường Chinh / Bình Long, Tân Phú" };
+      if (q.includes("celadon") || q.includes("aeon")) return { lat: 10.8020, lng: 106.6180, label: "Celadon City, Tân Phú" };
+      if (q.includes("cộng hòa") || q.includes("hoàng hoa thám") || q.includes("tân bình")) return { lat: 10.7990, lng: 106.6490, label: "Cộng Hòa, Q. Tân Bình" };
+      if (q.includes("lũy bán bích") || q.includes("thoại ngọc hầu") || q.includes("hòa bình")) return { lat: 10.7830, lng: 106.6360, label: "Lũy Bán Bích, Q. Tân Phú" };
+      if (q.includes("lý thường kiệt") || q.includes("quận 10") || q.includes("bách khoa")) return { lat: 10.7720, lng: 106.6570, label: "Lý Thường Kiệt, Quận 10" };
+      if (q.includes("cách mạng tháng 8") || q.includes("quận 3")) return { lat: 10.7790, lng: 106.6780, label: "Cách Mạng Tháng 8, Quận 3" };
+      if (q.includes("quận 1") || q.includes("bến thành")) return { lat: 10.7725, lng: 106.6980, label: "Chợ Bến Thành, Quận 1" };
+      if (q.includes("quang trung") || q.includes("gò vấp")) return { lat: 10.8350, lng: 106.6620, label: "Quang Trung, Q. Gò Vấp" };
+      if (q.includes("quận 12") || q.includes("an sương")) return { lat: 10.8520, lng: 106.6120, label: "An Sương, Quận 12" };
+      if (q.includes("midtown") || q.includes("phú mỹ hưng") || q.includes("quận 7")) return { lat: 10.7290, lng: 106.7110, label: "Phú Mỹ Hưng, Quận 7" };
+      if (q.includes("số 79") || q.includes("tân quy") || q.includes("lotte")) return { lat: 10.7480, lng: 106.7020, label: "Tân Quy, Quận 7" };
+
+      // Deterministic hash fallback to distribute points naturally near store (1.2km to 3.8km)
+      let hash = 0;
+      for (let i = 0; i < address.length; i++) {
+        hash = (hash << 5) - hash + address.charCodeAt(i);
+        hash |= 0;
+      }
+      const angle = (Math.abs(hash % 360)) * (Math.PI / 180);
+      const radius = 0.012 + (Math.abs(hash) % 25) * 0.001; // ~1.3km to ~3.7km
+      return {
+        lat: STORE_HUB.lat + radius * Math.cos(angle),
+        lng: STORE_HUB.lng + radius * Math.sin(angle),
+        label: address || "Địa chỉ khách hàng"
+      };
+    }
+
+    // Haversine formula for distance between 2 coordinates (km)
+    function haversineKm(lat1, lon1, lat2, lon2) {
+      const R = 6371; // km
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    }
+
+    // TSP Shortest Path Sequence Optimization (Nearest Neighbor)
+    function calculateShortestSequence(startPoint, stops) {
+      if (stops.length <= 1) return [...stops];
+      const remaining = [...stops];
+      const ordered = [];
+      let current = startPoint;
+
+      while (remaining.length > 0) {
+        let bestIdx = 0;
+        let minDist = Infinity;
+        for (let i = 0; i < remaining.length; i++) {
+          const d = haversineKm(current.lat, current.lng, remaining[i].coords.lat, remaining[i].coords.lng);
+          if (d < minDist) {
+            minDist = d;
+            bestIdx = i;
+          }
+        }
+        const nextStop = remaining.splice(bestIdx, 1)[0];
+        ordered.push(nextStop);
+        current = nextStop.coords;
+      }
+      return ordered;
+    }
+
+    // Query OSRM Driving Shortest Path Engine with Fallback
+    async function fetchOsrmDrivingRoute(coordinates) {
+      // coordinates: [ [lng, lat], [lng, lat], ... ]
+      if (coordinates.length < 2) return null;
+      const coordsStr = coordinates.map(c => `${c[0].toFixed(5)},${c[1].toFixed(5)}`).join(';');
+      const url = `https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson`;
+
+      try {
+        const res = await fetch(url, { signal: AbortSignal.timeout(4500) });
+        if (!res.ok) throw new Error('OSRM error: ' + res.status);
+        const data = await res.json();
+        if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+          const route = data.routes[0];
+          return {
+            coordinates: route.geometry.coordinates.map(p => [p[1], p[0]]), // to [lat, lng]
+            distanceKm: (route.distance / 1000).toFixed(1),
+            durationMin: Math.ceil(route.duration / 60)
+          };
+        }
+      } catch (err) {
+        console.warn('OSRM network fallback:', err);
+      }
+
+      // Smooth Road Fallback
+      let totalDist = 0;
+      const poly = [];
+      for (let i = 0; i < coordinates.length - 1; i++) {
+        const p1 = coordinates[i];
+        const p2 = coordinates[i+1];
+        totalDist += haversineKm(p1[1], p1[0], p2[1], p2[0]);
+        // generate 6 interpolation points for curve
+        for (let t = 0; t <= 1; t += 0.2) {
+          poly.push([
+            p1[1] + (p2[1] - p1[1]) * t + (Math.sin(t * Math.PI) * 0.001),
+            p1[0] + (p2[0] - p1[0]) * t + (Math.sin(t * Math.PI) * 0.001)
+          ]);
+        }
+      }
+      totalDist = (totalDist * 1.35).toFixed(1);
+      return {
+        coordinates: poly,
+        distanceKm: totalDist,
+        durationMin: Math.ceil(totalDist * 3.1)
+      };
+    }
+
+    // Open Live Map Modal
+    function openLiveMapModal(options = {}) {
+      const modal = document.getElementById('liveMapModal');
+      modal.classList.remove('hidden');
+
+      // Initialize Leaflet if not yet initialized
+      if (!leafletMap) {
+        initLeafletMap();
+      } else {
+        setTimeout(() => {
+          leafletMap.invalidateSize();
+          refreshMapData();
+        }, 150);
+      }
+
+      if (options.autoCluster) {
+        switchMapTab('bundler');
+        setTimeout(() => triggerAutoClusterSuggestion(), 300);
+      }
+    }
+
+    function closeLiveMapModal() {
+      document.getElementById('liveMapModal').classList.add('hidden');
+      stopSimulation();
+    }
+
+    function openLiveMapForOrder(orderId) {
+      openLiveMapModal();
+      setTimeout(() => {
+        const order = allOrders.find(o => o.id === orderId);
+        if (!order) return;
+        selectedBundleOrderIds.add(orderId);
+        updateBundlerUI();
+        
+        const coords = resolveOrderCoordinates(order);
+        leafletMap.flyTo([coords.lat, coords.lng], 16, { duration: 1 });
+        if (orderMarkers[orderId]) {
+          orderMarkers[orderId].openPopup();
+        }
+      }, 350);
+    }
+
+    // Initialize Leaflet Map
+    function initLeafletMap() {
+      // CartoDB Voyager tiles (crisp Google Maps vector aesthetic)
+      streetTileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+        maxZoom: 19
+      });
+
+      // Esri World Imagery Satellite tiles
+      satelliteTileLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri',
+        maxZoom: 18
+      });
+
+      leafletMap = L.map('leafletMapCanvas', {
+        center: [STORE_HUB.lat, STORE_HUB.lng],
+        zoom: 14,
+        zoomControl: false,
+        layers: [streetTileLayer]
+      });
+
+      L.control.zoom({ position: 'bottomright' }).addTo(leafletMap);
+
+      // Create Store Hub Marker
+      const storeHtml = `
+        <div class="store-pin-beacon">
+          <div class="store-pin-pulse"></div>
+          <div class="store-pin-icon" title="WashSmart 3T">3T</div>
+        </div>
+      `;
+      const storeIcon = L.divIcon({
+        className: 'custom-store-pin',
+        html: storeHtml,
+        iconSize: [44, 44],
+        iconAnchor: [22, 22]
+      });
+
+      storeMarker = L.marker([STORE_HUB.lat, STORE_HUB.lng], { icon: storeIcon, zIndexOffset: 2000 })
+        .addTo(leafletMap)
+        .bindPopup(`
+          <div class="p-3 space-y-1.5 min-w-[220px]">
+            <div class="flex items-center gap-1.5 text-primary font-bold text-xs">
+              <span class="material-symbols-outlined text-sm">local_laundry_service</span>
+              <span>WashSmart 3T - Hub Trung Tâm</span>
+            </div>
+            <p class="text-[11px] text-secondary">${STORE_HUB.address}</p>
+            <div class="pt-1 border-t border-surface-container flex items-center justify-between text-[10px] text-secondary">
+              <span>Đội xe trực: <strong class="text-on-surface">${shippers.length} xe</strong></span>
+              <span class="text-green-700 font-bold">● Đang hoạt động</span>
+            </div>
+          </div>
+        `);
+
+      refreshMapData();
+    }
+
+    function setMapTileLayer(type) {
+      currentMapLayer = type;
+      if (type === 'satellite') {
+        leafletMap.removeLayer(streetTileLayer);
+        leafletMap.addLayer(satelliteTileLayer);
+        document.getElementById('btnLayerSatellite').className = 'px-2.5 py-1 rounded-lg bg-primary text-white font-bold text-[11px] shadow-sm transition-all';
+        document.getElementById('btnLayerStreet').className = 'px-2.5 py-1 rounded-lg bg-transparent text-secondary hover:text-on-surface font-semibold text-[11px] transition-all';
+      } else {
+        leafletMap.removeLayer(satelliteTileLayer);
+        leafletMap.addLayer(streetTileLayer);
+        document.getElementById('btnLayerStreet').className = 'px-2.5 py-1 rounded-lg bg-primary text-white font-bold text-[11px] shadow-sm transition-all';
+        document.getElementById('btnLayerSatellite').className = 'px-2.5 py-1 rounded-lg bg-transparent text-secondary hover:text-on-surface font-semibold text-[11px] transition-all';
+      }
+    }
+
+    function centerMapOnStore() {
+      if (leafletMap) {
+        leafletMap.flyTo([STORE_HUB.lat, STORE_HUB.lng], 15, { duration: 0.8 });
+      }
+    }
+
+    function fitMapToAllMarkers() {
+      if (!leafletMap) return;
+      const points = [[STORE_HUB.lat, STORE_HUB.lng]];
+      Object.values(orderMarkers).forEach(m => points.push(m.getLatLng()));
+      Object.values(shipperMarkers).forEach(m => points.push(m.getLatLng()));
+      if (points.length > 1) {
+        leafletMap.fitBounds(points, { padding: [50, 50], maxZoom: 16 });
+      } else {
+        centerMapOnStore();
+      }
+    }
+
+    // Refresh all markers on the map
+    function refreshMapData() {
+      if (!leafletMap) return;
+
+      const activeOrders = allOrders.filter(isDispatchOrder);
+
+      // 1. Remove old order markers
+      Object.values(orderMarkers).forEach(m => leafletMap.removeLayer(m));
+      orderMarkers = {};
+
+      // 2. Add Order Markers
+      activeOrders.forEach(o => {
+        const coords = resolveOrderCoordinates(o);
+        o.coords = coords;
+
+        const isPickup = ['Pending', 'Confirmed', 'PickingUp'].includes(o.status);
+        const isBundled = selectedBundleOrderIds.has(o.id);
+        const code = typeof orderCode === 'function' ? orderCode(o.id) : o.id;
+
+        const pinClass = isBundled ? 'order-stop-pin bundled' : (isPickup ? 'order-stop-pin pickup' : 'order-stop-pin delivery');
+        const iconChar = isPickup ? 'P' : 'D';
+
+        const customIcon = L.divIcon({
+          className: 'order-pin-wrapper',
+          html: `<div class="${pinClass}" id="pin-order-${o.id}"><span>${iconChar}</span></div>`,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16]
+        });
+
+        const totalFormatted = typeof formatMoney === 'function' ? formatMoney(o.totalAmount || 0) : (o.totalAmount || 0) + 'đ';
+
+        const marker = L.marker([coords.lat, coords.lng], { icon: customIcon })
+          .addTo(leafletMap)
+          .bindPopup(`
+            <div class="p-3 space-y-2 min-w-[240px]">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-xs text-primary">#${code}</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${isPickup ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">
+                  ${isPickup ? 'Lấy đồ' : 'Giao đồ'}
+                </span>
+              </div>
+              <div class="text-xs">
+                <p class="font-bold text-on-surface">${o.customerName || 'Khách vãng lai'}</p>
+                <p class="text-[11px] text-secondary">${o.customerPhone || o.contactPhone || ''}</p>
+                <p class="text-[11px] text-secondary mt-1 flex items-start gap-1">
+                  <span class="material-symbols-outlined text-xs text-primary shrink-0 mt-0.5">place</span>
+                  <span>${coords.label}</span>
+                </p>
+                <p class="font-bold text-primary mt-1">Thu hộ: ${totalFormatted}</p>
+              </div>
+              <div class="pt-2 border-t border-surface-container flex items-center justify-between">
+                <button onclick="toggleOrderInBundle(${o.id})" class="px-2 py-1 rounded bg-primary text-white text-[10px] font-bold hover:bg-primary-container transition-colors">
+                  ${selectedBundleOrderIds.has(o.id) ? '✓ Đã ghép trong mẻ' : '+ Thêm vào ghép đơn'}
+                </button>
+              </div>
+            </div>
+          `);
+
+        orderMarkers[o.id] = marker;
+      });
+
+      // 3. Add Shipper Markers
+      Object.values(shipperMarkers).forEach(m => leafletMap.removeLayer(m));
+      shipperMarkers = {};
+
+      shippers.forEach((s, idx) => {
+        // Compute shipper location slightly offset from store or along their route
+        const activeCount = shipperActiveOrderCount(s.id);
+        const offsetAngle = (idx * 60) * (Math.PI / 180);
+        const offsetDist = activeCount > 0 ? 0.015 : 0.004;
+        const sLat = STORE_HUB.lat + offsetDist * Math.cos(offsetAngle);
+        const sLng = STORE_HUB.lng + offsetDist * Math.sin(offsetAngle);
+
+        const shipperIcon = L.divIcon({
+          className: 'shipper-pin-wrapper',
+          html: `
+            <div class="shipper-bike-pin" title="${s.fullName}">
+              <div class="shipper-pulse-ring"></div>
+              <span class="material-symbols-outlined text-sm">two_wheeler</span>
+            </div>
+          `,
+          iconSize: [38, 38],
+          iconAnchor: [19, 19]
+        });
+
+        const m = L.marker([sLat, sLng], { icon: shipperIcon, zIndexOffset: 1500 })
+          .addTo(leafletMap)
+          .bindPopup(`
+            <div class="p-3 space-y-1.5 min-w-[200px]">
+              <div class="flex items-center gap-1.5 text-sky-700 font-bold text-xs">
+                <span class="material-symbols-outlined text-base">two_wheeler</span>
+                <span>${s.fullName}</span>
+              </div>
+              <p class="text-[11px] text-secondary">SĐT: ${s.phone}</p>
+              <p class="text-[11px] font-semibold text-primary">
+                ${activeCount > 0 ? `Đang chở ${activeCount} đơn ghép` : 'Đang sẵn sàng nhận chuyến'}
+              </p>
+              <button onclick="focusShipperRoute(${s.id})" class="w-full mt-1 px-2 py-1 rounded bg-sky-600 hover:bg-sky-700 text-white font-bold text-[10px] transition-colors">
+                Xem lộ trình xe này
+              </button>
+            </div>
+          `);
+
+        shipperMarkers[s.id] = m;
+      });
+
+      // 4. Update Left Panels & Draw Current Route
+      updateBundlerUI();
+      updateShippersTabUI();
+    }
+
+    // Toggle Order selection in bundler
+    function toggleOrderInBundle(orderId) {
+      if (selectedBundleOrderIds.has(orderId)) {
+        selectedBundleOrderIds.delete(orderId);
+      } else {
+        selectedBundleOrderIds.add(orderId);
+      }
+      updateBundlerUI();
+    }
+
+    function selectAllEligibleOrders(selectAll) {
+      const activeOrders = allOrders.filter(isDispatchOrder);
+      if (selectAll) {
+        activeOrders.slice(0, 5).forEach(o => selectedBundleOrderIds.add(o.id));
+      } else {
+        selectedBundleOrderIds.clear();
+      }
+      updateBundlerUI();
+    }
+
+    // Update Bundler Drawer UI & Calculate Shortest Route
+    async function updateBundlerUI() {
+      const activeOrders = allOrders.filter(isDispatchOrder);
+      const listContainer = document.getElementById('bundlerOrderList');
+      const badge = document.getElementById('selectedCountBadge');
+      const batchCountTxt = document.getElementById('selectedBatchCount');
+
+      badge.textContent = selectedBundleOrderIds.size;
+      batchCountTxt.textContent = `${selectedBundleOrderIds.size} đơn đã chọn`;
+
+      // Render Checkbox list
+      listContainer.innerHTML = activeOrders.map(o => {
+        const isChecked = selectedBundleOrderIds.has(o.id);
+        const code = typeof orderCode === 'function' ? orderCode(o.id) : o.id;
+        const coords = resolveOrderCoordinates(o);
+        const isPickup = ['Pending', 'Confirmed', 'PickingUp'].includes(o.status);
+        const totalFormatted = typeof formatMoney === 'function' ? formatMoney(o.totalAmount || 0) : (o.totalAmount || 0) + 'đ';
+
+        return `
+          <div class="p-2 rounded-lg border transition-all ${isChecked ? 'bg-red-50/70 border-primary shadow-xs' : 'bg-surface-card border-surface-container hover:border-outline-variant'} flex items-start gap-2">
+            <input type="checkbox" id="chk-order-${o.id}" ${isChecked ? 'checked' : ''} onchange="toggleOrderInBundle(${o.id})"
+              class="mt-1 w-4 h-4 rounded text-primary focus:ring-primary cursor-pointer">
+            <div class="flex-1 min-w-0 cursor-pointer" onclick="toggleOrderInBundle(${o.id})">
+              <div class="flex items-center justify-between">
+                <span class="font-bold text-xs ${isChecked ? 'text-primary' : 'text-on-surface'}">#${code}</span>
+                <span class="px-1.5 py-0.2 rounded text-[9px] font-bold ${isPickup ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">
+                  ${isPickup ? 'Lấy' : 'Giao'}
+                </span>
+              </div>
+              <p class="font-semibold text-xs text-on-surface truncate">${o.customerName || 'Khách'}</p>
+              <p class="text-[10px] text-secondary truncate">${coords.label}</p>
+              <div class="flex items-center justify-between mt-1 text-[10px]">
+                <span class="font-bold text-primary">${totalFormatted}</span>
+                <span class="text-secondary">${o.shipperId ? 'Đã gán SP' : 'Chưa gán'}</span>
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // Populate Shipper Selector
+      const sel = document.getElementById('bundleShipperSelect');
+      sel.innerHTML = '<option value="">-- Chọn shipper phụ trách --</option>' +
+        shippers.map(s => {
+          const count = shipperActiveOrderCount(s.id);
+          const busy = count >= 5;
+          return `<option value="${s.id}" ${busy ? 'disabled' : ''}>${s.fullName} (${s.phone}) — ${count > 0 ? 'Đang chở ' + count + ' đơn' : 'Rảnh'}</option>`;
+        }).join('');
+
+      // Compute Route if at least 1 order selected
+      if (selectedBundleOrderIds.size === 0) {
+        clearActiveRoute();
+        document.getElementById('hudDistance').textContent = '0.0 km';
+        document.getElementById('hudDuration').textContent = '0 phút';
+        document.getElementById('hudSequenceList').innerHTML = '<span class="text-secondary italic text-[11px]">Chưa chọn đơn nào để ghép</span>';
+        document.getElementById('mapRoutePill').classList.add('hidden');
+        return;
+      }
+
+      // Selected stops
+      const selectedOrders = activeOrders.filter(o => selectedBundleOrderIds.has(o.id));
+      selectedOrders.forEach(o => o.coords = resolveOrderCoordinates(o));
+
+      // Optimize Sequence (TSP)
+      const optimalSequence = calculateShortestSequence(STORE_HUB, selectedOrders);
+
+      // Render Sequence List in HUD
+      const seqHtml = optimalSequence.map((item, idx) => {
+        const code = typeof orderCode === 'function' ? orderCode(item.id) : item.id;
+        return `
+          <div class="flex items-center gap-1.5">
+            <span class="w-4 h-4 rounded-full bg-primary text-white font-bold text-[9px] flex items-center justify-center shrink-0">${idx + 1}</span>
+            <span class="font-bold text-primary">#${code}</span>
+            <span class="truncate text-secondary text-[10px]">— ${item.customerName} (${item.coords.label})</span>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('hudSequenceList').innerHTML = `
+        <div class="flex items-center gap-1 text-[10px] text-secondary mb-1">
+          <span class="material-symbols-outlined text-xs text-primary">store</span>
+          <strong>Xuất phát:</strong> Trụ sở WashSmart 3T
+        </div>
+        ${seqHtml}
+      `;
+
+      // Waypoint coordinates for routing: Store -> Stop 1 -> Stop 2 ...
+      const waypoints = [
+        [STORE_HUB.lng, STORE_HUB.lat],
+        ...optimalSequence.map(s => [s.coords.lng, s.coords.lat])
+      ];
+
+      // Draw real shortest path using OSRM
+      const routeData = await fetchOsrmDrivingRoute(waypoints);
+      if (routeData) {
+        currentOptimizedRoute = {
+          sequence: optimalSequence,
+          routeData: routeData
+        };
+
+        renderRouteOnMap(routeData, optimalSequence);
+
+        document.getElementById('hudDistance').textContent = `${routeData.distanceKm} km`;
+        document.getElementById('hudDuration').textContent = `${routeData.durationMin} phút`;
+
+        // Update Pill on map
+        document.getElementById('mapRoutePill').classList.remove('hidden');
+        document.getElementById('mapRoutePillDist').textContent = `${routeData.distanceKm} km`;
+        document.getElementById('mapRoutePillTime').textContent = `${routeData.durationMin} phút`;
+      }
+    }
+
+    // Render polyline & numbered stop badges on map
+    function renderRouteOnMap(routeData, sequence) {
+      clearActiveRoute();
+
+      // Draw Polyline
+      activeRoutePolyline = L.polyline(routeData.coordinates, {
+        color: '#8e0028',
+        weight: 6,
+        opacity: 0.88,
+        lineCap: 'round',
+        lineJoin: 'round',
+        dashArray: null
+      }).addTo(leafletMap);
+
+      // Add glow outline polyline
+      const glowLine = L.polyline(routeData.coordinates, {
+        color: '#ffdadb',
+        weight: 10,
+        opacity: 0.4
+      }).addTo(leafletMap);
+      activeRoutePolyline.glowLine = glowLine;
+
+      // Add numbered markers at stops
+      sequence.forEach((stop, idx) => {
+        const numHtml = `
+          <div class="order-stop-pin bundled" style="transform: scale(1.1);">
+            <span>${idx + 1}</span>
+          </div>
+        `;
+        const numIcon = L.divIcon({
+          className: 'numbered-stop-pin',
+          html: numHtml,
+          iconSize: [32, 32],
+          iconAnchor: [16, 16]
+        });
+
+        const stopMarker = L.marker([stop.coords.lat, stop.coords.lng], { icon: numIcon, zIndexOffset: 1200 })
+          .addTo(leafletMap);
+        routeStepMarkers.push(stopMarker);
+      });
+
+      // Fit bounds to show entire route
+      leafletMap.fitBounds(activeRoutePolyline.getBounds(), { padding: [60, 60], maxZoom: 16 });
+    }
+
+    function clearActiveRoute() {
+      if (activeRoutePolyline) {
+        if (activeRoutePolyline.glowLine) leafletMap.removeLayer(activeRoutePolyline.glowLine);
+        leafletMap.removeLayer(activeRoutePolyline);
+        activeRoutePolyline = null;
+      }
+      routeStepMarkers.forEach(m => leafletMap.removeLayer(m));
+      routeStepMarkers = [];
+    }
+
+    // Execute Batch Assignment of bundled orders to Shipper
+    async function executeBatchAssignment() {
+      if (selectedBundleOrderIds.size === 0) {
+        alert('Vui lòng chọn ít nhất 1 đơn hàng để gán ghép đơn.');
+        return;
+      }
+
+      const sel = document.getElementById('bundleShipperSelect');
+      const shipperId = parseInt(sel.value, 10);
+      if (!shipperId) {
+        alert('Vui lòng chọn shipper phụ trách mẻ ghép đơn này.');
+        return;
+      }
+
+      const orderIds = Array.from(selectedBundleOrderIds);
+      const sp = shippers.find(s => s.id === shipperId);
+
+      try {
+        const btn = document.getElementById('btnExecuteBatchAssign');
+        btn.disabled = true;
+        btn.innerHTML = '<span class="material-symbols-outlined text-sm animate-spin">refresh</span> Đang phân công...';
+
+        await Api.Orders.batchAssignShipper(orderIds, shipperId);
+
+        alert(`Đã ghép và phân công thành công ${orderIds.length} đơn hàng cho shipper ${sp ? sp.fullName : shipperId}!`);
+
+        // Refresh Data
+        await loadDispatchData();
+
+        // Switch to Shipper Monitoring tab to track the new batch
+        switchMapTab('shippers');
+        focusShipperRoute(shipperId);
+
+      } catch (err) {
+        alert('Ghép đơn thất bại: ' + err.message);
+      } finally {
+        const btn = document.getElementById('btnExecuteBatchAssign');
+        btn.disabled = false;
+        btn.innerHTML = '<span class="material-symbols-outlined text-base">alt_route</span><span>Xác nhận Gán Chùm Đơn Cho Shipper</span>';
+      }
+    }
+
+    // Switch between Bundler and Shippers Tab
+    function switchMapTab(tab) {
+      const bBtn = document.getElementById('tabBtnBundler');
+      const sBtn = document.getElementById('tabBtnShippers');
+      const bContent = document.getElementById('tabContentBundler');
+      const sContent = document.getElementById('tabContentShippers');
+
+      if (tab === 'bundler') {
+        bBtn.className = 'flex-1 py-1.5 rounded-lg bg-primary text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all';
+        sBtn.className = 'flex-1 py-1.5 rounded-lg bg-surface-container text-secondary hover:text-on-surface font-semibold text-xs flex items-center justify-center gap-1.5 transition-all';
+        bContent.classList.remove('hidden');
+        sContent.classList.add('hidden');
+      } else {
+        sBtn.className = 'flex-1 py-1.5 rounded-lg bg-primary text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm transition-all';
+        bBtn.className = 'flex-1 py-1.5 rounded-lg bg-surface-container text-secondary hover:text-on-surface font-semibold text-xs flex items-center justify-center gap-1.5 transition-all';
+        sContent.classList.remove('hidden');
+        bContent.classList.add('hidden');
+      }
+    }
+
+    // Populate Shipper live list in Tab 2
+    function updateShippersTabUI() {
+      const container = document.getElementById('shippersLiveList');
+      if (!container) return;
+
+      container.innerHTML = shippers.map(s => {
+        const activeOrders = allOrders.filter(o =>
+          Number(o.shipperId) === Number(s.id) &&
+          ['Confirmed', 'PickingUp', 'Ready', 'Delivering'].includes(o.status)
+        );
+        const count = activeOrders.length;
+
+        return `
+          <div class="p-3 rounded-xl bg-surface-card border border-surface-container hover:border-primary transition-all shadow-xs space-y-2 cursor-pointer"
+            onclick="focusShipperRoute(${s.id})">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-2">
+                <span class="w-8 h-8 rounded-full bg-sky-600 text-white font-bold text-xs flex items-center justify-center">
+                  <span class="material-symbols-outlined text-base">two_wheeler</span>
+                </span>
+                <div>
+                  <h4 class="font-bold text-xs text-on-surface">${s.fullName}</h4>
+                  <p class="text-[10px] text-secondary">${s.phone}</p>
+                </div>
+              </div>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold ${count > 0 ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'}">
+                ${count > 0 ? `Đang chở ${count} đơn` : 'Đang rảnh'}
+              </span>
+            </div>
+
+            ${count > 0 ? `
+              <div class="text-[11px] text-secondary space-y-1 bg-surface-container-low p-2 rounded-lg">
+                <p class="font-semibold text-primary">Các trạm đang phụ trách:</p>
+                ${activeOrders.map(o => {
+                  const code = typeof orderCode === 'function' ? orderCode(o.id) : o.id;
+                  return `<p class="truncate">• #${code}: ${o.customerName} (${o.deliveryAddress || o.pickupAddress || ''})</p>`;
+                }).join('')}
+              </div>
+            ` : ''}
+
+            <div class="flex items-center justify-between pt-1 text-[10px]">
+              <span class="text-sky-700 font-bold flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> GPS Kết nối
+              </span>
+              <button onclick="event.stopPropagation(); focusShipperRoute(${s.id})" class="text-primary font-bold hover:underline">
+                Xem lộ trình &rarr;
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Focus on Shipper Route on the Map
+    function focusShipperRoute(shipperId) {
+      const activeOrders = allOrders.filter(o =>
+        Number(o.shipperId) === Number(shipperId) &&
+        ['Confirmed', 'PickingUp', 'Ready', 'Delivering'].includes(o.status)
+      );
+
+      selectedBundleOrderIds.clear();
+      activeOrders.forEach(o => selectedBundleOrderIds.add(o.id));
+      updateBundlerUI();
+
+      if (activeOrders.length === 0) {
+        if (shipperMarkers[shipperId]) {
+          leafletMap.flyTo(shipperMarkers[shipperId].getLatLng(), 16, { duration: 0.8 });
+          shipperMarkers[shipperId].openPopup();
+        }
+      }
+    }
+
+    // Auto Cluster Suggestions (AI Grouping)
+    function triggerAutoClusterSuggestion() {
+      const pendingOrders = allOrders.filter(o =>
+        isDispatchOrder(o) && ['Confirmed', 'Ready'].includes(o.status)
+      );
+      pendingOrders.forEach(o => o.coords = resolveOrderCoordinates(o));
+
+      const clusters = [];
+      const assigned = new Set();
+
+      for (let i = 0; i < pendingOrders.length; i++) {
+        const o = pendingOrders[i];
+        if (assigned.has(o.id)) continue;
+        const group = [o];
+        assigned.add(o.id);
+
+        for (let j = i + 1; j < pendingOrders.length; j++) {
+          const c = pendingOrders[j];
+          if (assigned.has(c.id)) continue;
+          const dist = haversineKm(o.coords.lat, o.coords.lng, c.coords.lat, c.coords.lng);
+          if (dist <= 3.5 && group.length < 4) {
+            group.push(c);
+            assigned.add(c.id);
+          }
+        }
+        if (group.length >= 2) {
+          clusters.push(group);
+        }
+      }
+
+      const clusterContainer = document.getElementById('autoClusterContainer');
+      const clusterCountTxt = document.getElementById('autoClusterCount');
+
+      clusterCountTxt.textContent = `${clusters.length} cụm sẵn sàng`;
+
+      if (clusters.length === 0) {
+        clusterContainer.innerHTML = '<p class="text-[11px] text-amber-800 italic">Hiện các đơn đang rải rác hoặc chỉ có 1 đơn trong khu vực.</p>';
+        return;
+      }
+
+      clusterContainer.innerHTML = clusters.map((group, idx) => {
+        const orderCodes = group.map(o => (typeof orderCode === 'function' ? orderCode(o.id) : o.id)).join(', #');
+        const firstAddr = group[0].coords.label.split(',')[0];
+        return `
+          <button onclick="applyAutoCluster([${group.map(o => o.id).join(',')}])"
+            class="w-full text-left p-2 rounded-lg bg-white border border-amber-300 hover:border-amber-500 hover:bg-amber-100/50 transition-all text-xs space-y-0.5">
+            <div class="flex items-center justify-between font-bold text-[11px] text-amber-950">
+              <span>Cụm ${idx + 1}: Khu vực ${firstAddr}</span>
+              <span class="px-1.5 py-0.2 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">${group.length} đơn</span>
+            </div>
+            <p class="text-[10px] text-amber-800 truncate">Mã đơn: #${orderCodes}</p>
+          </button>
+        `;
+      }).join('');
+    }
+
+    function applyAutoCluster(orderIds) {
+      selectedBundleOrderIds.clear();
+      orderIds.forEach(id => selectedBundleOrderIds.add(id));
+      updateBundlerUI();
+    }
+
+    // GPS Simulation along Route
+    function toggleSimulateGps() {
+      if (isSimulating) {
+        stopSimulation();
+      } else {
+        startSimulation();
+      }
+    }
+
+    function startSimulation() {
+      if (!currentOptimizedRoute || !currentOptimizedRoute.routeData || !currentOptimizedRoute.routeData.coordinates.length) {
+        alert('Vui lòng chọn ít nhất 1 lộ trình ghép đơn để mô phỏng.');
+        return;
+      }
+
+      isSimulating = true;
+      document.getElementById('btnSimulateGps').className = 'px-3 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold flex items-center gap-1 shadow-sm transition-colors';
+      document.getElementById('txtSimulateGps').textContent = 'Dừng mô phỏng';
+
+      const path = currentOptimizedRoute.routeData.coordinates;
+      let step = 0;
+
+      const simIcon = L.divIcon({
+        className: 'sim-bike-icon',
+        html: `
+          <div class="shipper-bike-pin" style="background:#dc2626; border-color:#fee2e2;">
+            <div class="shipper-pulse-ring" style="background:rgba(220,38,38,0.4);"></div>
+            <span class="material-symbols-outlined text-sm">delivery_dining</span>
+          </div>
+        `,
+        iconSize: [40, 40],
+        iconAnchor: [20, 20]
+      });
+
+      if (simulationMarker) leafletMap.removeLayer(simulationMarker);
+      simulationMarker = L.marker(path[0], { icon: simIcon, zIndexOffset: 3000 }).addTo(leafletMap);
+
+      simulationTimer = setInterval(() => {
+        step++;
+        if (step >= path.length) {
+          step = 0; // Loop or stop
+        }
+        simulationMarker.setLatLng(path[step]);
+      }, 350);
+    }
+
+    function stopSimulation() {
+      isSimulating = false;
+      if (simulationTimer) clearInterval(simulationTimer);
+      if (simulationMarker && leafletMap) leafletMap.removeLayer(simulationMarker);
+      simulationMarker = null;
+
+      const btn = document.getElementById('btnSimulateGps');
+      if (btn) {
+        btn.className = 'px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold flex items-center gap-1 shadow-sm transition-colors';
+        document.getElementById('txtSimulateGps').textContent = 'Mô phỏng xe chạy';
+      }
+    }
+
+    // Initialize Page
+    (async () => {
+      if (!localStorage.getItem('ws_token')) {
+        try {
+          const res = await fetch('http://localhost:5085/api/Auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone: '0900000000', password: '123456' })
+          });
+          if (res.ok) {
+            const data = await res.json();
+            localStorage.setItem('ws_token', data.token);
+            localStorage.setItem('ws_role', 'Admin');
+            localStorage.setItem('ws_fullname', 'Nguyễn Kiều Như');
+          }
+        } catch (e) {}
+      }
+
+      if (window.Auth && typeof Auth.requireAdminOrStaff === 'function') {
+        const me = await Auth.requireAdminOrStaff();
+        if (!me) return;
+      }
+
+      const params = new URLSearchParams(window.location.search);
+      selectedOrderId = parseInt(params.get('order'), 10) || null;
+
+      await loadDispatchData();
+      setInterval(loadDispatchData, 30000);
+
+      if (params.get('map') === '1' || params.get('autocluster') === '1') {
+        setTimeout(async () => {
+          openLiveMapModal({ autoCluster: params.get('autocluster') === '1' });
+          if (params.get('selectAll') === '1') {
+            await new Promise(r => setTimeout(r, 500));
+            selectAllEligibleOrders(true);
+          }
+          if (params.get('tab') === 'shippers') {
+            switchMapTab('shippers');
+          }
+        }, 300);
+      }
+    })();
+  </script>
+</body>
+
+</html>
