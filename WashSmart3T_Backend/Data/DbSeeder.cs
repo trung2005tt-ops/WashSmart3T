@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using WashSmart.API.Models;
 
 namespace WashSmart.API.Data;
@@ -40,11 +40,13 @@ public static class DbSeeder
         }
 
         // =========================
-        // SEED ADMIN
+        // SEED ADMIN & RECEPTION STAFF
         // =========================
 
         var adminRole = await context.Roles
             .FirstAsync(x => x.Name == "Admin");
+        var staffRole = await context.Roles
+            .FirstAsync(x => x.Name == "Staff");
 
         var adminExists = await context.Users
             .AnyAsync(x => x.Phone == "0900000000");
@@ -53,22 +55,44 @@ public static class DbSeeder
         {
             var admin = new User
             {
-                FullName = "System Administrator",
+                FullName = "Nguyễn Kiều Như",
                 Phone = "0900000000",
                 Email = "admin@washsmart.com",
-
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword(
-                    "Admin@123456"
-                ),
-
+                PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"),
                 RoleId = adminRole.Id,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
             };
 
             context.Users.Add(admin);
-
-            await context.SaveChangesAsync();
         }
+
+        // Thêm các nhân viên tiếp nhận / lễ tân
+        var staffList = new[]
+        {
+            new { Phone = "0911000001", Name = "Trần Tuyết Mai", Email = "mai.tran@washsmart.com" },
+            new { Phone = "0911000002", Name = "Lê Hoài Nam", Email = "nam.le@washsmart.com" },
+            new { Phone = "0911000003", Name = "Đặng Thu Thảo", Email = "thao.dang@washsmart.com" },
+            new { Phone = "0965112233", Name = "Đặng Thùy Dương", Email = "duong.dang@washsmart.com" }
+        };
+
+        foreach (var s in staffList)
+        {
+            if (!await context.Users.AnyAsync(x => x.Phone == s.Phone))
+            {
+                context.Users.Add(new User
+                {
+                    FullName = s.Name,
+                    Phone = s.Phone,
+                    Email = s.Email,
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"),
+                    RoleId = staffRole.Id,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+        }
+
+        await context.SaveChangesAsync();
     }
 }

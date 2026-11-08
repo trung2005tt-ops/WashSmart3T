@@ -213,7 +213,17 @@
               <span class="px-2 py-0.5 rounded bg-primary-fixed text-primary text-[10px] font-bold">Phiên
                 #CS1-084</span>
             </div>
-            <p class="text-secondary text-xs mt-0.5">Lễ tân: Nguyễn Kiều Như · Kết nối cân điện tử USB RS-232 live</p>
+            <div class="flex items-center gap-1.5 text-secondary text-xs mt-0.5">
+              <span>Lễ tân tiếp nhận:</span>
+              <select id="posCashierSelect" onchange="onCashierChange(this.value)" class="bg-surface-container font-bold text-primary px-2 py-0.5 rounded border border-surface-container-high focus:outline-none text-xs">
+                <option value="Nguyễn Kiều Như" selected>Nguyễn Kiều Như (Quản lý)</option>
+                <option value="Trần Tuyết Mai">Trần Tuyết Mai (Lễ tân ca sáng)</option>
+                <option value="Lê Hoài Nam">Lê Hoài Nam (Lễ tân ca chiều)</option>
+                <option value="Đặng Thu Thảo">Đặng Thu Thảo (Thu ngân VIP)</option>
+                <option value="Đặng Thùy Dương">Đặng Thùy Dương (Nhân viên quầy)</option>
+              </select>
+              <span>· Cân USB RS-232 live</span>
+            </div>
           </div>
         </div>
 
@@ -384,7 +394,7 @@
             <div class="flex items-center justify-between border-b border-surface-container pb-3">
               <h2 class="font-bold text-sm text-on-surface flex items-center gap-2">
                 <span class="material-symbols-outlined text-primary text-lg">dry_cleaning</span>
-                Phân Loại Chất Liệu Vải
+                Chọn Dịch Vụ Giặt Ủi
               </h2>
               <span class="text-xs text-secondary" id="service-status-hint">Tự động kết nối dịch vụ CSDL</span>
             </div>
@@ -402,16 +412,7 @@
             </h2>
 
             <div class="space-y-2 text-xs">
-              <label class="flex items-center justify-between p-2.5 bg-surface-container-low rounded-lg cursor-pointer">
-                <div class="flex items-center gap-2">
-                  <input id="addonUV" type="checkbox" checked class="accent-primary w-4 h-4">
-                  <div>
-                    <p class="font-semibold text-on-surface">Khử khuẩn buồng sấy UV 99.9%</p>
-                    <p class="text-[10px] text-secondary">Diệt nấm mốc sâu thớ vải chuẩn 3T</p>
-                  </div>
-                </div>
-                <span class="font-bold text-primary">MIỄN PHÍ</span>
-              </label>
+              
 
               <label class="flex items-center justify-between p-2.5 bg-surface-container-low rounded-lg cursor-pointer">
                 <div class="flex items-center gap-2">
@@ -718,6 +719,12 @@
     const STORE_ADDRESS = 'Cửa hàng WashSmart 3T - Chi nhánh CS1, TP.HCM';
     const HOME_DELIVERY_FEE = 20000;
 
+    
+    function onCashierChange(name) {
+      localStorage.setItem('ws_active_cashier', name);
+      showToast(`Đã chuyển phiên làm việc sang lễ tân: ${name}`);
+    }
+
     function handleLogout(e) { if (e) e.preventDefault(); if (window.Auth) Auth.logout(); else window.location.href = 'login.html'; }
     function showToast(message, isError = false) {
       const container = document.getElementById('toast-container');
@@ -842,21 +849,40 @@
       if (event) event.stopPropagation();
       const item = selectedCart.find(x => x.serviceId === serviceId);
       if (!item) return;
-      const isKg = item.unit.toLowerCase().includes('kg');
-      const step = isKg ? 0.5 : 1.0;
-      const newQty = Math.max(isKg ? 0.5 : 1.0, Math.round((item.quantity + (delta > 0 ? step : -step)) * 10) / 10);
-      item.quantity = newQty;
+      const isKg = (item.unit || '').toLowerCase().includes('kg');
+      if (isKg) {
+        const step = 0.5;
+        const newQty = Math.max(0.5, Math.round((item.quantity + (delta > 0 ? step : -step)) * 10) / 10);
+        item.quantity = newQty;
+      } else {
+        // Hàng tính theo CÁI, BỘ, ĐÔI: Bắt buộc là số nguyên (1, 2, 3...), KHÔNG để 1.5 cái!
+        const step = 1;
+        const newQty = Math.max(1, Math.round(item.quantity) + (delta > 0 ? step : -step));
+        item.quantity = newQty;
+      }
       activeServiceId = serviceId;
       renderFabricCards();
       updateBillCalculations();
     }
 
     function setServiceQuantityManual(serviceId, val) {
-      const num = parseFloat(val);
       const item = selectedCart.find(x => x.serviceId === serviceId);
       if (!item) return;
-      if (Number.isFinite(num) && num > 0) {
-        item.quantity = Math.round(num * 100) / 100;
+      const isKg = (item.unit || '').toLowerCase().includes('kg');
+      if (isKg) {
+        const num = parseFloat(val);
+        if (Number.isFinite(num) && num > 0) {
+          item.quantity = Math.max(0.1, Math.round(num * 100) / 100);
+        }
+      } else {
+        // Số lượng cái / bộ: Phải là số nguyên
+        const num = parseInt(val, 10);
+        if (Number.isFinite(num) && num > 0) {
+          item.quantity = num;
+        } else {
+          showToast('Số lượng đồ tính theo cái/bộ phải là số nguyên (ví dụ: 1, 2, 3...).', true);
+          return;
+        }
       }
       activeServiceId = serviceId;
       renderFabricCards();
@@ -1008,13 +1034,15 @@
     document.getElementById('customerNameInput')?.addEventListener('input', e => { document.getElementById('cust-name-text').textContent = e.target.value.trim() || 'Khách hàng mới / chưa tra cứu'; });
     document.getElementById('btnPlusWeight')?.addEventListener('click', () => {
       const activeItem = selectedCart.find(x => x.serviceId === activeServiceId) || (selectedCart.length ? selectedCart[0] : null);
-      if (!activeItem) { showToast('Vui lòng chọn dịch vụ trước khi cân.', true); return; }
-      changeServiceQuantity(activeItem.serviceId, 0.5);
+      if (!activeItem) { showToast('Vui lòng chọn dịch vụ trước khi điều chỉnh.', true); return; }
+      const isKg = (activeItem.unit || '').toLowerCase().includes('kg');
+      changeServiceQuantity(activeItem.serviceId, isKg ? 0.5 : 1);
     });
     document.getElementById('btnMinusWeight')?.addEventListener('click', () => {
       const activeItem = selectedCart.find(x => x.serviceId === activeServiceId) || (selectedCart.length ? selectedCart[0] : null);
       if (!activeItem) return;
-      changeServiceQuantity(activeItem.serviceId, -0.5);
+      const isKg = (activeItem.unit || '').toLowerCase().includes('kg');
+      changeServiceQuantity(activeItem.serviceId, isKg ? -0.5 : -1);
     });
     document.getElementById('btnRescale')?.addEventListener('click', () => { 
       const activeItem = selectedCart.find(x => x.serviceId === activeServiceId) || (selectedCart.length ? selectedCart[0] : null);
@@ -1025,12 +1053,14 @@
     document.getElementById('btnManualWeight')?.addEventListener('click', () => { 
       const activeItem = selectedCart.find(x => x.serviceId === activeServiceId) || (selectedCart.length ? selectedCart[0] : null);
       if (!activeItem) { showToast('Vui lòng chọn dịch vụ cần nhập số lượng.', true); return; }
-      const input = prompt(`Nhập ${activeItem.unit} thực tế cho "${activeItem.name}":`, activeItem.quantity > 0 ? activeItem.quantity : ''); 
-      if (input !== null && input.trim() !== '' && Number.isFinite(Number(input)) && Number(input) > 0) { 
-        setServiceQuantityManual(activeItem.serviceId, input);
-      } else if (input !== null) { 
-        showToast('Số lượng phải lớn hơn 0.', true); 
-      } 
+      const isKg = (activeItem.unit || '').toLowerCase().includes('kg');
+      const promptMsg = isKg 
+        ? `Nhập số kg thực tế cho "${activeItem.name}" (ví dụ: 2.5 hoặc 3.0):`
+        : `Nhập số lượng ${activeItem.unit} cho "${activeItem.name}" (phải là số nguyên: 1, 2, 3...):`;
+      const input = prompt(promptMsg, activeItem.quantity > 0 ? activeItem.quantity : '1'); 
+      if (input !== null && input.trim() !== '') { 
+        setServiceQuantityManual(activeItem.serviceId, input.trim());
+      }
     });
     document.getElementById('addonComfort')?.addEventListener('change', updateBillCalculations);
     document.getElementById('addonBag')?.addEventListener('change', updateBillCalculations);

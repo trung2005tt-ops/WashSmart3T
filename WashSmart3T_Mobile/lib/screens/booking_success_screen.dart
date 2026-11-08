@@ -6,11 +6,19 @@ import 'order_tracking_screen.dart';
 class BookingSuccessScreen extends StatefulWidget {
   final String orderCode;
   final int? orderId;
+  final String pickupTime;
+  final String deliveryTime;
+  final String pickupAddress;
+  final String totalAmount;
 
   const BookingSuccessScreen({
     super.key,
     this.orderCode = 'WS3T-8892',
     this.orderId,
+    this.pickupTime = '14:00 - 16:00 Hôm nay',
+    this.deliveryTime = '10:00 – 12:00 Ngày mai (Chuẩn 24h)',
+    this.pickupAddress = 'Căn 302, 128 Hai Bà Trưng, P. Bến Nghé, Q.1',
+    this.totalAmount = '30.000 đ',
   });
 
   @override
@@ -414,7 +422,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> {
                       ),
                     ),
                     Text(
-                      '14:00 - 16:00 Hôm nay (24/10)',
+                      widget.pickupTime,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
@@ -557,7 +565,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> {
             icon: Icons.location_on,
             iconColor: primaryColor,
             label: 'Địa chỉ lấy & giao trả',
-            value: 'Căn 302, 128 Hai Bà Trưng, P. Bến Nghé, Q.1',
+            value: widget.pickupAddress,
           ),
           const SizedBox(height: 12),
 
@@ -565,8 +573,8 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> {
             icon: Icons.schedule,
             iconColor: tertiaryColor,
             label: 'Dự kiến giao đồ sạch',
-            value: '10:00 – 12:00 Ngày mai (25/10)',
-            subtext: 'Cam kết giao đúng hẹn trong 24h',
+            value: widget.deliveryTime,
+            subtext: 'Cam kết giao đúng hẹn tinh tươm',
             subtextColor: tertiaryColor,
           ),
           const SizedBox(height: 12),
@@ -591,7 +599,7 @@ class _BookingSuccessScreenState extends State<BookingSuccessScreen> {
               children: [
                 _buildPriceLine('Tạm tính dịch vụ (5.0 kg):', '120.000 đ'),
                 const SizedBox(height: 4),
-                _buildPriceLine('Ủi hơi nước & Khử khuẩn:', '25.000 đ'),
+                _buildPriceLine('Ủi hơi nước chống nhăn:', '20.000 đ'),
                 const SizedBox(height: 4),
                 _buildPriceLine(
                   'Voucher (3TCHAOBAN)',

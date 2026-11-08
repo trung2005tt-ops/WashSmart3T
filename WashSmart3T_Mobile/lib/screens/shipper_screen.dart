@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -118,6 +119,8 @@ class _ShipperScreenState extends State<ShipperScreen>
 
   bool _isOnline = true;
   String _shipperName = 'Shipper';
+  Timer? _orderPollingTimer;
+  bool _hasNewOrderNotification = false;
   int _selectedFilterIndex = 0; // 0: Cần lấy, 1: Cần giao, 2: Đã hoàn tất
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
@@ -395,10 +398,44 @@ class _ShipperScreenState extends State<ShipperScreen>
     _tabController = TabController(length: 4, vsync: this);
     // Tải đơn hàng thật từ API khi mở màn hình
     _loadOrdersFromApi();
+
+    // 🚀 Polling kiểm tra đơn hàng mới định kỳ mỗi 10 giây (Item 10)
+    _orderPollingTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+      if (mounted && _isOnline) {
+        _checkNewOrdersSilently();
+      }
+    });
+  }
+
+  Future<void> _checkNewOrdersSilently() async {
+    try {
+      final token = await AuthService.getToken();
+      if (token == null || token.isEmpty) return;
+      final res = await http.get(
+        Uri.parse('$_baseUrl/Orders/shipper-orders'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+      if (res.statusCode == 200) {
+        final List<dynamic> raw = jsonDecode(res.body);
+        final currentPickupWaiting = raw.where((o) => o['status'] == 'Confirmed').length;
+        final localPickupWaiting = _orders.where((o) => o.type == OrderType.pickup && o.status == ShipperOrderStatus.available).length;
+        if (currentPickupWaiting > localPickupWaiting) {
+          if (mounted) {
+            setState(() {
+              _hasNewOrderNotification = true;
+            });
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   @override
   void dispose() {
+    _orderPollingTimer?.cancel();
     _tabController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -627,6 +664,68 @@ class _ShipperScreenState extends State<ShipperScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // 🔔 Thông báo có đơn mới nhảy thông báo (Item 10)
+            if (_hasNewOrderNotification) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFF59E0B)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.amber.withOpacity(0.15),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.notifications_active, color: Color(0xFFD97706), size: 22),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'CÓ ĐƠN HÀNG MỚI CẦN LẤY!',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF92400E),
+                            ),
+                          ),
+                          Text(
+                            'Khách vừa đặt đơn giặt sấy. Hãy bấm để nhận đơn ngay!',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: const Color(0xFF78350F),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: () {
+                        setState(() => _hasNewOrderNotification = false);
+                        _loadOrdersFromApi();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        minimumSize: Size.zero,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      child: const Text('Xem ngay', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+
             // 1. Shipper Header Info Card
             _buildShipperProfileCard(),
             const SizedBox(height: 16),
@@ -1616,18 +1715,20 @@ class _ShipperScreenState extends State<ShipperScreen>
                         ),
                       Row(
                         children: [
-                          const Icon(
-                            Icons.schedule,
+                          Icon(
+                            order.type == OrderType.pickup ? Icons.moped : Icons.schedule,
                             size: 14,
-                            color: outlineColor,
+                            color: order.type == OrderType.pickup ? primaryColor : tertiaryColor,
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            order.timeWindow,
+                            order.type == OrderType.pickup
+                                ? 'Lấy: ${order.timeWindow}'
+                                : 'Giao sạch: ${order.timeWindow}',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 11,
-                              color: outlineColor,
-                              fontWeight: FontWeight.w500,
+                              color: onSurface,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
@@ -2980,7 +3081,7 @@ class _ShipperScreenState extends State<ShipperScreen>
                           ),
                           const SizedBox(height: 14),
                           Container(
-                            padding: const EdgeInsets.all(10),
+                            padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(14),
@@ -2988,32 +3089,71 @@ class _ShipperScreenState extends State<ShipperScreen>
                                 color: outlineColor.withValues(alpha: 0.3),
                               ),
                             ),
-                            child: SizedBox(
-                              width: 200,
-                              height: 200,
-                              child: CustomPaint(
-                                painter: _IllustrativeQrPainter(
-                                  seed: '${order.id}-${selected!.name}',
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                'https://api.vietqr.io/image/970422-0818606505-compact2.jpg?amount=${order.codAmount.toInt() > 0 ? order.codAmount.toInt() : 50000}&addInfo=WS3T%20${order.id}&accountName=TRAN%20DIEP%20MINH%20TRUNG',
+                                width: 210,
+                                height: 210,
+                                fit: BoxFit.contain,
+                                errorBuilder: (context, error, stackTrace) => Container(
+                                  width: 210,
+                                  height: 210,
+                                  color: Colors.grey.shade100,
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: const [
+                                      Icon(Icons.qr_code_2, size: 80, color: primaryColor),
+                                      SizedBox(height: 6),
+                                      Text('Mã thanh toán VietQR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(height: 14),
-                          Text(
-                            'Mã QR minh họa - Khách quét để thanh toán',
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              color: outlineColor,
+                          const SizedBox(height: 10),
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: outlineColor.withOpacity(0.2)),
                             ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Số tiền: ${order.codAmount.toStringAsFixed(0)} đ',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 13,
-                              fontWeight: FontWeight.bold,
-                              color: primaryColor,
+                            child: Column(
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text('STK / Ví MoMo:', style: GoogleFonts.plusJakartaSans(fontSize: 11, color: outlineColor)),
+                                    Text('0818606505', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.bold, color: primaryColor)),
+                                  ],
+                                ),
+                                const SizedBox(height: 3),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text('Chủ thụ hưởng:', style: GoogleFonts.plusJakartaSans(fontSize: 11, color: outlineColor)),
+                                    Text('TRAN DIEP MINH TRUNG', style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                                const SizedBox(height: 3),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text('Ngân hàng:', style: GoogleFonts.plusJakartaSans(fontSize: 11, color: outlineColor)),
+                                    Text('MBBank / Ví MoMo', style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.bold, color: tertiaryColor)),
+                                  ],
+                                ),
+                                const SizedBox(height: 3),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text('Số tiền:', style: GoogleFonts.plusJakartaSans(fontSize: 11, color: outlineColor)),
+                                    Text('${order.codAmount.toStringAsFixed(0)} đ', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.bold, color: primaryColor)),
+                                  ],
+                                ),
+                              ],
                             ),
                           ),
                         ],

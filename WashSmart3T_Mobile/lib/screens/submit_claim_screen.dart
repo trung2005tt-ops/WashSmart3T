@@ -2,7 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class SubmitClaimScreen extends StatefulWidget {
-  const SubmitClaimScreen({super.key});
+  final String orderCode;
+  final int? orderId;
+  final double orderWeight;
+  final List<Map<String, dynamic>>? items;
+
+  const SubmitClaimScreen({
+    super.key,
+    this.orderCode = 'WS3T-8892',
+    this.orderId,
+    this.orderWeight = 2.5,
+    this.items,
+  });
 
   @override
   State<SubmitClaimScreen> createState() => _SubmitClaimScreenState();
@@ -35,7 +46,10 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
     {'icon': Icons.air, 'label': 'Đồ còn ẩm / Mùi lạ'},
   ];
 
-  bool _hasProofPhoto = true;
+  final List<String> _proofPhotos = [
+    'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=200&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?q=80&w=200&auto=format&fit=crop',
+  ];
   late TextEditingController _descController;
   int _selectedSolution =
       1; // 1: Giặt & tẩy hấp, 2: Hoàn tiền, 3: Yêu cầu đền bù
@@ -94,7 +108,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
       if (mounted) {
         setState(() => _isSubmitting = false);
         _showToast(
-          'Đã tiếp nhận khiếu nại #WS3T-8892. Chuyên viên bảo hiểm sẽ phản hồi trong 15 phút!',
+          'Đã tiếp nhận khiếu nại #${widget.orderCode}. Chuyên viên bảo hiểm sẽ phản hồi trong 15 phút!',
         );
         Navigator.pop(context);
       }
@@ -125,7 +139,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
               ),
             ),
             Text(
-              'Đơn hàng #WS3T-8892',
+              'Đơn hàng #${widget.orderCode}',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 11,
                 color: secondaryColor,
@@ -302,7 +316,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Đơn hàng #WS3T-8892',
+                    'Đơn hàng #${widget.orderCode}',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
@@ -431,8 +445,8 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
 
         // Item 2
         _buildSelectableItemCard(
-          title: 'Giặt sấy thông thường (5.0 kg)',
-          subtitle: 'Quần áo thường ngày • Hương hoa hồng...',
+          title: 'Giặt sấy thông thường (${widget.orderWeight.toStringAsFixed(1)} kg)',
+          subtitle: 'Quần áo thường ngày • Hương hoa hồng dịu nhẹ',
           tag: 'Tiêu chuẩn',
           imageUrl:
               'https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?q=80&w=200&auto=format&fit=crop',
@@ -670,7 +684,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
               ],
             ),
             Text(
-              _hasProofPhoto ? '1 / 5 hình' : '0 / 5 hình',
+              '${_proofPhotos.length} / 5 hình',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
@@ -685,107 +699,123 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
           style: GoogleFonts.plusJakartaSans(fontSize: 11, color: outlineColor),
         ),
         const SizedBox(height: 10),
-        Row(
-          children: [
-            if (_hasProofPhoto) ...[
-              Stack(
-                children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=200&auto=format&fit=crop',
-                      width: 90,
-                      height: 90,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 4,
-                    left: 4,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.7),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'Ảnh 1: Cổ áo',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 8,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 4,
-                    right: 4,
-                    child: GestureDetector(
-                      onTap: () => setState(() => _hasProofPhoto = false),
-                      child: const CircleAvatar(
-                        radius: 10,
-                        backgroundColor: Color(0xFFBA1A1A),
-                        child: Icon(Icons.close, size: 12, color: Colors.white),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: 10),
-            ],
-
-            // Button Chụp ảnh
-            Expanded(
-              child: InkWell(
-                onTap: () => setState(() => _hasProofPhoto = true),
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  height: 90,
-                  decoration: BoxDecoration(
-                    color: cardBg,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              ...List.generate(_proofPhotos.length, (idx) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 10.0),
+                  child: Stack(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: const BoxDecoration(
-                          color: surfaceLow,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.photo_camera_outlined,
-                          color: primaryColor,
-                          size: 20,
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(12),
+                        child: Image.network(
+                          _proofPhotos[idx],
+                          width: 90,
+                          height: 90,
+                          fit: BoxFit.cover,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Chụp ảnh',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: primaryColor,
+                      Positioned(
+                        bottom: 4,
+                        left: 4,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 1,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.7),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'Ảnh ${idx + 1}',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 8,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: GestureDetector(
+                          onTap: () => setState(() => _proofPhotos.removeAt(idx)),
+                          child: const CircleAvatar(
+                            radius: 10,
+                            backgroundColor: Color(0xFFBA1A1A),
+                            child: Icon(Icons.close, size: 12, color: Colors.white),
+                          ),
                         ),
                       ),
                     ],
                   ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
+                );
+              }),
 
-            // Button Thêm video
-            Expanded(
-              child: InkWell(
+              // Button Thêm ảnh (tối đa 5 ảnh)
+              if (_proofPhotos.length < 5)
+                Padding(
+                  padding: const EdgeInsets.only(right: 10.0),
+                  child: InkWell(
+                    onTap: () {
+                      final dummyPhotos = [
+                        'https://images.unsplash.com/photo-1545127398-14699f92334b?q=80&w=200&auto=format&fit=crop',
+                        'https://images.unsplash.com/photo-1567113463300-102570d935b4?q=80&w=200&auto=format&fit=crop',
+                        'https://images.unsplash.com/photo-1574634534894-89d7576c8259?q=80&w=200&auto=format&fit=crop',
+                      ];
+                      final nextPhoto = dummyPhotos[_proofPhotos.length % dummyPhotos.length];
+                      setState(() => _proofPhotos.add(nextPhoto));
+                      _showToast('Đã thêm ảnh bằng chứng #${_proofPhotos.length}');
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      width: 90,
+                      height: 90,
+                      decoration: BoxDecoration(
+                        color: cardBg,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: primaryColor.withOpacity(0.3)),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: const BoxDecoration(
+                              color: surfaceLow,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.photo_camera_outlined,
+                              color: primaryColor,
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '+ Thêm ảnh',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: primaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+              // Button Thêm video
+              InkWell(
                 onTap: () =>
                     _showToast('Tính năng quay video bằng chứng đang được mở'),
                 borderRadius: BorderRadius.circular(12),
                 child: Container(
+                  width: 90,
                   height: 90,
                   decoration: BoxDecoration(
                     color: surfaceLow,
@@ -801,7 +831,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
-                          Icons.add,
+                          Icons.videocam_outlined,
                           color: outlineColor,
                           size: 20,
                         ),
@@ -818,8 +848,8 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );

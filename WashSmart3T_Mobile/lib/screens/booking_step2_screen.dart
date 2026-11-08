@@ -67,7 +67,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
   }
 
   // Giá giặt chưa xác định cho đến khi shipper cân/đếm thực tế.
-  int get expressFee => (selectedTimeSlot == 0) ? 15000 : 0;
+  int get expressFee => (selectedTimeSlot == 0) ? 25000 : 0;
   int get transportTotal => shippingFee + expressFee;
 
   void _showToast(String message) {
@@ -684,13 +684,28 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
 
     final timeSlots = [
       {
-        'title': 'Gấp trong 30–45 phút',
-        'sub': 'Shipper có mặt ngay tức thì',
-        'badge': 'Siêu tốc',
+        'title': 'Lấy gấp (trong 30–45 phút)',
+        'sub': 'Giao hỏa tốc sau 3.5 – 4 giờ (Chỉ áp dụng bán kính ≤ 5km)',
+        'badge': 'Giao gấp 4h (≤5km)',
         'badgeBg': const Color(0xFFFFDAD6),
         'badgeText': const Color(0xFF93000A),
-        'price': '+15.000 đ',
+        'price': '+25.000 đ',
         'isPricePrimary': true,
+      },
+      {
+        'title': '08:00 – 10:00',
+        'sub': 'Khung giờ buổi sáng • Shipper ca sớm',
+        'badge': 'Buổi sáng',
+        'badgeBg': secondaryFixed,
+        'badgeText': const Color(0xFF3E0022),
+        'price': 'Miễn phí',
+        'isPricePrimary': false,
+      },
+      {
+        'title': '10:00 – 12:00',
+        'sub': 'Khung giờ trưa • Tiếp nhận trước ca giặt trưa',
+        'price': 'Miễn phí',
+        'isPricePrimary': false,
       },
       {
         'title': '14:00 – 16:00',
@@ -1055,7 +1070,9 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '10:00 – 12:00 Ngày mai (25/10)',
+                      selectedTimeSlot == 0
+                          ? 'Giao gấp sau 3.5 – 4 giờ (Hôm nay)'
+                          : '10:00 – 12:00 Ngày mai (Chuẩn 24h)',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
@@ -1064,7 +1081,9 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Chuẩn quy trình 24h giặt sấy & ủi tinh tươm',
+                      selectedTimeSlot == 0
+                          ? 'Xưởng ưu tiên xử lý cấp tốc • Bán kính giao ≤ 5km'
+                          : 'Chuẩn quy trình 24h giặt sấy & ủi tinh tươm',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         fontWeight: FontWeight.w500,

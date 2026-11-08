@@ -570,10 +570,29 @@
             <span>2. Đối soát quy trình xử lý & IoT</span>
           </h3>
           <div class="p-3.5 rounded-lg bg-surface-container-low text-xs space-y-2">
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-secondary">
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-2 text-secondary">
+              <div>Khôi lượng đơn: <strong class="text-primary font-bold">2.5 kg</strong></div>
               <div>Mã Seal: <strong class="text-on-surface font-mono font-bold">${item.sealCode}</strong></div>
               <div>Thiết bị: <strong class="text-on-surface font-bold">${item.drumInfo}</strong></div>
               <div>Shipper: <strong class="text-on-surface font-bold">${item.shipperName}</strong></div>
+            </div>
+            <!-- Anh minh chung su co tu khach hang -->
+            <div class="pt-1 pb-1">
+              <p class="text-[11px] text-secondary font-medium mb-1.5">Hình ảnh minh chứng sự cố từ khách hàng & tem seal niêm phong (2 ảnh):</p>
+              <div class="flex items-center gap-3">
+                <div class="relative group cursor-pointer">
+                  <img src="https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=200&auto=format&fit=crop" class="w-14 h-14 object-cover rounded-lg border border-surface-container shadow-xs">
+                  <span class="absolute bottom-1 left-1 bg-black/70 text-white text-[8px] px-1 rounded">Vết ố cổ áo</span>
+                </div>
+                <div class="relative group cursor-pointer">
+                  <img src="https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?q=80&w=200&auto=format&fit=crop" class="w-14 h-14 object-cover rounded-lg border border-surface-container shadow-xs">
+                  <span class="absolute bottom-1 left-1 bg-black/70 text-white text-[8px] px-1 rounded">Tem Seal 3T</span>
+                </div>
+                <div class="text-[11px] text-secondary space-y-0.5">
+                  <p class="text-emerald-800 font-semibold">✓ Thời điểm khiếu nại: Trong 24h sau khi nhận hàng (✓ Hợp lệ)</p>
+                  <p class="text-secondary text-[10px]">(Quy định 3T Care: Khiếu nại có hiệu lực trong vòng 48h sau khi giao hàng)</p>
+                </div>
+              </div>
             </div>
             <p class="text-[11px] text-emerald-800 font-medium bg-emerald-50 p-2 rounded border border-emerald-200">
               🛡️ <strong>Chính sách 3T Care:</strong> Áp dụng cam kết bồi thường lên tới 100% giá trị trang phục hoặc giặt phục hồi lại miễn phí trong vòng 24 giờ.

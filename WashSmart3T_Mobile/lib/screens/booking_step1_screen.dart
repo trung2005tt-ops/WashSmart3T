@@ -216,9 +216,6 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
                       _buildWeightEstimationSection(),
                       const SizedBox(height: 16),
 
-                      // 5. CHI TIẾT ĐỒ CẦN GIẶT
-                      _buildGarmentsListSection(),
-                      const SizedBox(height: 16),
 
                       // 6. CHĂM SÓC NÂNG CAO & ĐÓNG GÓI
                       _buildAddonsSection(),
@@ -897,15 +894,28 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
                   color: onSurface,
                 ),
               ),
-              subtitle: description.isEmpty
-                  ? null
-                  : Text(
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (description.isNotEmpty)
+                    Text(
                       description,
                       style: GoogleFonts.plusJakartaSans(
-                        fontSize: 10,
+                        fontSize: 11,
                         color: onSurfaceVariant,
                       ),
                     ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '✓ Giặt riêng 1 máy • Sấy diệt khuẩn 99.9% • Gấp nếp tinh tươm',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: secondaryColor,
+                    ),
+                  ),
+                ],
+              ),
               secondary: const Icon(
                 Icons.local_laundry_service,
                 color: primaryColor,
@@ -1375,10 +1385,6 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
                   onPressed: () {
                     if (selectedServiceIds.isEmpty) {
                       _showToast('Vui lòng chọn ít nhất một dịch vụ.');
-                      return;
-                    }
-                    if (selectedGarmentTypes.isEmpty) {
-                      _showToast('Vui lòng chọn ít nhất một nhóm đồ cần giặt.');
                       return;
                     }
                     Navigator.push(

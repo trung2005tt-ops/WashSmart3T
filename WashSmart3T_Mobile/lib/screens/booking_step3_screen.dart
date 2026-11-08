@@ -12,6 +12,9 @@ class BookingStep3Screen extends StatefulWidget {
   final String contactPhone;
   final String? note;
   final List<Map<String, dynamic>> items;
+  final String pickupTime;
+  final String deliveryTime;
+  final int expressFee;
 
   const BookingStep3Screen({
     super.key,
@@ -20,6 +23,9 @@ class BookingStep3Screen extends StatefulWidget {
     this.contactPhone = '',
     this.note,
     this.items = const [],
+    this.pickupTime = '14:00 – 16:00 Hôm nay',
+    this.deliveryTime = '10:00 – 12:00 Ngày mai (Chuẩn 24h)',
+    this.expressFee = 0,
   });
 
   @override
@@ -84,8 +90,7 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
   ];
 
   int get finalPrice {
-    // Chỉ hiển thị phí vận chuyển tạm tính; tiền giặt chờ xác nhận khối lượng thực tế.
-    int total = shippingFee;
+    int total = shippingFee + widget.expressFee - voucherDiscount - (isCoinUsed ? coinDiscount : 0);
     return total < 0 ? 0 : total;
   }
 
@@ -941,19 +946,14 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '14:00 - 16:00',
+                        widget.pickupTime,
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: onSurface,
                         ),
-                      ),
-                      Text(
-                        'Hôm nay (24/10)',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
-                          color: onSurfaceVariant,
-                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -1270,16 +1270,27 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
                 _buildPriceRow('Tiền giặt sấy', 'Chờ shipper cân/đếm'),
                 const SizedBox(height: 6),
                 _buildPriceRow(
-                  'Phí vận chuyển 2 chiều (Lấy & Giao)',
+                  'Phí vận chuyển 2 chiều',
                   _formatCurrency(shippingFee),
                 ),
-                const SizedBox(height: 6),
-                _buildPriceRow(
-                  'Mã giảm giá',
-                  'Áp dụng sau khi chốt giá',
-                  textColor: onSurfaceVariant,
-                  icon: Icons.sell,
-                ),
+                if (widget.expressFee > 0) ...[
+                  const SizedBox(height: 6),
+                  _buildPriceRow(
+                    'Phụ phí giao gấp hỏa tốc (≤5km)',
+                    '+',
+                    textColor: primaryColor,
+                    icon: Icons.bolt,
+                  ),
+                ],
+                if (voucherDiscount > 0) ...[
+                  const SizedBox(height: 6),
+                  _buildPriceRow(
+                    'Mã giảm giá ()',
+                    '-',
+                    textColor: primaryColor,
+                    icon: Icons.sell,
+                  ),
+                ],
                 if (isCoinUsed) ...[
                   const SizedBox(height: 6),
                   _buildPriceRow(
@@ -1583,16 +1594,16 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
                   Row(
                     children: [
                       Text(
-                        'Chưa chốt',
+                        _formatCurrency(finalPrice),
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 20,
+                          fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: primaryColor,
                         ),
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '(sau khi shipper cân/đếm)',
+                        '+ tiền giặt sau cân',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 10,
                           fontWeight: FontWeight.w600,
