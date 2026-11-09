@@ -1,51 +1,75 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using WashSmart.API.Data;
+using WashSmart.API.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ============================================================
+// BẢO MẬT CORS: Không dùng AllowAnyOrigin() vô hạn định.
+// Cho phép các máy trạm Web Admin, Flutter Web trên localhost/127.0.0.1
+// ============================================================
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("FlutterPolicy", policy =>
     {
         policy
-            .AllowAnyOrigin()
+            .SetIsOriginAllowed(origin =>
+            {
+                if (string.IsNullOrWhiteSpace(origin)) return false;
+                if (Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+                {
+                    return uri.Host.Equals("localhost", StringComparison.OrdinalIgnoreCase) ||
+                           uri.Host.Equals("127.0.0.1", StringComparison.OrdinalIgnoreCase);
+                }
+                return false;
+            })
             .AllowAnyHeader()
-            .AllowAnyMethod();
+            .AllowAnyMethod()
+            .AllowCredentials();
     });
 });
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(
+        Environment.GetEnvironmentVariable("DB_CONNECTION_STRING") ??
         builder.Configuration.GetConnectionString("DefaultConnection")
     ));
+
+// ============================================================
+// BẢO MẬT JWT AUTHENTICATION
+// Hỗ trợ lấy khóa bí mật từ biến môi trường JWT_SECRET_KEY
+// ============================================================
+var jwtSecret = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") ??
+                builder.Configuration["Jwt:Key"] ??
+                "WashSmart3T_SuperSecretKey_2026_VeryLongKey_DefaultFallbackForSecurityCheck";
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
+        options.RequireHttpsMetadata = false;
+        options.SaveToken = true;
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = true,
             ValidateAudience = true,
             ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
+            ClockSkew = TimeSpan.FromMinutes(1), // Giới hạn độ lệch thời gian chặt chẽ
 
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
+            ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "WashSmart.API",
+            ValidAudience = builder.Configuration["Jwt:Audience"] ?? "WashSmart.Client",
 
             IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(
-                    builder.Configuration["Jwt:Key"]!
-                )
+                Encoding.UTF8.GetBytes(jwtSecret)
             )
         };
     });
-// Add services to the container.
 
+// Add services to the container.
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 
 builder.Services.AddSwaggerGen(options =>
@@ -57,7 +81,7 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "bearer",
         BearerFormat = "JWT",
         In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Description = "Nhập JWT token. Ví dụ: Bearer {token}"
+        Description = "Nhập JWT token theo định dạng: Bearer {token}"
     });
 
     options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
@@ -77,6 +101,7 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
+
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider
@@ -84,6 +109,7 @@ using (var scope = app.Services.CreateScope())
 
     await DbSeeder.SeedAsync(context);
 }
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -98,7 +124,10 @@ app.UseCors("FlutterPolicy");
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Middleware kiểm tra trạng thái IsActive của người dùng tại thời gian thực
+// Ngay khi tài khoản bị khóa trong DB, mọi token hiện hữu lập tức bị từ chối
+app.UseMiddleware<SecurityValidationMiddleware>();
+
 app.MapControllers();
 
 app.Run();
-

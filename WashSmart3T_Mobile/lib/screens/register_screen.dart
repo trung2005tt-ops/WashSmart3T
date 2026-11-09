@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/api_service.dart';
@@ -10,6 +11,10 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  final TextEditingController _otpController = TextEditingController();
+  bool _isSendingOtp = false;
+  int _otpCountdown = 0;
+  Timer? _otpTimer;
   final TextEditingController _fullNameController = TextEditingController();
 
   final TextEditingController _phoneController = TextEditingController();
@@ -55,6 +60,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   void dispose() {
+    _otpController.dispose();
+    _otpTimer?.cancel();
     _passController.dispose();
     _confirmController.dispose();
     super.dispose();
@@ -326,6 +333,85 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       hint: 'Ví dụ: 0908 123 456',
                       icon: Icons.phone_iphone,
                       keyboardType: TextInputType.phone,
+                    ),
+
+                    // Mã OTP xác thực số điện thoại
+                    const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildLabel('Mã xác thực OTP (6 chữ số)', true),
+                              const SizedBox(height: 4),
+                              TextField(
+                                controller: _otpController,
+                                keyboardType: TextInputType.number,
+                                maxLength: 6,
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 4,
+                                  color: onSurface,
+                                ),
+                                decoration: InputDecoration(
+                                  counterText: '',
+                                  hintText: '• • • • • •',
+                                  hintStyle: TextStyle(
+                                    color: outlineColor.withOpacity(0.5),
+                                    letterSpacing: 4,
+                                  ),
+                                  prefixIcon: Icon(Icons.security, color: primaryColor, size: 20),
+                                  filled: true,
+                                  fillColor: surfaceContainerLow,
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: BorderSide.none,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 2),
+                          child: SizedBox(
+                            height: 48,
+                            child: ElevatedButton(
+                              onPressed: (_isSendingOtp || _otpCountdown > 0) ? null : _sendOtp,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: primaryColor,
+                                disabledBackgroundColor: outlineColor.withOpacity(0.3),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 14),
+                              ),
+                              child: _isSendingOtp
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Text(
+                                      _otpCountdown > 0 ? '${_otpCountdown}s' : 'Lấy mã OTP',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
 
                     const SizedBox(height: 16),
@@ -737,12 +823,78 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
   }
 
+  Future<void> _sendOtp() async {
+    final phone = _phoneController.text.trim();
+    if (phone.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng nhập số điện thoại trước khi lấy mã OTP.')),
+      );
+      return;
+    }
+
+    setState(() {
+      _isSendingOtp = true;
+    });
+
+    try {
+      final res = await ApiService.sendRegistrationOtp(phone: phone);
+      if (!mounted) return;
+
+      final devHint = res['devHint'];
+      final msg = res['message'] ?? 'Đã gửi mã OTP xác thực qua SMS.';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(devHint != null ? '$msg\n$devHint' : msg),
+          backgroundColor: const Color(0xFF1B6B40),
+          duration: const Duration(seconds: 6),
+        ),
+      );
+
+      if (devHint != null && devHint.toString().contains('là: ')) {
+        final parts = devHint.toString().split('là: ');
+        if (parts.length > 1) {
+          _otpController.text = parts[1].trim();
+        }
+      }
+
+      setState(() {
+        _otpCountdown = 60;
+      });
+
+      _otpTimer?.cancel();
+      _otpTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        if (_otpCountdown <= 1) {
+          timer.cancel();
+          if (mounted) setState(() => _otpCountdown = 0);
+        } else {
+          if (mounted) setState(() => _otpCountdown--);
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSendingOtp = false;
+        });
+      }
+    }
+  }
+
   Future<void> _register() async {
     final fullName = _fullNameController.text.trim();
     final phone = _phoneController.text.trim();
     final email = _emailController.text.trim();
     final password = _passwordController.text;
     final confirmPassword = _confirmPasswordController.text;
+
+    final otp = _otpController.text.trim();
 
     // Kiểm tra dữ liệu
     if (fullName.isEmpty ||
@@ -753,7 +905,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng nhập đầy đủ thông tin.')),
       );
+      return;
+    }
 
+    if (otp.isEmpty || otp.length < 6) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng nhập đủ 6 chữ số mã OTP xác thực.')),
+      );
       return;
     }
 
@@ -776,6 +934,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         phone: phone,
         email: email,
         password: password,
+        otpCode: otp,
       );
 
       if (!mounted) return;

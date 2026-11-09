@@ -868,18 +868,8 @@
       }
       try {
         showAlert('Đang kết nối cổng SMS gửi tin nhắn tới ' + phone + '...', false);
-        const resp = await fetch('http://localhost:5085/api/StoreConfig/test-sms', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phone })
-        });
-        const data = await resp.json();
-        if (resp.ok) {
-          showAlert(`✅ [${data.provider}] ${data.message} | Mã OTP: ${data.otp}`, false, true);
-        } else {
-          showAlert(`❌ Gửi SMS thất bại: ${data.message}`, true);
-        }
-      } catch (err) {
+        const data = await Api.StoreConfig.testSms(phone);
+        showAlert(`[${data.provider || "Gateway"}] ${data.message}`, false, true);
         showAlert('❌ Lỗi kết nối gửi SMS: ' + (err.message || err), true);
       }
     }

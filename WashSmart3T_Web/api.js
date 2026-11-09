@@ -204,6 +204,13 @@ const Api = {
   // Cấu hình Cửa hàng & Bảng cước vận chuyển
   StoreConfig: {
     async get() {
+      const token = Auth.getToken();
+      const role = String(Auth.getRole() || '').trim().toLowerCase();
+      if (token && role === 'admin') {
+        try {
+          return await Api.get('/StoreConfig/admin');
+        } catch (_) {}
+      }
       return Api.get('/StoreConfig');
     },
     async update(payload) {
@@ -211,6 +218,9 @@ const Api = {
     },
     async reset() {
       return Api.post('/StoreConfig/reset', {});
+    },
+    async testSms(phone) {
+      return Api.post('/StoreConfig/test-sms', { phone });
     },
   },
 

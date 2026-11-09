@@ -25,8 +25,8 @@ public class StoreConfigModel
     // ==========================================
     public string BankName { get; set; } = "MBBank (Ngân hàng Quân Đội)";
     public string BankBin { get; set; } = "970422"; // MBBank NAPAS BIN
-    public string BankAccountNo { get; set; } = "0908123456"; // STK thật
-    public string BankAccountHolder { get; set; } = "NGUYEN THI KIEU NHU"; // Tên chủ tài khoản in hoa
+    public string BankAccountNo { get; set; } = "0908123456"; // STK nhận tiền
+    public string BankAccountHolder { get; set; } = "NGUYEN THI KIEU NHU"; // Tên chủ tài khoản
 
     // ==========================================
     // CỔNG GỬI TIN NHẮN SMS XÁC THỰC SĐT THẬT
@@ -39,11 +39,33 @@ public class StoreConfigModel
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }
 
+public class StorePublicConfigDto
+{
+    public string StoreName { get; set; } = string.Empty;
+    public string Address { get; set; } = string.Empty;
+    public double Latitude { get; set; }
+    public double Longitude { get; set; }
+    public string Hotline { get; set; } = string.Empty;
+    public string OpenHours { get; set; } = string.Empty;
+    public int BaseShippingFee { get; set; }
+    public int Tier2ShippingFee { get; set; }
+    public int Tier3ShippingFee { get; set; }
+    public int ExpressExtraFee { get; set; }
+    public double Tier1MaxKm { get; set; }
+    public double Tier2MaxKm { get; set; }
+    public string BankName { get; set; } = string.Empty;
+    public string BankBin { get; set; } = string.Empty;
+    public string BankAccountNo { get; set; } = string.Empty;
+    public string BankAccountHolder { get; set; } = string.Empty;
+    public DateTime UpdatedAt { get; set; }
+}
+
 [ApiController]
 [Route("api/[controller]")]
 public class StoreConfigController : ControllerBase
 {
     private static readonly object _fileLock = new();
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, DateTime> _smsRateLimits = new();
     private readonly IWebHostEnvironment _env;
 
     public StoreConfigController(IWebHostEnvironment env)
@@ -92,24 +114,57 @@ public class StoreConfigController : ControllerBase
         }
     }
 
-    // ==========================================
+    // ============================================================
     // GET: api/StoreConfig
-    // Mọi client (App khách, App shipper, Web) đều đọc được cấu hình
-    // ==========================================
+    // Client công khai (App khách, App shipper, POS) lấy thông tin hiển thị & thanh toán.
+    // LƯU Ý BẢO MẬT: Đã lọc bỏ toàn bộ SmsApiKey, SmsApiSecret để chống rò rỉ dữ liệu nhạy cảm.
+    // ============================================================
     [HttpGet]
     [AllowAnonymous]
     public IActionResult GetStoreConfig()
     {
         var config = LoadConfig();
+        var publicDto = new StorePublicConfigDto
+        {
+            StoreName = config.StoreName,
+            Address = config.Address,
+            Latitude = config.Latitude,
+            Longitude = config.Longitude,
+            Hotline = config.Hotline,
+            OpenHours = config.OpenHours,
+            BaseShippingFee = config.BaseShippingFee,
+            Tier2ShippingFee = config.Tier2ShippingFee,
+            Tier3ShippingFee = config.Tier3ShippingFee,
+            ExpressExtraFee = config.ExpressExtraFee,
+            Tier1MaxKm = config.Tier1MaxKm,
+            Tier2MaxKm = config.Tier2MaxKm,
+            BankName = config.BankName,
+            BankBin = config.BankBin,
+            BankAccountNo = config.BankAccountNo,
+            BankAccountHolder = config.BankAccountHolder,
+            UpdatedAt = config.UpdatedAt
+        };
+        return Ok(publicDto);
+    }
+
+    // ============================================================
+    // GET: api/StoreConfig/admin
+    // Chỉ Quản trị viên (Admin) mới có quyền đọc cấu hình đầy đủ (bao gồm cấu hình SMS Gateway).
+    // ============================================================
+    [HttpGet("admin")]
+    [Authorize(Roles = "Admin")]
+    public IActionResult GetAdminConfig()
+    {
+        var config = LoadConfig();
         return Ok(config);
     }
 
-    // ==========================================
+    // ============================================================
     // PUT: api/StoreConfig
-    // Admin/Staff cập nhật địa chỉ, tài khoản ngân hàng và SMS gateway từ Web
-    // ==========================================
+    // Chỉ Quản trị viên (Admin) mới có quyền đổi địa chỉ và tài khoản nhận tiền VietQR.
+    // ============================================================
     [HttpPut]
-    [AllowAnonymous]
+    [Authorize(Roles = "Admin")]
     public IActionResult UpdateStoreConfig([FromBody] StoreConfigModel model)
     {
         if (model == null)
@@ -172,12 +227,14 @@ public class StoreConfigController : ControllerBase
         });
     }
 
-    // ==========================================
+    // ============================================================
     // POST: api/StoreConfig/test-sms
-    // Gửi thử tin nhắn SMS đến SĐT thật
-    // ==========================================
+    // Chỉ Quản trị viên (Admin) mới được kích hoạt kiểm tra cổng SMS.
+    // LƯU Ý BẢO MẬT: KHÔNG TRẢ MÃ OTP TRONG JSON RESPONSE.
+    // Giới hạn tần suất 1 lần / 60 giây để chống lạm dụng đốt tiền SMS.
+    // ============================================================
     [HttpPost("test-sms")]
-    [AllowAnonymous]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> TestSms([FromBody] TestSmsRequest req)
     {
         if (string.IsNullOrWhiteSpace(req.Phone))
@@ -185,9 +242,25 @@ public class StoreConfigController : ControllerBase
             return BadRequest(new { message = "Vui lòng nhập số điện thoại cần gửi thử." });
         }
 
+        var normalizedPhone = req.Phone.Trim();
+        if (_smsRateLimits.TryGetValue(normalizedPhone, out var lastSent))
+        {
+            var elapsed = DateTime.UtcNow - lastSent;
+            if (elapsed < TimeSpan.FromSeconds(60))
+            {
+                var remain = 60 - (int)elapsed.TotalSeconds;
+                return StatusCode(StatusCodes.Status429TooManyRequests, new
+                {
+                    message = $"Vui lòng đợi {remain} giây trước khi gửi lại SMS để đảm bảo an toàn."
+                });
+            }
+        }
+
+        _smsRateLimits[normalizedPhone] = DateTime.UtcNow;
+
         var config = LoadConfig();
-        var otpCode = OtpManager.GenerateOtp("Test", req.Phone);
-        var result = await SmsService.SendOtpSmsAsync(req.Phone, otpCode, "Test", config);
+        var otpCode = OtpManager.GenerateOtp("Test", normalizedPhone);
+        var result = await SmsService.SendOtpSmsAsync(normalizedPhone, otpCode, "Test", config);
 
         return Ok(new
         {
@@ -195,18 +268,16 @@ public class StoreConfigController : ControllerBase
             message = result.Message,
             provider = result.Provider,
             phone = result.NormalizedPhone,
-            otp = otpCode,
-            content = result.Content,
             isSimulated = result.IsSimulated
         });
     }
 
-    // ==========================================
+    // ============================================================
     // POST: api/StoreConfig/reset
-    // Khôi phục về địa chỉ trụ sở mặc định
-    // ==========================================
+    // Chỉ Quản trị viên (Admin) mới có quyền khôi phục về mặc định.
+    // ============================================================
     [HttpPost("reset")]
-    [AllowAnonymous]
+    [Authorize(Roles = "Admin")]
     public IActionResult ResetDefault()
     {
         var defaultCfg = new StoreConfigModel();

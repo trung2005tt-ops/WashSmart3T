@@ -10,7 +10,6 @@ public static class DbSeeder
         // =========================
         // SEED ROLES
         // =========================
-
         if (!await context.Roles.AnyAsync())
         {
             context.Roles.AddRange(
@@ -41,15 +40,15 @@ public static class DbSeeder
 
         // =========================
         // SEED ADMIN & RECEPTION STAFF
+        // Mật khẩu khởi tạo có thể cấu hình an toàn qua biến môi trường INITIAL_SEED_PASSWORD
         // =========================
+        var initialPassword = Environment.GetEnvironmentVariable("INITIAL_SEED_PASSWORD") ?? "WashSmart@2026!";
+        var passwordHash = BCrypt.Net.BCrypt.HashPassword(initialPassword);
 
-        var adminRole = await context.Roles
-            .FirstAsync(x => x.Name == "Admin");
-        var staffRole = await context.Roles
-            .FirstAsync(x => x.Name == "Staff");
+        var adminRole = await context.Roles.FirstAsync(x => x.Name == "Admin");
+        var staffRole = await context.Roles.FirstAsync(x => x.Name == "Staff");
 
-        var adminExists = await context.Users
-            .AnyAsync(x => x.Phone == "0900000000");
+        var adminExists = await context.Users.AnyAsync(x => x.Phone == "0900000000");
 
         if (!adminExists)
         {
@@ -58,7 +57,7 @@ public static class DbSeeder
                 FullName = "Nguyễn Kiều Như",
                 Phone = "0900000000",
                 Email = "admin@washsmart.com",
-                PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"),
+                PasswordHash = passwordHash,
                 RoleId = adminRole.Id,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
@@ -85,7 +84,7 @@ public static class DbSeeder
                     FullName = s.Name,
                     Phone = s.Phone,
                     Email = s.Email,
-                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("123456"),
+                    PasswordHash = passwordHash,
                     RoleId = staffRole.Id,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow

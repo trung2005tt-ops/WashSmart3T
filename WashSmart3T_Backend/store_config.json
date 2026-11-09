@@ -1,5 +1,5 @@
 {
-  "StoreName": "WashSmart 3T Q7",
+  "StoreName": "WashSmart 3T - Trụ sở chính",
   "Address": "140 Lê Trọng Tấn, phường Tây Thạnh, TP. Hồ Chí Minh",
   "Latitude": 10.807,
   "Longitude": 106.6287,
@@ -13,11 +13,11 @@
   "Tier2MaxKm": 6,
   "BankName": "MBBank (Ngân hàng Quân Đội)",
   "BankBin": "970422",
-  "BankAccountNo": "0818606505",
-  "BankAccountHolder": "TRAN DIEP MINH TRUNG",
+  "BankAccountNo": "0908123456",
+  "BankAccountHolder": "NGUYEN THI KIEU NHU",
   "SmsProvider": "Simulated",
   "SmsApiKey": "",
   "SmsApiSecret": "",
   "SmsSenderId": "WashSmart3T",
-  "UpdatedAt": "2026-11-07T10:53:07.2864769Z"
+  "UpdatedAt": "2026-11-09T00:00:00Z"
 }

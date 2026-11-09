@@ -85,3 +85,10 @@ yarn-error.log*
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+
+# ------------------------------------------------------------------------------
+# 6. Sensitive Configuration & Secrets
+# ------------------------------------------------------------------------------
+WashSmart3T_Backend/appsettings.Development.json
+WashSmart3T_Backend/appsettings.Local.json
+*.local.json

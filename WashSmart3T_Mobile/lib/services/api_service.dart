@@ -25,11 +25,33 @@ class ApiService {
     throw Exception(data['message'] ?? 'Đăng nhập thất bại');
   }
 
+  static Future<Map<String, dynamic>> sendRegistrationOtp({
+    required String phone,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/Auth/send-registration-otp'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'phone': phone,
+        'purpose': 'Register',
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data;
+    }
+
+    throw Exception(data['message'] ?? 'Gửi OTP thất bại');
+  }
+
   static Future<Map<String, dynamic>> register({
     required String fullName,
     required String phone,
     required String email,
     required String password,
+    required String otpCode,
   }) async {
     final response = await http.post(
       Uri.parse('$baseUrl/Auth/register'),
@@ -39,6 +61,7 @@ class ApiService {
         'phone': phone,
         'email': email,
         'password': password,
+        'otpCode': otpCode,
       }),
     );
 
