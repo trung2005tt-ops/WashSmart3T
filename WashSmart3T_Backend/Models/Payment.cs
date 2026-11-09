@@ -22,22 +22,25 @@ public class Payment
     // ============================
     // ORDER (unique)
     // ============================
-
     public int OrderId { get; set; }
-
     public Order? Order { get; set; }
 
     // ============================
-    // PAYMENT
+    // PAYMENT DETAILS
     // ============================
-
     public decimal Amount { get; set; }
-
     public PaymentMethod Method { get; set; } = PaymentMethod.Cash;
-
     public PaymentStatus Status { get; set; } = PaymentStatus.Pending;
-
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
     public DateTime? PaidAt { get; set; }
+    public string? PaymentNote { get; set; }
+
+    // ============================
+    // REFUND AUDIT TRAIL
+    // ============================
+    public decimal? RefundedAmount { get; set; }
+    public string? RefundReason { get; set; }
+    public DateTime? RefundedAt { get; set; }
+    public string? RefundedBy { get; set; }
+    public int? ComplaintId { get; set; }
 }

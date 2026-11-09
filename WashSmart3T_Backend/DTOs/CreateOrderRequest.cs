@@ -19,6 +19,17 @@ public class CreateOrderRequest
     [StringLength(1000, ErrorMessage = "Ghi chú không được vượt quá 1000 ký tự.")]
     public string? Note { get; set; }
 
+    // ============================
+    // CÁC THÔNG SỐ TÀI CHÍNH CẤU TRÚC
+    // ============================
+    public decimal ShippingFee { get; set; } = 0;
+    public decimal AddonFee { get; set; } = 0;
+    public decimal DiscountAmount { get; set; } = 0;
+    public string PaymentMethod { get; set; } = "COD"; // COD / BankTransfer / MoMo / Cash
+    public string OrderType { get; set; } = "Delivery"; // Delivery / StorePickup
+    public double? DistanceKm { get; set; }
+    public bool IsExpress { get; set; } = false;
+
     [Required(ErrorMessage = "Đơn hàng phải có ít nhất 1 dịch vụ.")]
     [MinLength(1, ErrorMessage = "Đơn hàng phải có ít nhất 1 dịch vụ.")]
     public List<CreateOrderDetailRequest> Items { get; set; } = new();
@@ -31,6 +42,14 @@ public class CreateOrderDetailRequest
     public int ServiceId { get; set; }
 
     [Required(ErrorMessage = "Số lượng/khối lượng không hợp lệ.")]
-    [Range(0.1, 1000.0, ErrorMessage = "Số lượng/khối lượng phải từ 0.1 đến 1000.")]
+    [Range(0, 1000.0, ErrorMessage = "Số lượng/khối lượng phải từ 0 đến 1000.")]
     public decimal Quantity { get; set; }
+}
+
+public class DeliveryProofRequest
+{
+    [Required(ErrorMessage = "Vui lòng cung cấp link hoặc ảnh minh chứng giao hàng.")]
+    public string PhotoUrl { get; set; } = string.Empty;
+    public string? Note { get; set; }
+    public bool ConfirmPaymentCollected { get; set; } = true;
 }

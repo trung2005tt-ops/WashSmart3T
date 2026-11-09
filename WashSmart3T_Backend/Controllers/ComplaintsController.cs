@@ -1,3 +1,4 @@
+using WashSmart.API.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -195,7 +196,7 @@ public class ComplaintsController : ControllerBase
     // ============================================================
     [HttpPut("{id}/resolve")]
     [Authorize(Roles = "Admin,Staff")]
-    public IActionResult ResolveComplaint(int id, [FromBody] ResolveComplaintRequest request)
+    public async Task<IActionResult> ResolveComplaint(int id, [FromBody] ResolveComplaintRequest request)
     {
         var (_, role, _, staffName) = GetCurrentUser();
         if (string.IsNullOrWhiteSpace(staffName))
@@ -203,13 +204,13 @@ public class ComplaintsController : ControllerBase
             staffName = role == "Admin" ? "Quản trị viên" : "Nhân viên tiếp nhận";
         }
 
+        ComplaintModel? resolvedItem = null;
         lock (_fileLock)
         {
             var list = LoadComplaints();
             var item = list.FirstOrDefault(c => c.Id == id);
             if (item == null) return NotFound(new { message = "Không tìm thấy hồ sơ khiếu nại." });
 
-            // Kiểm tra số tiền bồi hoàn không được âm
             var amount = request.ApprovedAmount ?? item.RequestedRefund;
             if (amount < 0)
             {
@@ -217,20 +218,44 @@ public class ComplaintsController : ControllerBase
             }
 
             item.Status = "Completed";
-            item.Resolution = request.Resolution ?? "Approved"; // Approved, Rejected, Refunded
+            item.Resolution = request.Resolution ?? "Approved";
             item.ApprovedAmount = amount;
             item.StaffNote = request.StaffNote ?? "Đã giải quyết theo quy chuẩn bảo hành WashSmart 3T.";
             item.ResolvedAt = DateTime.UtcNow.ToString("o");
-            item.ResolvedBy = staffName; // Lấy danh tính nhân viên thực tế đã đăng nhập
+            item.ResolvedBy = staffName;
 
             SaveComplaints(list);
-
-            return Ok(new
-            {
-                message = "Hồ sơ khiếu nại đã được phê duyệt xử lý thành công!",
-                complaint = item
-            });
+            resolvedItem = item;
         }
+
+        // Tự động kích hoạt ghi nhận bồi hoàn/hoàn tiền vào Payment của đơn hàng (ngoài lock)
+        if (resolvedItem != null && resolvedItem.ApprovedAmount.HasValue && resolvedItem.ApprovedAmount.Value > 0 && resolvedItem.OrderId.HasValue && resolvedItem.OrderId.Value > 0)
+        {
+            try
+            {
+                var payment = await _context.Payments.FirstOrDefaultAsync(p => p.OrderId == resolvedItem.OrderId.Value);
+                if (payment != null)
+                {
+                    payment.RefundedAmount = resolvedItem.ApprovedAmount.Value;
+                    payment.RefundReason = $"Bồi hoàn bảo hiểm theo khiếu nại #{resolvedItem.TicketCode}: {resolvedItem.IncidentType}";
+                    payment.RefundedAt = DateTime.UtcNow;
+                    payment.RefundedBy = staffName;
+                    payment.ComplaintId = resolvedItem.Id;
+                    if (payment.RefundedAmount >= payment.Amount)
+                    {
+                        payment.Status = PaymentStatus.Refunded;
+                    }
+                    await _context.SaveChangesAsync();
+                }
+            }
+            catch { }
+        }
+
+        return Ok(new
+        {
+            message = "Hồ sơ khiếu nại đã được phê duyệt xử lý thành công!",
+            complaint = resolvedItem
+        });
     }
 
     private static void EnsureInitialData()

@@ -67,16 +67,22 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = firstError ?? "Dữ liệu không hợp lệ." });
         }
 
-        var phone = request.Phone.Trim();
+        var (_, _, cleanPhone) = SmsService.NormalizePhone(request.Phone);
+        var phone = cleanPhone;
 
-        // 1. Kiểm tra số điện thoại đã đăng ký tài khoản chưa
-        var existingUser = await _context.Users.AnyAsync(x => x.Phone == phone);
-        if (existingUser)
+        // 1. Kiểm tra số điện thoại đã đăng ký tài khoản chưa (cho phép nếu là tài khoản vãng lai POS)
+        var existingUser = await _context.Users.FirstOrDefaultAsync(x => x.Phone == phone);
+        if (existingUser != null)
         {
-            return BadRequest(new
+            bool isPosGhost = existingUser.Email.EndsWith("@customer.washsmart.local") ||
+                              existingUser.Email.StartsWith("pos-");
+            if (!isPosGhost)
             {
-                message = "Số điện thoại này đã được đăng ký tài khoản. Vui lòng đăng nhập hoặc dùng chức năng Quên mật khẩu."
-            });
+                return BadRequest(new
+                {
+                    message = "Số điện thoại này đã được đăng ký tài khoản. Vui lòng đăng nhập hoặc dùng chức năng Quên mật khẩu."
+                });
+            }
         }
 
         // 2. Chống spam SMS: giới hạn 60 giây giữa các lần yêu cầu
@@ -127,7 +133,8 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = firstError ?? "Dữ liệu đăng ký không hợp lệ." });
         }
 
-        var phone = request.Phone.Trim();
+        var (_, _, cleanPhone) = SmsService.NormalizePhone(request.Phone);
+        var phone = cleanPhone;
 
         // 1. Xác thực mã OTP
         var (isValidOtp, otpError) = OtpManager.VerifyOtp("Register", phone, request.OtpCode);
@@ -139,15 +146,33 @@ public class AuthController : ControllerBase
             });
         }
 
-        // 2. Kiểm tra số điện thoại đã tồn tại
+        // 2. Kiểm tra số điện thoại đã tồn tại (hỗ trợ chuyển đổi tài khoản vãng lai POS)
         var existingUser = await _context.Users
             .FirstOrDefaultAsync(x => x.Phone == phone);
 
         if (existingUser != null)
         {
+            bool isPosGhost = existingUser.Email.EndsWith("@customer.washsmart.local") ||
+                              existingUser.Email.StartsWith("pos-");
+
+            if (isPosGhost)
+            {
+                existingUser.FullName = request.FullName.Trim();
+                existingUser.Email = request.Email.Trim();
+                existingUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
+                existingUser.IsActive = true;
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    message = "Kích hoạt và đồng bộ lịch sử đơn hàng từ quầy POS thành công! Bạn có thể đăng nhập ngay.",
+                    userId = existingUser.Id
+                });
+            }
+
             return BadRequest(new
             {
-                message = "Số điện thoại đã được đăng ký."
+                message = "Số điện thoại đã được đăng ký tài khoản."
             });
         }
 
@@ -263,7 +288,8 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = firstError ?? "Thông tin đăng nhập không hợp lệ." });
         }
 
-        var phone = request.Phone.Trim();
+        var (_, _, cleanPhone) = SmsService.NormalizePhone(request.Phone);
+        var phone = cleanPhone;
 
         // 1. Kiểm tra tài khoản có đang bị khóa do nhập sai nhiều lần không
         var (isLocked, remainingMinutes) = AccountLockoutManager.CheckLockout(phone);

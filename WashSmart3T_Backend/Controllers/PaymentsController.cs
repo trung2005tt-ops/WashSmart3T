@@ -8,9 +8,12 @@ using WashSmart.API.Models;
 
 namespace WashSmart.API.Controllers;
 
-// ============================================================
-// QUẢN LÝ THANH TOÁN ĐƠN HÀNG
-// ============================================================
+public class RefundPaymentRequest
+{
+    public decimal? Amount { get; set; }
+    public string? Reason { get; set; }
+    public int? ComplaintId { get; set; }
+}
 
 [ApiController]
 [Route("api/[controller]")]
@@ -27,11 +30,7 @@ public class PaymentsController : ControllerBase
     private int? GetCurrentUserId()
     {
         var claim = User.FindFirst(ClaimTypes.NameIdentifier);
-
-        return claim != null &&
-            int.TryParse(claim.Value, out var userId)
-            ? userId
-            : null;
+        return claim != null && int.TryParse(claim.Value, out var userId) ? userId : null;
     }
 
     private string? GetCurrentUserRole()
@@ -41,42 +40,27 @@ public class PaymentsController : ControllerBase
 
     // ============================================================
     // GET: api/Payments/order/{orderId}
-    // Xem thanh toán của một đơn hàng
-    // (khách sở hữu đơn, shipper giao đơn, admin/staff)
+    // Xem chi tiết thanh toán và lịch sử hoàn tiền (khách, shipper, staff/admin)
     // ============================================================
-
     [HttpGet("order/{orderId}")]
     public async Task<IActionResult> GetPaymentByOrder(int orderId)
     {
         var userId = GetCurrentUserId();
-
         if (userId == null)
         {
-            return Unauthorized(new
-            {
-                message = "Không xác định được người dùng."
-            });
+            return Unauthorized(new { message = "Không xác định được người dùng." });
         }
 
         var role = GetCurrentUserRole();
-
-        var order = await _context.Orders
-            .FirstOrDefaultAsync(x => x.Id == orderId);
+        var order = await _context.Orders.FirstOrDefaultAsync(x => x.Id == orderId);
 
         if (order == null)
         {
-            return NotFound(new
-            {
-                message = "Không tìm thấy đơn hàng."
-            });
+            return NotFound(new { message = "Không tìm thấy đơn hàng." });
         }
 
         var isOwner = order.CustomerId == userId;
-
-        var isAssignedShipper =
-            order.ShipperId == userId &&
-            role == "Shipper";
-
+        var isAssignedShipper = order.ShipperId == userId && role == "Shipper";
         var isStaff = role == "Admin" || role == "Staff";
 
         if (!isOwner && !isAssignedShipper && !isStaff)
@@ -84,113 +68,65 @@ public class PaymentsController : ControllerBase
             return Forbid();
         }
 
-        var payment = await _context.Payments
-            .FirstOrDefaultAsync(x => x.OrderId == orderId);
-
+        var payment = await _context.Payments.FirstOrDefaultAsync(x => x.OrderId == orderId);
         if (payment == null)
         {
-            return NotFound(new
-            {
-                message = "Đơn hàng chưa có thanh toán."
-            });
+            return NotFound(new { message = "Đơn hàng chưa có bản ghi thanh toán." });
         }
 
         return Ok(new
         {
             payment.Id,
-            payment.OrderId,
+            orderId = payment.OrderId,
+            amount = payment.Amount,
             method = payment.Method.ToString(),
             status = payment.Status.ToString(),
-            payment.Amount,
-            payment.CreatedAt,
-            payment.PaidAt
+            createdAt = payment.CreatedAt,
+            paidAt = payment.PaidAt,
+            paymentNote = payment.PaymentNote,
+            refundedAmount = payment.RefundedAmount,
+            refundReason = payment.RefundReason,
+            refundedAt = payment.RefundedAt,
+            refundedBy = payment.RefundedBy,
+            complaintId = payment.ComplaintId
         });
     }
 
     // ============================================================
-    // POST: api/Payments/order/{orderId}
-    // Khách tạo thanh toán cho đơn hàng của mình
+    // POST: api/Payments/order/{orderId}/create
     // ============================================================
-
-    [HttpPost("order/{orderId}")]
-    public async Task<IActionResult> CreatePayment(
-        int orderId,
-        CreatePaymentRequest request)
+    [HttpPost("order/{orderId}/create")]
+    public async Task<IActionResult> CreatePayment(int orderId, [FromBody] CreatePaymentRequest request)
     {
         var userId = GetCurrentUserId();
+        var role = GetCurrentUserRole();
 
-        if (userId == null)
+        var order = await _context.Orders.FirstOrDefaultAsync(x => x.Id == orderId);
+        if (order == null) return NotFound(new { message = "Không tìm thấy đơn hàng." });
+
+        if (order.CustomerId != userId && role != "Admin" && role != "Staff")
         {
-            return Unauthorized(new
-            {
-                message = "Không xác định được người dùng."
-            });
+            return Forbid();
         }
 
-        var order = await _context.Orders
-            .FirstOrDefaultAsync(x =>
-                x.Id == orderId &&
-                x.CustomerId == userId);
-
-        if (order == null)
+        var existing = await _context.Payments.FirstOrDefaultAsync(x => x.OrderId == orderId);
+        if (existing != null)
         {
-            return NotFound(new
-            {
-                message = "Không tìm thấy đơn hàng."
-            });
+            return BadRequest(new { message = "Đơn hàng đã có bản ghi thanh toán." });
         }
 
-        // Chỉ cho tạo thanh toán khi đơn chưa hoàn tất/hủy
-        if (order.Status == OrderStatus.Completed ||
-            order.Status == OrderStatus.Cancelled)
-        {
-            return BadRequest(new
-            {
-                message =
-                    $"Không thể tạo thanh toán cho đơn ở trạng thái {order.Status}."
-            });
-        }
-
-        // Nếu đã có thanh toán chưa hủy
-        var existingPayment = await _context.Payments
-            .FirstOrDefaultAsync(x =>
-                x.OrderId == orderId &&
-                x.Status != PaymentStatus.Failed);
-
-        if (existingPayment != null)
-        {
-            return BadRequest(new
-            {
-                message = "Đơn hàng đã có thanh toán.",
-                paymentId = existingPayment.Id,
-                status = existingPayment.Status.ToString()
-            });
-        }
-
-        if (!Enum.TryParse<PaymentMethod>(
-                request.Method,
-                true,
-                out var method))
-        {
-            return BadRequest(new
-            {
-                message =
-                    "Phương thức thanh toán không hợp lệ " +
-                    "(Cash, MoMo, BankTransfer)."
-            });
-        }
-
+        Enum.TryParse<PaymentMethod>(request.Method, true, out var parsedMethod);
         var payment = new Payment
         {
             OrderId = orderId,
-            Method = method,
-            Status = PaymentStatus.Pending,
             Amount = order.TotalAmount,
-            CreatedAt = DateTime.UtcNow
+            Method = parsedMethod,
+            Status = PaymentStatus.Pending,
+            CreatedAt = DateTime.UtcNow,
+            PaymentNote = request.Note
         };
 
         _context.Payments.Add(payment);
-
         await _context.SaveChangesAsync();
 
         return Ok(new
@@ -206,26 +142,14 @@ public class PaymentsController : ControllerBase
 
     // ============================================================
     // POST: api/Payments/order/{orderId}/confirm
-    // Shipper/admin/staff xác nhận đã thu tiền
+    // Shipper / Admin / Staff xác nhận đã thu tiền thực tế
     // ============================================================
-
     [HttpPost("order/{orderId}/confirm")]
     [Authorize(Roles = "Shipper,Admin,Staff")]
-    public async Task<IActionResult> ConfirmPayment(
-        int orderId,
-        ConfirmPaymentRequest request)
+    public async Task<IActionResult> ConfirmPayment(int orderId, [FromBody] ConfirmPaymentRequest request)
     {
         var userId = GetCurrentUserId();
-
         var role = GetCurrentUserRole();
-
-        if (userId == null)
-        {
-            return Unauthorized(new
-            {
-                message = "Không xác định được người dùng."
-            });
-        }
 
         var payment = await _context.Payments
             .Include(x => x.Order)
@@ -233,37 +157,27 @@ public class PaymentsController : ControllerBase
 
         if (payment == null)
         {
-            return NotFound(new
-            {
-                message = "Đơn hàng chưa có thanh toán."
-            });
+            return NotFound(new { message = "Đơn hàng chưa có thanh toán." });
         }
 
-        // Shipper chỉ được xác nhận đơn mình giao
-        if (role == "Shipper" &&
-            payment.Order!.ShipperId != userId)
+        if (role == "Shipper" && payment.Order!.ShipperId != userId)
         {
             return Forbid();
         }
 
         if (payment.Status == PaymentStatus.Paid)
         {
-            return BadRequest(new
-            {
-                message = "Thanh toán đã được xác nhận trước đó."
-            });
+            return BadRequest(new { message = "Thanh toán đã được xác nhận trước đó." });
         }
 
         if (payment.Status == PaymentStatus.Refunded)
         {
-            return BadRequest(new
-            {
-                message = "Thanh toán đã bị hoàn tiền, không thể xác nhận."
-            });
+            return BadRequest(new { message = "Thanh toán đã bị hoàn tiền, không thể xác nhận." });
         }
 
         payment.Status = PaymentStatus.Paid;
         payment.PaidAt = DateTime.UtcNow;
+        payment.PaymentNote = request.Note; // LƯU THỰC SỰ VÀO CSDL
 
         await _context.SaveChangesAsync();
 
@@ -274,49 +188,72 @@ public class PaymentsController : ControllerBase
             orderId = payment.OrderId,
             status = payment.Status.ToString(),
             paidAt = payment.PaidAt,
-            note = request.Note
+            note = payment.PaymentNote
         });
     }
 
     // ============================================================
     // POST: api/Payments/order/{orderId}/refund
-    // Admin hoàn tiền
+    // Admin duyệt hoàn tiền: Lưu rõ số tiền, lý do, người duyệt, liên kết khiếu nại
     // ============================================================
-
     [HttpPost("order/{orderId}/refund")]
     [Authorize(Roles = "Admin")]
-    public async Task<IActionResult> RefundPayment(int orderId)
+    public async Task<IActionResult> RefundPayment(int orderId, [FromBody] RefundPaymentRequest? request)
     {
+        request ??= new RefundPaymentRequest();
+
         var payment = await _context.Payments
+            .Include(p => p.Order)
             .FirstOrDefaultAsync(x => x.OrderId == orderId);
 
         if (payment == null)
         {
-            return NotFound(new
-            {
-                message = "Đơn hàng chưa có thanh toán."
-            });
+            return NotFound(new { message = "Đơn hàng chưa có thanh toán." });
         }
 
         if (payment.Status != PaymentStatus.Paid)
         {
-            return BadRequest(new
-            {
-                message =
-                    "Chỉ có thể hoàn tiền cho thanh toán đã ở trạng thái Paid."
-            });
+            return BadRequest(new { message = "Chỉ có thể hoàn tiền cho thanh toán đã ở trạng thái Paid." });
         }
 
-        payment.Status = PaymentStatus.Refunded;
+        var refundAmount = request.Amount.HasValue && request.Amount.Value > 0
+            ? request.Amount.Value
+            : payment.Amount;
+
+        if (refundAmount > payment.Amount)
+        {
+            return BadRequest(new { message = $"Số tiền hoàn ({refundAmount:N0}đ) không được vượt quá số tiền đơn hàng ({payment.Amount:N0}đ)." });
+        }
+
+        var adminName = User.FindFirstValue(ClaimTypes.Name) ?? "Admin";
+
+        payment.RefundedAmount = refundAmount;
+        payment.RefundReason = !string.IsNullOrWhiteSpace(request.Reason)
+            ? request.Reason.Trim()
+            : "Hoàn tiền bồi thường đơn hàng theo yêu cầu quản trị viên.";
+        payment.RefundedAt = DateTime.UtcNow;
+        payment.RefundedBy = adminName;
+        payment.ComplaintId = request.ComplaintId;
+
+        // Nếu hoàn 100% thì chuyển trạng thái Refunded
+        if (refundAmount >= payment.Amount)
+        {
+            payment.Status = PaymentStatus.Refunded;
+        }
 
         await _context.SaveChangesAsync();
 
         return Ok(new
         {
-            message = "Hoàn tiền thành công.",
+            message = $"Hoàn tiền {refundAmount:N0}đ thành công.",
             paymentId = payment.Id,
             orderId = payment.OrderId,
-            status = payment.Status.ToString()
+            status = payment.Status.ToString(),
+            refundedAmount = payment.RefundedAmount,
+            refundReason = payment.RefundReason,
+            refundedAt = payment.RefundedAt,
+            refundedBy = payment.RefundedBy,
+            complaintId = payment.ComplaintId
         });
     }
 }

@@ -889,8 +889,9 @@
         const amount = Number(order.totalAmount || order.TotalAmount || 0);
         const note = (order.note || order.Note || '').toLowerCase();
         
-        // Nhận diện phương thức thanh toán
-        if (note.includes('chuyển khoản') || note.includes('vietqr') || note.includes('napas')) {
+        // Nhận diện chuẩn xác từ trường cấu trúc PaymentMethod của CSDL
+        const payMethod = String(order.paymentMethod || order.PaymentMethod || '').trim().toLowerCase();
+        if (payMethod === 'banktransfer' || payMethod === 'vietqr' || payMethod === 'momo' || note.includes('chuyển khoản') || note.includes('vietqr') || note.includes('napas')) {
           transferTotal += amount;
         } else {
           cashTotal += amount; // Mặc định thu COD / Tiền mặt tại quầy & shipper
