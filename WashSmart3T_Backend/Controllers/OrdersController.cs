@@ -2,9 +2,11 @@ using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using WashSmart.API.Data;
 using WashSmart.API.DTOs;
+using WashSmart.API.Hubs;
 using WashSmart.API.Models;
 using WashSmart.API.Services;
 
@@ -18,15 +20,18 @@ public class OrdersController : ControllerBase
     private readonly ApplicationDbContext _context;
     private readonly IWebHostEnvironment _env;
     private readonly ILogger<OrdersController> _logger;
+    private readonly IHubContext<OrderNotificationHub> _hubContext;
 
     public OrdersController(
         ApplicationDbContext context,
         IWebHostEnvironment env,
-        ILogger<OrdersController> logger)
+        ILogger<OrdersController> logger,
+        IHubContext<OrderNotificationHub> hubContext)
     {
         _context = context;
         _env = env;
         _logger = logger;
+        _hubContext = hubContext;
     }
 
     private StoreConfigModel GetStoreConfig()
@@ -285,6 +290,13 @@ public class OrdersController : ControllerBase
             await _context.SaveChangesAsync();
             await tx.CommitAsync();
 
+            try
+            {
+                await _hubContext.Clients.All.SendAsync("OrderStatusUpdated", new { orderId = order.Id, status = order.Status.ToString(), shipperId = order.ShipperId });
+                await _hubContext.Clients.All.SendAsync("DashboardStatsUpdated");
+            }
+            catch { }
+
             return Ok(new
             {
                 message = "Phân công shipper thành công.",
@@ -448,10 +460,25 @@ public class OrdersController : ControllerBase
                 CreatedAt = DateTime.UtcNow,
                 PaymentNote = $"Thanh toán cho đơn #{order.Id:D4} qua {payMethod}"
             };
+            order.SealCode ??= $"WS-SEAL-{order.Id:D4}";
             _context.Payments.Add(payment);
 
             await _context.SaveChangesAsync();
             await tx.CommitAsync();
+
+            try
+            {
+                await _hubContext.Clients.All.SendAsync("OrderStatusUpdated", new { orderId = order.Id, status = order.Status.ToString(), shipperId = order.ShipperId });
+                await _hubContext.Clients.All.SendAsync("DashboardStatsUpdated");
+            }
+            catch { }
+
+            try
+            {
+                await _hubContext.Clients.All.SendAsync("OrderCreated", new { orderId = order.Id, status = order.Status.ToString() });
+                await _hubContext.Clients.All.SendAsync("DashboardStatsUpdated");
+            }
+            catch { }
 
             return Ok(new
             {
@@ -671,9 +698,24 @@ public class OrdersController : ControllerBase
                 PaymentNote = isPaidNow ? $"Đã thanh toán tại quầy qua {request.PaymentMethod}" : "Chờ thanh toán"
             };
 
+            order.SealCode ??= $"WS-SEAL-{order.Id:D4}";
             _context.Payments.Add(payment);
             await _context.SaveChangesAsync();
             await tx.CommitAsync();
+
+            try
+            {
+                await _hubContext.Clients.All.SendAsync("OrderStatusUpdated", new { orderId = order.Id, status = order.Status.ToString(), shipperId = order.ShipperId });
+                await _hubContext.Clients.All.SendAsync("DashboardStatsUpdated");
+            }
+            catch { }
+
+            try
+            {
+                await _hubContext.Clients.All.SendAsync("OrderCreated", new { orderId = order.Id, status = order.Status.ToString() });
+                await _hubContext.Clients.All.SendAsync("DashboardStatsUpdated");
+            }
+            catch { }
 
             return Ok(new
             {
@@ -818,6 +860,13 @@ public class OrdersController : ControllerBase
             await _context.SaveChangesAsync();
             await tx.CommitAsync();
 
+            try
+            {
+                await _hubContext.Clients.All.SendAsync("OrderStatusUpdated", new { orderId = order.Id, status = order.Status.ToString(), shipperId = order.ShipperId });
+                await _hubContext.Clients.All.SendAsync("DashboardStatsUpdated");
+            }
+            catch { }
+
             return Ok(new
             {
                 message = "Nhận đơn thành công.",
@@ -932,6 +981,13 @@ public class OrdersController : ControllerBase
 
             await _context.SaveChangesAsync();
             await tx.CommitAsync();
+
+            try
+            {
+                await _hubContext.Clients.All.SendAsync("OrderStatusUpdated", new { orderId = order.Id, status = order.Status.ToString(), shipperId = order.ShipperId });
+                await _hubContext.Clients.All.SendAsync("DashboardStatsUpdated");
+            }
+            catch { }
 
             return Ok(new
             {
@@ -1209,6 +1265,13 @@ public class OrdersController : ControllerBase
             await _context.SaveChangesAsync();
             await tx.CommitAsync();
 
+            try
+            {
+                await _hubContext.Clients.All.SendAsync("OrderStatusUpdated", new { orderId = order.Id, status = order.Status.ToString(), shipperId = order.ShipperId });
+                await _hubContext.Clients.All.SendAsync("DashboardStatsUpdated");
+            }
+            catch { }
+
             return Ok(new
             {
                 message = "Xác nhận giao hàng thành công kèm ảnh chụp minh chứng.",
@@ -1333,6 +1396,18 @@ public class OrdersController : ControllerBase
             {
                 order.ShipperId = null;
             }
+
+            // Ghi nhận mã lồng giặt và mã seal kiểm định 3T Care
+            if (newStatus == OrderStatus.Washing)
+            {
+                order.DrumCode ??= $"LG-TURBO-0{order.Id % 4 + 1}";
+            }
+            if (newStatus == OrderStatus.Ready || newStatus == OrderStatus.Delivering || newStatus == OrderStatus.Completed)
+            {
+                order.SealCode ??= $"WS-SEAL-{order.Id:D4}";
+                order.SealStatus ??= "Intact";
+            }
+
             order.UpdatedAt = DateTime.UtcNow;
 
             _context.OrderStatusHistories.Add(new OrderStatusHistory
@@ -1346,6 +1421,20 @@ public class OrdersController : ControllerBase
 
             await _context.SaveChangesAsync();
             await tx.CommitAsync();
+
+            try
+            {
+                await _hubContext.Clients.All.SendAsync("OrderStatusUpdated", new { orderId = order.Id, status = order.Status.ToString(), shipperId = order.ShipperId });
+                await _hubContext.Clients.All.SendAsync("DashboardStatsUpdated");
+            }
+            catch { }
+
+            try
+            {
+                await _hubContext.Clients.All.SendAsync("OrderStatusUpdated", new { orderId = order.Id, status = newStatus.ToString() });
+                await _hubContext.Clients.All.SendAsync("DashboardStatsUpdated");
+            }
+            catch { }
 
             return Ok(new
             {

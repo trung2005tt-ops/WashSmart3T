@@ -27,6 +27,8 @@
 
   <!-- Tailwind CSS Config -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Microsoft SignalR Realtime Client -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/microsoft-signalr/8.0.0/signalr.min.js"></script>
   <script>
     tailwind.config = {
       darkMode: "class",
@@ -168,7 +170,10 @@
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div class="flex items-center gap-2">
-            <span class="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></span>
+            <div id="signalr-status-badge" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 shadow-2xs">
+              <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span class="text-[11px] font-bold text-emerald-800">SignalR Realtime Live</span>
+            </div>
             <span class="text-xs font-bold text-secondary uppercase tracking-wider">Hệ thống vận hành trực tiếp · Đồng bộ C# API</span>
           </div>
           <h1 class="text-2xl font-bold tracking-tight text-on-surface mt-1">Tổng Quan Hoạt Động & Doanh Thu</h1>
@@ -1069,7 +1074,52 @@
       document.body.removeChild(link);
     }
 
-    // Khởi tạo hiển thị & Polling tự động mỗi 5s
+    // Kết nối SignalR Realtime Hub
+    let signalrConn = null;
+    async function initSignalR() {
+      if (typeof signalR === 'undefined') return;
+      try {
+        const token = localStorage.getItem('ws_token') || (window.Auth ? Auth.getToken() : '');
+        signalrConn = new signalR.HubConnectionBuilder()
+          .withUrl('http://localhost:5085/hubs/orders', {
+            accessTokenFactory: () => token
+          })
+          .withAutomaticReconnect([0, 2000, 5000, 10000])
+          .build();
+
+        signalrConn.on('OrderCreated', (data) => {
+          console.log('[SignalR] Đơn hàng mới:', data);
+          fetchDashboardData();
+        });
+
+        signalrConn.on('OrderStatusUpdated', (data) => {
+          console.log('[SignalR] Cập nhật trạng thái đơn:', data);
+          fetchDashboardData();
+        });
+
+        signalrConn.on('PaymentConfirmed', (data) => {
+          console.log('[SignalR] Xác nhận thanh toán:', data);
+          fetchDashboardData();
+        });
+
+        signalrConn.on('DashboardStatsUpdated', () => {
+          console.log('[SignalR] Làm mới chỉ số Dashboard.');
+          fetchDashboardData();
+        });
+
+        await signalrConn.start();
+        console.info('[SignalR] Đã kết nối thành công tới Hub thời gian thực /hubs/orders');
+        const badge = document.getElementById('signalr-status-badge');
+        if (badge) {
+          badge.className = 'flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-100 border border-emerald-300 shadow-2xs';
+          badge.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-600 animate-pulse"></span><span class="text-[11px] font-bold text-emerald-900">Realtime SignalR Connected</span>';
+        }
+      } catch (err) {
+        console.warn('[SignalR] Không thể kết nối websocket, kích hoạt polling dự phòng:', err);
+      }
+    }
+
+    // Khởi tạo hiển thị & Polling tự động mỗi 8s (dự phòng)
     (async () => {
       if (!localStorage.getItem('ws_token')) {
         try {
@@ -1091,6 +1141,7 @@
         if (!me) return;
       }
       await fetchDashboardData();
+      await initSignalR();
       setInterval(fetchDashboardData, 8000);
     })();
   </script>

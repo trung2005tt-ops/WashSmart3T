@@ -331,4 +331,107 @@ class ApiService {
 
     return Map<String, dynamic>.from(data as Map);
   }
+
+  /// Gửi khiếu nại bảo hiểm 3T Care lên Backend API
+  static Future<Map<String, dynamic>> createComplaint({
+    int? orderId,
+    required String incidentType,
+    required String itemDescription,
+    String? severity,
+    String? photoUrl,
+    String? customerNote,
+    double? requestedRefund,
+  }) async {
+    final token = await AuthService.getToken();
+    if (token == null || token.isEmpty) {
+      throw Exception('Bạn chưa đăng nhập.');
+    }
+
+    final payload = <String, dynamic>{
+      if (orderId != null && orderId > 0) 'orderId': orderId,
+      'incidentType': incidentType,
+      'itemDescription': itemDescription,
+      'severity': severity ?? 'Medium',
+      if (photoUrl != null && photoUrl.isNotEmpty) 'photoUrl': photoUrl,
+      if (customerNote != null && customerNote.isNotEmpty) 'customerNote': customerNote,
+      if (requestedRefund != null && requestedRefund > 0) 'requestedRefund': requestedRefund,
+    };
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/Complaints'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode(payload),
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        data is Map
+            ? (data['message'] ?? 'Gửi khiếu nại thất bại').toString()
+            : 'Gửi khiếu nại thất bại',
+      );
+    }
+
+    return Map<String, dynamic>.from(data as Map);
+  }
+
+  /// Lấy thông tin mã VietQR chuẩn EMVCo khóa theo mã đơn hàng
+  static Future<Map<String, dynamic>> getVietQr(int orderId) async {
+    final token = await AuthService.getToken();
+    final headers = <String, String>{
+      'Accept': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/Payments/vietqr/$orderId'),
+      headers: headers,
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Không tải được mã VietQR cho đơn #$orderId');
+    }
+
+    return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+  }
+
+  /// Xác nhận giao hàng kèm ảnh minh chứng thực tế
+  static Future<Map<String, dynamic>> uploadDeliveryProof({
+    required int orderId,
+    required String proofPhotoUrl,
+    String? note,
+  }) async {
+    final token = await AuthService.getToken();
+    if (token == null || token.isEmpty) {
+      throw Exception('Bạn chưa đăng nhập.');
+    }
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/Orders/$orderId/delivery-proof'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({
+        'proofPhotoUrl': proofPhotoUrl,
+        if (note != null && note.isNotEmpty) 'note': note,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        data is Map
+            ? (data['message'] ?? 'Xác nhận giao hàng thất bại').toString()
+            : 'Xác nhận giao hàng thất bại',
+      );
+    }
+
+    return Map<String, dynamic>.from(data as Map);
+  }
 }

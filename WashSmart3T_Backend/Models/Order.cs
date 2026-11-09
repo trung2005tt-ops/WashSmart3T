@@ -40,8 +40,11 @@ public class Order
     public string PaymentMethod { get; set; } = "COD"; // Cash / COD / MoMo / BankTransfer
 
     // ============================
-    // AUDIT & DELIVERY PROOF
+    // AUDIT, SEAL & DELIVERY PROOF
     // ============================
+    public string? SealCode { get; set; }
+    public string? SealStatus { get; set; } = "Intact";
+    public string? DrumCode { get; set; }
     public string? DeliveryProofPhotoUrl { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? UpdatedAt { get; set; }

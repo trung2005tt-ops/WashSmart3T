@@ -53,6 +53,9 @@ namespace WashSmart.API.Migrations
                     b.Property<decimal>("DiscountAmount")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<string>("DrumCode")
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<string>("Note")
                         .HasColumnType("nvarchar(max)");
 
@@ -66,6 +69,12 @@ namespace WashSmart.API.Migrations
 
                     b.Property<string>("PickupAddress")
                         .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SealCode")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("SealStatus")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<int?>("ShipperId")

@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'login_screen.dart';
 import '../services/auth_service.dart';
 
@@ -3099,14 +3101,13 @@ class _ShipperScreenState extends State<ShipperScreen>
                                 errorBuilder: (context, error, stackTrace) => Container(
                                   width: 210,
                                   height: 210,
-                                  color: Colors.grey.shade100,
-                                  child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: const [
-                                      Icon(Icons.qr_code_2, size: 80, color: primaryColor),
-                                      SizedBox(height: 6),
-                                      Text('Mã thanh toán VietQR', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                                    ],
+                                  color: Colors.white,
+                                  alignment: Alignment.center,
+                                  child: QrImageView(
+                                    data: 'https://img.vietqr.io/image/970422-0818606505-compact2.png?amount=${order.codAmount.toInt() > 0 ? order.codAmount.toInt() : 50000}&addInfo=WS3T%20${order.id}&accountName=TRAN%20DIEP%20MINH%20TRUNG',
+                                    version: QrVersions.auto,
+                                    size: 190.0,
+                                    gapless: true,
                                   ),
                                 ),
                               ),
@@ -3790,73 +3791,3 @@ class _ShipperScreenState extends State<ShipperScreen>
 
 // ==================== Phương thức thanh toán ====================
 enum PaymentMethod { momo, bank }
-
-/// Vẽ mã QR minh họa (deterministic từ seed, chỉ để demo - không quét được thật)
-class _IllustrativeQrPainter extends CustomPainter {
-  final String seed;
-  _IllustrativeQrPainter({required this.seed});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    const modules = 25; // grid 25x25
-    final cell = size.width / modules;
-    final paint = Paint()..color = const Color(0xFF370C14);
-
-    // Deterministic pseudo-random từ seed
-    int h = 0;
-    for (final code in seed.codeUnits) {
-      h = (h * 31 + code) & 0x7fffffff;
-    }
-    bool rand() {
-      h = (h * 1103515245 + 12345) & 0x7fffffff;
-      return (h >> 16) % 2 == 0;
-    }
-
-    // Vẽ các module dữ liệu
-    for (int y = 0; y < modules; y++) {
-      for (int x = 0; x < modules; x++) {
-        final inFinder =
-            (x < 7 && y < 7) ||
-            (x >= modules - 7 && y < 7) ||
-            (x < 7 && y >= modules - 7);
-        if (inFinder) continue;
-        if (rand()) {
-          canvas.drawRect(Rect.fromLTWH(x * cell, y * cell, cell, cell), paint);
-        }
-      }
-    }
-
-    // Vẽ 3 finder patterns (3 hình vuông góc như QR thật)
-    void drawFinder(int ox, int oy) {
-      canvas.drawRect(
-        Rect.fromLTWH(ox * cell, oy * cell, 7 * cell, 7 * cell),
-        paint,
-      );
-      canvas.drawRect(
-        Rect.fromLTWH((ox + 1) * cell, (oy + 1) * cell, 5 * cell, 5 * cell),
-        Paint()..color = Colors.white,
-      );
-      canvas.drawRect(
-        Rect.fromLTWH((ox + 2) * cell, (oy + 2) * cell, 3 * cell, 3 * cell),
-        paint,
-      );
-    }
-
-    drawFinder(0, 0);
-    drawFinder(modules - 7, 0);
-    drawFinder(0, modules - 7);
-
-    // Logo trung tâm minh họa
-    final center = Offset(size.width / 2, size.height / 2);
-    canvas.drawCircle(center, size.width * 0.07, Paint()..color = Colors.white);
-    canvas.drawCircle(
-      center,
-      size.width * 0.055,
-      Paint()..color = const Color(0xFFB90538),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _IllustrativeQrPainter oldDelegate) =>
-      oldDelegate.seed != seed;
-}

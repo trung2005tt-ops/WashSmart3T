@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../services/api_service.dart';
 
 class SubmitClaimScreen extends StatefulWidget {
   final String orderCode;
@@ -97,22 +98,45 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
     );
   }
 
-  void _handleSubmitClaim() {
+  Future<void> _handleSubmitClaim() async {
     if (!_item1Selected && !_item2Selected) {
       _showToast('Vui lòng chọn ít nhất 1 món đồ bị sự cố!');
       return;
     }
 
+    final categoryLabel = _categories[_selectedCategoryIndex]['label'] as String? ?? 'Sự cố đồ giặt';
+    final desc = _descController.text.trim();
+    if (desc.isEmpty) {
+      _showToast('Vui lòng nhập mô tả chi tiết sự cố đồ giặt!');
+      return;
+    }
+
     setState(() => _isSubmitting = true);
-    Future.delayed(const Duration(milliseconds: 1200), () {
+
+    try {
+      final res = await ApiService.createComplaint(
+        orderId: widget.orderId,
+        incidentType: categoryLabel,
+        itemDescription: desc,
+        severity: _selectedCategoryIndex == 1 ? 'High' : 'Medium',
+        photoUrl: _proofPhotos.isNotEmpty ? _proofPhotos.first : null,
+        customerNote: 'Phương án mong muốn: ${_selectedSolution == 1 ? "Giặt & tẩy hấp phục hồi" : (_selectedSolution == 2 ? "Hoàn tiền dịch vụ" : "Yêu cầu bồi thường theo bảo hiểm 3T Care")}',
+        requestedRefund: _selectedSolution == 3 ? 150000 : (_selectedSolution == 2 ? 80000 : 0),
+      );
+
       if (mounted) {
         setState(() => _isSubmitting = false);
-        _showToast(
-          'Đã tiếp nhận khiếu nại #${widget.orderCode}. Chuyên viên bảo hiểm sẽ phản hồi trong 15 phút!',
-        );
-        Navigator.pop(context);
+        final ticket = res['complaint'];
+        final ticketCode = ticket is Map ? (ticket['ticketCode'] ?? ticket['ticket_code'] ?? 'KN-WS3T') : 'KN-WS3T';
+        _showToast('Đã tiếp nhận hồ sơ #$ticketCode thành công! Chuyên viên bảo hiểm 3T Care sẽ phản hồi trong 15 phút.');
+        Navigator.pop(context, true);
       }
-    });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+        _showToast('Lỗi gửi khiếu nại: ${e.toString().replaceAll('Exception: ', '')}');
+      }
+    }
   }
 
   @override

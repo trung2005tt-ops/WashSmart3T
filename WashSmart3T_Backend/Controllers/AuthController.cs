@@ -274,6 +274,56 @@ public class AuthController : ControllerBase
     }
 
     // ============================================================
+    // POST: api/Auth/create-staff
+    // Chỉ Quản trị viên (Admin) mới có quyền tạo tài khoản Lễ tân / Nhân viên tiếp nhận (Staff)
+    // ============================================================
+    [Authorize(Roles = "Admin")]
+    [HttpPost("create-staff")]
+    public async Task<IActionResult> CreateStaff([FromBody] CreateStaffRequest request)
+    {
+        var (_, _, cleanPhone) = SmsService.NormalizePhone(request.Phone);
+
+        var existingPhone = await _context.Users.AnyAsync(x => x.Phone == cleanPhone);
+        if (existingPhone)
+        {
+            return BadRequest(new { message = "Số điện thoại đã được sử dụng." });
+        }
+
+        var existingEmail = await _context.Users.AnyAsync(x => x.Email == request.Email);
+        if (existingEmail)
+        {
+            return BadRequest(new { message = "Email đã được sử dụng." });
+        }
+
+        var staffRole = await _context.Roles.FirstOrDefaultAsync(x => x.Name == "Staff");
+        if (staffRole == null)
+        {
+            return BadRequest(new { message = "Chưa có vai trò Staff trong hệ thống." });
+        }
+
+        var user = new User
+        {
+            FullName = request.FullName.Trim(),
+            Phone = cleanPhone,
+            Email = request.Email.Trim(),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
+            RoleId = staffRole.Id,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = "Tạo tài khoản Nhân viên (Staff) thành công.",
+            userId = user.Id,
+            role = "Staff"
+        });
+    }
+
+    // ============================================================
     // POST: api/Auth/login
     // Đăng nhập: Áp dụng cơ chế khóa tài khoản (Account Lockout)
     // khi nhập sai mật khẩu quá 5 lần (khóa 15 phút chống brute-force)

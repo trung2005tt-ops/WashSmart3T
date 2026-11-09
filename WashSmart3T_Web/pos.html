@@ -550,6 +550,12 @@
               <p class="text-[10px] text-emerald-800 font-semibold bg-emerald-50 py-1 px-2 rounded border border-emerald-200">
                 Khách dùng bất kỳ App Ngân Hàng thật nào quét mã đều chuyển tiền thật chính xác vào tài khoản cửa hàng.
               </p>
+              <div class="pt-1 flex items-center justify-center gap-2">
+                <button type="button" onclick="simulateBankWebhookForPos()" class="text-[10px] px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-900 text-white font-medium flex items-center gap-1 transition-colors shadow-2xs">
+                  <span class="material-symbols-outlined text-xs">bolt</span>
+                  <span>Mô phỏng Webhook Đối Soát</span>
+                </button>
+              </div>
             </div>
 
             <!-- Cash View Panel -->
@@ -1002,9 +1008,11 @@
       const posQr = document.getElementById('posVietQrImg');
       const qrContainer = document.getElementById('qrImgContainer');
       const qrEmpty = document.getElementById('qrEmptyState');
+      let lastCreatedOrderId = null;
       if (grandTotal > 0) {
         if (posQr) {
-          posQr.src = 'https://img.vietqr.io/image/' + currentBankConfig.bankBin + '-' + currentBankConfig.bankAccountNo + '-compact2.png?amount=' + grandTotal + '&addInfo=WS3T%20QUAY&accountName=' + encodeURIComponent(currentBankConfig.bankAccountHolder);
+          const orderTag = lastCreatedOrderId ? `#WS3T-${String(lastCreatedOrderId).padStart(4, '0')}` : '#WS3T-POS';
+          posQr.src = 'https://img.vietqr.io/image/' + currentBankConfig.bankBin + '-' + currentBankConfig.bankAccountNo + '-compact2.png?amount=' + grandTotal + '&addInfo=' + encodeURIComponent(orderTag) + '&accountName=' + encodeURIComponent(currentBankConfig.bankAccountHolder);
         }
         if (qrContainer) qrContainer.classList.remove('hidden');
         if (qrEmpty) qrEmpty.classList.add('hidden');
@@ -1168,6 +1176,18 @@ document.querySelectorAll('input[name="returnMethod"]').forEach(el => el.addEven
         const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
         const savedCustomerName = newOrder.customerName ?? customerName; set('receipt-order-id', '#WS3T-' + String(orderId).padStart(4, '0')); set('receipt-seal-code', '#SEAL-3T-' + orderId); set('seal-header-code', '#SEAL-3T-' + orderId); set('receipt-date-time', dateTimeStr); set('receipt-cust-name', savedCustomerName); const curStaffName = (window.Auth && Auth.getFullName()) ? Auth.getFullName() : 'Đặng Thùy Dương'; set('receipt-staff-info', 'NV-0011 · ' + curStaffName); set('receipt-cust-phone', phone);
         
+        // Cập nhật mã VietQR động chuẩn EMVCo khóa theo mã đơn hàng vừa tạo
+        try {
+          const qrData = await Api.get('/Payments/vietqr/' + orderId);
+          if (qrData && qrData.qrImageUrl && posQr) {
+            posQr.src = qrData.qrImageUrl;
+          }
+        } catch (e) {
+          if (posQr) {
+            posQr.src = 'https://img.vietqr.io/image/' + currentBankConfig.bankBin + '-' + currentBankConfig.bankAccountNo + '-compact2.png?amount=' + calc.grandTotal + '&addInfo=' + encodeURIComponent('#WS3T-' + String(orderId).padStart(4, '0')) + '&accountName=' + encodeURIComponent(currentBankConfig.bankAccountHolder);
+          }
+        }
+        
         // Render itemized services in Receipt Modal
         const itemsContainer = document.getElementById('receipt-items-container');
         if (itemsContainer) {
@@ -1217,6 +1237,30 @@ document.querySelectorAll('input[name="returnMethod"]').forEach(el => el.addEven
           }
         }
       } catch (e) {}
+    }
+
+    async function simulateBankWebhookForPos() {
+      const calc = updateBillCalculations();
+      if (!calc || calc.grandTotal <= 0) {
+        showToast('Vui lòng chọn dịch vụ để có số tiền thanh toán.', true);
+        return;
+      }
+      try {
+        const orderTag = (typeof lastCreatedOrderId !== 'undefined' && lastCreatedOrderId) ? `#WS3T-${String(lastCreatedOrderId).padStart(4, '0')}` : '#WS3T-0019';
+        const res = await Api.post('/Payments/webhook', {
+          gateway: 'MBBank',
+          transactionDate: new Date().toISOString(),
+          amountIn: calc.grandTotal,
+          content: `CHUYEN KHOAN THANH TOAN DON HANG ${orderTag}`
+        });
+        if (res && res.matched) {
+          showToast(`⚡ Webhook tự động: Đã đối soát khớp lệnh đơn ${orderTag} (${formatCurrency(calc.grandTotal)})!`);
+        } else {
+          showToast(`Kết quả Webhook: ${res?.message || 'Đã ghi nhận'}`);
+        }
+      } catch (err) {
+        showToast('Lỗi Webhook: ' + err.message, true);
+      }
     }
 
     (async () => {

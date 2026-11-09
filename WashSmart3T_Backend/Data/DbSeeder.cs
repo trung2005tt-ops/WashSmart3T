@@ -39,20 +39,22 @@ public static class DbSeeder
         }
 
         // =========================
-        // SEED ADMIN & RECEPTION STAFF
-        // Mật khẩu khởi tạo có thể cấu hình an toàn qua biến môi trường INITIAL_SEED_PASSWORD
+        // SEED ADMIN, STAFF, SHIPPER, CUSTOMER
+        // Mật khẩu demo chuẩn README: 123456 (hoặc qua biến môi trường INITIAL_SEED_PASSWORD)
         // =========================
-        var initialPassword = Environment.GetEnvironmentVariable("INITIAL_SEED_PASSWORD") ?? "WashSmart@2026!";
+        var initialPassword = Environment.GetEnvironmentVariable("INITIAL_SEED_PASSWORD") ?? "123456";
         var passwordHash = BCrypt.Net.BCrypt.HashPassword(initialPassword);
 
         var adminRole = await context.Roles.FirstAsync(x => x.Name == "Admin");
         var staffRole = await context.Roles.FirstAsync(x => x.Name == "Staff");
+        var shipperRole = await context.Roles.FirstAsync(x => x.Name == "Shipper");
+        var customerRole = await context.Roles.FirstAsync(x => x.Name == "Customer");
 
-        var adminExists = await context.Users.AnyAsync(x => x.Phone == "0900000000");
-
-        if (!adminExists)
+        // 1. Admin
+        var admin = await context.Users.FirstOrDefaultAsync(x => x.Phone == "0900000000");
+        if (admin == null)
         {
-            var admin = new User
+            context.Users.Add(new User
             {
                 FullName = "Nguyễn Kiều Như",
                 Phone = "0900000000",
@@ -61,12 +63,14 @@ public static class DbSeeder
                 RoleId = adminRole.Id,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
-            };
-
-            context.Users.Add(admin);
+            });
+        }
+        else
+        {
+            admin.PasswordHash = passwordHash;
         }
 
-        // Thêm các nhân viên tiếp nhận / lễ tân
+        // 2. Nhân viên tiếp nhận / Lễ tân POS (Staff)
         var staffList = new[]
         {
             new { Phone = "0911000001", Name = "Trần Tuyết Mai", Email = "mai.tran@washsmart.com" },
@@ -77,7 +81,8 @@ public static class DbSeeder
 
         foreach (var s in staffList)
         {
-            if (!await context.Users.AnyAsync(x => x.Phone == s.Phone))
+            var u = await context.Users.FirstOrDefaultAsync(x => x.Phone == s.Phone);
+            if (u == null)
             {
                 context.Users.Add(new User
                 {
@@ -89,6 +94,59 @@ public static class DbSeeder
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
                 });
+            }
+            else
+            {
+                u.PasswordHash = passwordHash;
+            }
+        }
+
+        // 3. Nhân viên giao nhận (Shipper)
+        var shipper = await context.Users.FirstOrDefaultAsync(x => x.Phone == "0922222222");
+        if (shipper == null)
+        {
+            context.Users.Add(new User
+            {
+                FullName = "Lê Minh Hoàng",
+                Phone = "0922222222",
+                Email = "hoang.le@washsmart.com",
+                PasswordHash = passwordHash,
+                RoleId = shipperRole.Id,
+                IsActive = true,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+        else
+        {
+            shipper.PasswordHash = passwordHash;
+        }
+
+        // 4. Khách hàng Demo (Customer)
+        var customers = new[]
+        {
+            new { Phone = "0999222111", Name = "Như Nguyễn", Email = "nhu.nguyen@gmail.com" },
+            new { Phone = "0944444444", Name = "Hoàng Tuấn Kiên", Email = "kien.hoang@gmail.com" }
+        };
+
+        foreach (var c in customers)
+        {
+            var u = await context.Users.FirstOrDefaultAsync(x => x.Phone == c.Phone);
+            if (u == null)
+            {
+                context.Users.Add(new User
+                {
+                    FullName = c.Name,
+                    Phone = c.Phone,
+                    Email = c.Email,
+                    PasswordHash = passwordHash,
+                    RoleId = customerRole.Id,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                u.PasswordHash = passwordHash;
             }
         }
 

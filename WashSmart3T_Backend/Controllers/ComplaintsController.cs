@@ -133,9 +133,17 @@ public class ComplaintsController : ControllerBase
 
         // Nếu có OrderId, kiểm tra đơn hàng và quyền sở hữu đơn hàng
         string orderCode = "#WS3T-TRỰC TIẾP";
+        string sealCode = "WS-SEAL-TRỰC TIẾP";
+        string sealStatus = "Intact";
+        string drumInfo = "Lồng giặt sấy thông minh LG Turbo #02";
+        string shipperName = "Giao nhận tại quầy";
+
         if (request.OrderId.HasValue && request.OrderId.Value > 0)
         {
-            var order = await _context.Orders.AsNoTracking().FirstOrDefaultAsync(o => o.Id == request.OrderId.Value);
+            var order = await _context.Orders
+                .Include(o => o.Shipper)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(o => o.Id == request.OrderId.Value);
             if (order == null)
             {
                 return BadRequest(new { message = $"Không tìm thấy đơn hàng mã #{request.OrderId.Value}." });
@@ -151,6 +159,10 @@ public class ComplaintsController : ControllerBase
             }
 
             orderCode = $"#WS3T-{order.Id:D4}";
+            sealCode = !string.IsNullOrWhiteSpace(order.SealCode) ? order.SealCode : $"WS-SEAL-{order.Id:D4}";
+            sealStatus = !string.IsNullOrWhiteSpace(order.SealStatus) ? order.SealStatus : "Intact";
+            drumInfo = !string.IsNullOrWhiteSpace(order.DrumCode) ? order.DrumCode : "Lồng giặt sấy thông minh LG Turbo #02";
+            shipperName = order.Shipper != null ? $"{order.Shipper.FullName} ({order.Shipper.Phone})" : "Shipper giao nhận WashSmart 3T";
         }
 
         lock (_fileLock)
@@ -174,6 +186,10 @@ public class ComplaintsController : ControllerBase
                 CustomerNote = request.CustomerNote ?? "",
                 RequestedRefund = request.RequestedRefund ?? 0,
                 Status = "Pending",
+                SealCode = sealCode,
+                SealStatus = sealStatus,
+                DrumInfo = drumInfo,
+                ShipperName = shipperName,
                 CreatedAt = DateTime.UtcNow.ToString("o")
             };
 
@@ -282,6 +298,10 @@ public class ComplaintsController : ControllerBase
                         CustomerNote = "Nhờ xưởng giặt hỗ trợ may dằn chỉ lại hoặc bồi thường phí sửa áo.",
                         RequestedRefund = 50000,
                         Status = "Pending",
+                        SealCode = "WS-SEAL-0019",
+                        SealStatus = "Intact",
+                        DrumInfo = "Lồng giặt sấy thông minh LG Turbo #02",
+                        ShipperName = "Lê Minh Hoàng (0922222222)",
                         CreatedAt = DateTime.UtcNow.AddMinutes(-45).ToString("o")
                     },
                     new ComplaintModel
@@ -305,6 +325,10 @@ public class ComplaintsController : ControllerBase
                         StaffNote = "Đã chi trả đền bù 100% giá trị khăn tắm qua ví WashPoints và tặng mã freeship.",
                         ResolvedAt = DateTime.UtcNow.AddHours(-18).ToString("o"),
                         ResolvedBy = "Nguyễn Kiều Như",
+                        SealCode = "WS-SEAL-0018",
+                        SealStatus = "Inspected",
+                        DrumInfo = "Lồng hấp chuyên dụng Electrolux #01",
+                        ShipperName = "Lê Minh Hoàng (0922222222)",
                         CreatedAt = DateTime.UtcNow.AddDays(-1).ToString("o")
                     }
                 };
@@ -355,6 +379,10 @@ public class ComplaintModel
     public string? StaffNote { get; set; }
     public string? ResolvedBy { get; set; }
     public string? ResolvedAt { get; set; }
+    public string? SealCode { get; set; }
+    public string? SealStatus { get; set; } = "Intact";
+    public string? DrumInfo { get; set; }
+    public string? ShipperName { get; set; }
     public string CreatedAt { get; set; } = string.Empty;
 }
 

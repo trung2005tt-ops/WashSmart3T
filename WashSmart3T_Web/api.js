@@ -283,6 +283,31 @@ const Api = {
     },
   },
 
+  // Quản lý Thanh toán, VietQR EMVCo & Đối soát Ngân hàng
+  Payments: {
+    async getByOrder(orderId) {
+      return Api.get(`/Payments/order/${orderId}`);
+    },
+    async getVietQr(orderId) {
+      return Api.get(`/Payments/vietqr/${orderId}`);
+    },
+    async create(orderId, payload) {
+      return Api.post(`/Payments/order/${orderId}/create`, payload);
+    },
+    async confirm(orderId, note = '') {
+      return Api.post(`/Payments/order/${orderId}/confirm`, { note });
+    },
+    async refund(orderId, payload) {
+      return Api.post(`/Payments/order/${orderId}/refund`, payload);
+    },
+    async webhook(payload) {
+      return Api.post('/Payments/webhook', payload);
+    },
+    async reconcileStatement(payload) {
+      return Api.post('/Payments/reconcile-statement', payload);
+    },
+  },
+
   // Ưu đãi & Vouchers
   Promotions: {
     async all(category = 'all') {
