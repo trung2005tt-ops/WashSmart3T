@@ -70,23 +70,9 @@ public class PaymentsController : ControllerBase
         _env = env;
     }
 
-    private StoreConfigModel LoadStoreConfig()
+    private StoreConfig LoadStoreConfig()
     {
-        var path = Path.Combine(_env.ContentRootPath, "store_config.json");
-        if (System.IO.File.Exists(path))
-        {
-            try
-            {
-                var json = System.IO.File.ReadAllText(path);
-                var cfg = JsonSerializer.Deserialize<StoreConfigModel>(json, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
-                if (cfg != null) return cfg;
-            }
-            catch { }
-        }
-        return new StoreConfigModel();
+        return _context.StoreConfigs.AsNoTracking().FirstOrDefault(c => c.Id == 1) ?? new StoreConfig();
     }
 
     private int? GetCurrentUserId()

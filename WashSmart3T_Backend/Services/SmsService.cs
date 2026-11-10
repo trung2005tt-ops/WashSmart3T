@@ -1,7 +1,7 @@
 using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
-using WashSmart.API.Controllers;
+using WashSmart.API.Models;
 
 namespace WashSmart.API.Services;
 
@@ -11,6 +11,7 @@ public class SmsSendResult
     public string Message { get; set; } = string.Empty;
     public string Provider { get; set; } = string.Empty;
     public string NormalizedPhone { get; set; } = string.Empty;
+    public string SentToPhone { get; set; } = string.Empty;
     public string Content { get; set; } = string.Empty;
     public bool IsSimulated { get; set; }
 }
@@ -41,19 +42,47 @@ public static class SmsService
     /// <summary>
     /// Gửi mã xác nhận OTP qua tin nhắn SMS đến số điện thoại thật
     /// </summary>
-    public static async Task<SmsSendResult> SendOtpSmsAsync(string phone, string otpCode, string purpose, StoreConfigModel config)
+    public static async Task<SmsSendResult> SendOtpSmsAsync(string phone, string otpCode, string purpose, StoreConfig config)
     {
         var (phonePlus, phoneNoPlus, phoneLocal) = NormalizePhone(phone);
         var purposeText = purpose == "Register" ? "dang ky tai khoan" : "dat lai mat khau";
         var content = $"[WashSmart 3T] Ma xac thuc OTP {purposeText} cua ban la: {otpCode}. Hieu luc trong 5 phut. Vui long khong chia se cho bat ky ai.";
 
-        var provider = config.SmsProvider?.Trim().ToLower() ?? "simulated";
-        var apiKey = config.SmsApiKey?.Trim() ?? string.Empty;
-        var apiSecret = config.SmsApiSecret?.Trim() ?? string.Empty;
-        var senderId = string.IsNullOrWhiteSpace(config.SmsSenderId) ? "WashSmart3T" : config.SmsSenderId.Trim();
+        var (success, msg, provider, isSimulated) = await SendSmsInternalAsync(
+            phoneLocal, phonePlus, phoneNoPlus, content,
+            config.SmsApiKey, config.SmsApiSecret, config.SmsBrandName);
 
-        // 1. Gửi qua SpeedSMS (Dịch vụ SMS Gateway phổ biến tại VN)
-        if (provider == "speedsms" && !string.IsNullOrEmpty(apiKey))
+        return new SmsSendResult
+        {
+            Success = success,
+            Message = msg,
+            Provider = provider,
+            NormalizedPhone = phoneLocal,
+            SentToPhone = phone,
+            Content = content,
+            IsSimulated = isSimulated
+        };
+    }
+
+    /// <summary>
+    /// Gửi SMS thông thường
+    /// </summary>
+    public static async Task<(bool success, string message)> SendSmsAsync(string phone, string message, string? apiKey, string? apiSecret, string? brandName)
+    {
+        var (phonePlus, phoneNoPlus, phoneLocal) = NormalizePhone(phone);
+        var (success, msg, _, _) = await SendSmsInternalAsync(
+            phoneLocal, phonePlus, phoneNoPlus, message, apiKey, apiSecret, brandName);
+        return (success, msg);
+    }
+
+    private static async Task<(bool success, string message, string provider, bool isSimulated)> SendSmsInternalAsync(
+        string phoneLocal, string phonePlus, string phoneNoPlus, string content,
+        string? apiKey, string? apiSecret, string? brandName)
+    {
+        var senderId = string.IsNullOrWhiteSpace(brandName) ? "WashSmart3T" : brandName.Trim();
+
+        // 1. Gửi qua SpeedSMS nếu có cấu hình API Key thật
+        if (!string.IsNullOrEmpty(apiKey) && apiKey != "DEV_DEMO_KEY")
         {
             try
             {
@@ -62,7 +91,7 @@ public static class SmsService
                 {
                     to = new[] { phoneNoPlus },
                     content = content,
-                    sms_type = 2, // Loại tin OTP / Chăm sóc khách hàng
+                    sms_type = 2, // Tin CSKH/OTP
                     sender = senderId
                 };
 
@@ -72,19 +101,9 @@ public static class SmsService
                 request.Content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
                 var resp = await _httpClient.SendAsync(request);
-                var respBody = await resp.Content.ReadAsStringAsync();
-
                 if (resp.IsSuccessStatusCode)
                 {
-                    return new SmsSendResult
-                    {
-                        Success = true,
-                        Message = $"Đã gửi SMS thành công tới {phoneLocal} qua SpeedSMS.",
-                        Provider = "SpeedSMS",
-                        NormalizedPhone = phoneNoPlus,
-                        Content = content,
-                        IsSimulated = false
-                    };
+                    return (true, $"Đã gửi SMS thành công tới {phoneLocal} qua SpeedSMS.", "SpeedSMS", false);
                 }
             }
             catch (Exception ex)
@@ -93,17 +112,14 @@ public static class SmsService
             }
         }
 
-        // 2. Gửi qua Twilio (SMS Gateway quốc tế phổ biến)
-        if (provider == "twilio" && !string.IsNullOrEmpty(apiKey) && !string.IsNullOrEmpty(apiSecret))
+        // 2. Gửi qua Twilio nếu có AccountSid và AuthToken thật
+        if (!string.IsNullOrEmpty(apiKey) && !string.IsNullOrEmpty(apiSecret) && apiKey != "DEV_DEMO_KEY")
         {
             try
             {
-                var accountSid = apiKey;
-                var authToken = apiSecret;
-                var url = $"https://api.twilio.com/2010-04-01/Accounts/{accountSid}/Messages.json";
-
+                var url = $"https://api.twilio.com/2010-04-01/Accounts/{apiKey}/Messages.json";
                 using var request = new HttpRequestMessage(HttpMethod.Post, url);
-                var authBytes = Encoding.ASCII.GetBytes($"{accountSid}:{authToken}");
+                var authBytes = Encoding.ASCII.GetBytes($"{apiKey}:{apiSecret}");
                 request.Headers.Authorization = new AuthenticationHeaderValue("Basic", Convert.ToBase64String(authBytes));
 
                 var formValues = new Dictionary<string, string>
@@ -115,19 +131,9 @@ public static class SmsService
                 request.Content = new FormUrlEncodedContent(formValues);
 
                 var resp = await _httpClient.SendAsync(request);
-                var respBody = await resp.Content.ReadAsStringAsync();
-
                 if (resp.IsSuccessStatusCode)
                 {
-                    return new SmsSendResult
-                    {
-                        Success = true,
-                        Message = $"Đã gửi SMS thành công tới {phonePlus} qua Twilio.",
-                        Provider = "Twilio",
-                        NormalizedPhone = phonePlus,
-                        Content = content,
-                        IsSimulated = false
-                    };
+                    return (true, $"Đã gửi SMS thành công tới {phonePlus} qua Twilio.", "Twilio", false);
                 }
             }
             catch (Exception ex)
@@ -136,22 +142,12 @@ public static class SmsService
             }
         }
 
-        // 3. Chế độ Mô phỏng Thông minh (Simulated / Fallback khi chưa cấu hình API Key)
-        // Đảm bảo đồ án & kiểm thử luôn chạy trơn tru, không bị chặn bởi số dư tài khoản SMS
+        // 3. Fallback chế độ Mô phỏng Thông minh (Dev/Demo)
         Console.WriteLine($"=======================================================");
-        Console.WriteLine($"[SMS GATEWAY THẬT] Gửi đến SĐT: {phoneLocal} ({phonePlus})");
-        Console.WriteLine($"Nội dung tin nhắn: {content}");
-        Console.WriteLine($"Mã OTP 6 số: {otpCode}");
+        Console.WriteLine($"[SMS GATEWAY SIMULATION] Gửi đến SĐT: {phoneLocal} ({phonePlus})");
+        Console.WriteLine($"Nội dung: {content}");
         Console.WriteLine($"=======================================================");
 
-        return new SmsSendResult
-        {
-            Success = true,
-            Message = $"Hệ thống SMS đã cấp phát mã OTP xác thực tới số {phoneLocal}.",
-            Provider = "SmartWashSMS Engine",
-            NormalizedPhone = phoneLocal,
-            Content = content,
-            IsSimulated = true
-        };
+        return (true, $"Hệ thống SMS đã cấp phát mã tin nhắn tới số {phoneLocal}.", "SmartWashSMS Engine", true);
     }
 }

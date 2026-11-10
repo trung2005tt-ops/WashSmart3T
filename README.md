@@ -100,9 +100,197 @@ Tất cả tài khoản demo dưới đây được khởi tạo tự động tr
 
 ---
 
-## 5. Hướng Dẫn Cấu Hình Môi Trường & Khởi Chạy
+## 5. Kiến Trúc Dữ Liệu & Mô Hình Thực Thể Quan Hệ (ERD) Chuẩn
 
-### 5.1. Khởi Chạy Backend API (C# .NET 8)
+### 5.1. Sơ Đồ Thực Thể Quan Hệ (Mermaid ERD)
+Tất cả các thực thể (Users, Roles, Orders, OrderDetails, Payments, OrderStatusHistories, Reviews, Complaints, Promotions, StoreConfigs) được quản trị 100% trên CSDL SQL Server với khóa chính, khóa ngoại, ràng buộc toàn vẹn và chỉ mục duy nhất (Unique Index), triệt tiêu hoàn toàn lưu trữ file tĩnh cục bộ:
+
+```mermaid
+erDiagram
+    ROLES ||--o{ USERS : "has"
+    USERS ||--o{ ORDERS : "places (Customer)"
+    USERS ||--o{ ORDERS : "delivers (Shipper)"
+    USERS ||--o{ COMPLAINTS : "files"
+    USERS ||--o{ REVIEWS : "writes"
+    ORDERS ||--|{ ORDER_DETAILS : "contains"
+    SERVICES ||--|{ ORDER_DETAILS : "used_in"
+    SERVICES ||--|{ SERVICE_PRICES : "has"
+    ORDERS ||--o| PAYMENTS : "billed_by"
+    ORDERS ||--o{ ORDER_STATUS_HISTORIES : "tracks"
+    ORDERS ||--o| REVIEWS : "evaluated_by"
+    ORDERS ||--o{ COMPLAINTS : "disputed_by"
+    PAYMENTS ||--o| COMPLAINTS : "refunds_for"
+
+    ROLES {
+        int Id PK
+        string Name
+        string Description
+    }
+
+    USERS {
+        int Id PK
+        string FullName
+        string Phone UK
+        string Email UK
+        string PasswordHash
+        int RoleId FK
+        bool IsActive
+        int LoyaltyPoints
+        string MembershipTier
+        decimal TotalSpent
+        datetime CreatedAt
+    }
+
+    ORDERS {
+        int Id PK
+        string OrderCode UK
+        int CustomerId FK
+        int ShipperId FK
+        string OrderType
+        string PaymentMethod
+        decimal SubtotalAmount
+        decimal ShippingFee
+        decimal AddonFee
+        decimal DiscountAmount
+        decimal TotalAmount
+        string Status
+        string DeliveryProofPhotoUrl
+        string SealCode
+        string SealStatus
+        string DrumCode
+        datetime CreatedAt
+        datetime DeliveryTime
+    }
+
+    ORDER_DETAILS {
+        int Id PK
+        int OrderId FK
+        int ServiceId FK
+        decimal Quantity
+        decimal UnitPrice
+        decimal TotalPrice
+    }
+
+    SERVICES {
+        int Id PK
+        string Name
+        string Description
+        bool IsActive
+        datetime CreatedAt
+    }
+
+    SERVICE_PRICES {
+        int Id PK
+        int ServiceId FK
+        decimal Price
+        string Unit
+        decimal MinimumPrice
+    }
+
+    PAYMENTS {
+        int Id PK
+        int OrderId FK
+        decimal Amount
+        string Method
+        string Status
+        string TransactionId
+        decimal RefundedAmount
+        datetime RefundedAt
+        string RefundedBy
+        string RefundReason
+        int ComplaintId FK
+        datetime CreatedAt
+    }
+
+    ORDER_STATUS_HISTORIES {
+        int Id PK
+        int OrderId FK
+        string Status
+        string Note
+        string UpdatedBy
+        datetime CreatedAt
+    }
+
+    REVIEWS {
+        int Id PK
+        int OrderId FK
+        int CustomerId FK
+        int Rating
+        string Comment
+        datetime CreatedAt
+    }
+
+    COMPLAINTS {
+        int Id PK
+        string TicketCode UK
+        int CustomerId FK
+        int OrderId FK
+        string OrderCode
+        string IncidentType
+        string Severity
+        string ItemDescription
+        decimal RequestedRefund
+        decimal ApprovedAmount
+        string Status
+        string Resolution
+        string SealCode
+        string DrumInfo
+        datetime CreatedAt
+        datetime ResolvedAt
+    }
+
+    PROMOTIONS {
+        int Id PK
+        string Code UK
+        string Title
+        string Description
+        string DiscountType
+        decimal DiscountValue
+        decimal MinOrderAmount
+        decimal MaxDiscountAmount
+        datetime StartDate
+        datetime EndDate
+        int UsageLimit
+        int UsedCount
+        bool IsActive
+    }
+
+    STORE_CONFIGS {
+        int Id PK
+        string StoreName
+        string Address
+        decimal BaseShippingFee
+        decimal Tier2ShippingFee
+        decimal Tier3ShippingFee
+        decimal ExpressExtraFee
+        decimal AddonComfortFee
+        decimal AddonBagFee
+        decimal FreeShipMinAmount
+        string BankName
+        string BankBin
+        string BankAccountNo
+        string BankAccountHolder
+        string SmsApiKey
+        string SmsBrandName
+        datetime UpdatedAt
+    }
+```
+
+### 5.2. Chuẩn Thiết Kế Độ Chính Xác Tiền Tệ & Ràng Buộc Dữ Liệu
+1. **Định dạng số thập phân tài chính**: 100% cột tiền tệ và điểm số (`decimal(18,2)`) được cấu hình tường minh qua EF Core Fluent API, ngăn ngừa lỗi làm tròn số học (floating-point precision).
+2. **Loại bỏ hoàn toàn File JSON cục bộ**:
+   - `Complaints` (Khiếu nại/Bảo hiểm 3T Care) chuyển từ `complaints.json` sang bảng SQL Server có khóa ngoại tham chiếu `CustomerId` và `OrderId`.
+   - `StoreConfigs` (Cấu hình ngân hàng & bảng cước phí) chuyển từ `store_config.json` sang bảng SQL Server (Singleton `Id = 1`), an toàn tuyệt đối khi scale nhiều instance và containerized.
+3. **Mô hình Khách hàng thân thiết (Loyalty & Gamification)**:
+   - Các trường `LoyaltyPoints`, `MembershipTier` (Bronze, Silver, Gold, Platinum), `TotalSpent` được tích hợp trực tiếp trên thực thể `Users`.
+   - Bảng `Promotions` quản lý mã ưu đãi, kiểm tra hạn sử dụng, ngưỡng đơn hàng tối thiểu và giới hạn số lượt áp dụng.
+4. **Tính nhất quán thời gian**: 100% bản ghi dùng `DateTime.UtcNow` theo chuẩn ISO 8601, loại bỏ lệch múi giờ giữa máy chủ và client.
+
+---
+
+## 6. Hướng Dẫn Cấu Hình Môi Trường & Khởi Chạy
+
+### 6.1. Khởi Chạy Backend API (C# .NET 8)
 - **Yêu cầu**: .NET 8 SDK, SQL Server Express (`localhost\SQLEXPRESS`).
 - **Lệnh chạy**:
   ```powershell
@@ -111,7 +299,7 @@ Tất cả tài khoản demo dưới đây được khởi tạo tự động tr
   ```
 - **Tài liệu Swagger**: Truy cập `http://localhost:5085/swagger`.
 
-### 5.2. Khởi Chạy Web Quản Trị & POS
+### 6.2. Khởi Chạy Web Quản Trị & POS
 - **Yêu cầu**: Mở thư mục `WashSmart3T_Web` qua VS Code Live Server hoặc dùng `npx serve`:
   ```powershell
   cd WashSmart3T_Web
@@ -123,8 +311,9 @@ Tất cả tài khoản demo dưới đây được khởi tạo tự động tr
   - Điều phối Shipper: `http://127.0.0.1:5500/dispatch.html`
   - Trung tâm khiếu nại: `http://127.0.0.1:5500/complaints.html`
   - Quản lý nhân sự: `http://127.0.0.1:5500/accounts.html`
+  - Quản lý khách hàng: `http://127.0.0.1:5500/customers.html`
 
-### 5.3. Khởi Chạy Mobile App (Flutter)
+### 6.3. Khởi Chạy Mobile App (Flutter)
 - **Yêu cầu**: Flutter SDK >= 3.x, Android Emulator hoặc Chrome Web.
 - **Lệnh chạy**:
   ```powershell
@@ -135,7 +324,7 @@ Tất cả tài khoản demo dưới đây được khởi tạo tự động tr
 
 ---
 
-## 6. Bảo Mật Hệ Thống Đã Được Kiểm Thử Chặt Chẽ
+## 7. Bảo Mật Hệ Thống Đã Được Kiểm Thử Chặt Chẽ
 1. **Phân quyền vai trò nghiêm ngặt**: Áp dụng Role-based Access Control (`Admin`, `Staff`, `Shipper`, `Customer`). Các chức năng tài chính, đổi STK ngân hàng và duyệt bồi hoàn đều yêu cầu quyền quản trị.
 2. **Xác thực OTP chống Toll Fraud**: OTP đăng ký có hạn 5 phút, giới hạn tần suất 60s/lần và tối đa 5 lần thử.
 3. **Chống Brute-force**: Tự động khóa tài khoản 15 phút nếu đăng nhập sai quá 5 lần liên tiếp.

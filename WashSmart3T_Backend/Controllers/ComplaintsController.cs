@@ -1,26 +1,42 @@
-using WashSmart.API.Models;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
-using System.Text.Json;
 using WashSmart.API.Data;
+using WashSmart.API.Models;
 
 namespace WashSmart.API.Controllers;
+
+public class CreateComplaintRequest
+{
+    public int? OrderId { get; set; }
+    public string? CustomerName { get; set; }
+    public string? CustomerPhone { get; set; }
+    public string? IncidentType { get; set; }
+    public string? Severity { get; set; }
+    public string ItemDescription { get; set; } = string.Empty;
+    public string? PhotoUrl { get; set; }
+    public string? CustomerNote { get; set; }
+    public decimal? RequestedRefund { get; set; }
+}
+
+public class ResolveComplaintRequest
+{
+    public string? Resolution { get; set; }
+    public decimal? ApprovedAmount { get; set; }
+    public string? StaffNote { get; set; }
+}
 
 [ApiController]
 [Route("api/[controller]")]
 [Authorize] // BẮT BUỘC ĐĂNG NHẬP CHO TOÀN BỘ ENDPOINTS KHIẾU NẠI
 public class ComplaintsController : ControllerBase
 {
-    private static readonly string ComplaintsFilePath = Path.Combine(AppContext.BaseDirectory, "complaints.json");
-    private static readonly object _fileLock = new();
     private readonly ApplicationDbContext _context;
 
     public ComplaintsController(ApplicationDbContext context)
     {
         _context = context;
-        EnsureInitialData();
     }
 
     private (int? userId, string role, string phone, string name) GetCurrentUser()
@@ -39,41 +55,75 @@ public class ComplaintsController : ControllerBase
     // Customer/Shipper: Chỉ xem khiếu nại của chính mình (chống rò rỉ PII).
     // ============================================================
     [HttpGet]
-    public IActionResult GetComplaints([FromQuery] string? status, [FromQuery] string? search)
+    public async Task<IActionResult> GetComplaints([FromQuery] string? status, [FromQuery] string? search)
     {
         var (userId, role, phone, _) = GetCurrentUser();
 
-        lock (_fileLock)
+        var query = _context.Complaints
+            .Include(c => c.Customer)
+            .Include(c => c.Order)
+            .AsNoTracking()
+            .AsQueryable();
+
+        // Phân quyền dữ liệu: Customer chỉ xem khiếu nại do mình gửi
+        if (role != "Admin" && role != "Staff")
         {
-            var list = LoadComplaints();
-
-            // Phân quyền dữ liệu: Customer chỉ xem khiếu nại do mình gửi
-            if (role != "Admin" && role != "Staff")
-            {
-                list = list.Where(c => (c.UserId.HasValue && c.UserId == userId) ||
-                                       (!string.IsNullOrEmpty(phone) && c.CustomerPhone == phone)).ToList();
-            }
-
-            if (!string.IsNullOrWhiteSpace(status) && status.ToLower() != "all")
-            {
-                if (status.ToLower() == "pending")
-                    list = list.Where(c => c.Status == "Pending" || c.Status == "Chờ xử lý").ToList();
-                else if (status.ToLower() == "completed")
-                    list = list.Where(c => c.Status == "Completed" || c.Status == "Approved" || c.Status == "Rejected" || c.Status == "Đã hoàn tất").ToList();
-            }
-
-            if (!string.IsNullOrWhiteSpace(search))
-            {
-                var s = search.ToLower().Trim();
-                list = list.Where(c => 
-                    c.TicketCode.ToLower().Contains(s) || 
-                    c.CustomerName.ToLower().Contains(s) || 
-                    c.CustomerPhone.Contains(s) || 
-                    c.OrderCode.ToLower().Contains(s)).ToList();
-            }
-
-            return Ok(list);
+            query = query.Where(c => (c.CustomerId.HasValue && c.CustomerId == userId) ||
+                                     (!string.IsNullOrEmpty(phone) && c.Customer != null && c.Customer.Phone == phone));
         }
+
+        if (!string.IsNullOrWhiteSpace(status) && status.ToLower() != "all")
+        {
+            var s = status.Trim().ToLower();
+            if (s == "pending")
+                query = query.Where(c => c.Status == "Pending" || c.Status == "Chờ xử lý");
+            else if (s == "completed")
+                query = query.Where(c => c.Status == "Completed" || c.Status == "Approved" || c.Status == "Rejected" || c.Status == "Đã hoàn tất");
+        }
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var s = search.ToLower().Trim();
+            query = query.Where(c =>
+                c.TicketCode.ToLower().Contains(s) ||
+                (c.Customer != null && c.Customer.FullName.ToLower().Contains(s)) ||
+                (c.Customer != null && c.Customer.Phone.Contains(s)) ||
+                c.OrderCode.ToLower().Contains(s) ||
+                c.ItemDescription.ToLower().Contains(s));
+        }
+
+        var list = await query
+            .OrderByDescending(c => c.CreatedAt)
+            .Select(c => new
+            {
+                id = c.Id,
+                ticketCode = c.TicketCode,
+                userId = c.CustomerId,
+                orderId = c.OrderId,
+                orderCode = c.OrderCode,
+                customerName = c.Customer != null ? c.Customer.FullName : "Khách hàng",
+                customerPhone = c.Customer != null ? c.Customer.Phone : "",
+                incidentType = c.IncidentType,
+                severity = c.Severity,
+                itemDescription = c.ItemDescription,
+                photoUrl = c.PhotoUrl ?? "",
+                customerNote = c.CustomerNote ?? "",
+                requestedRefund = c.RequestedRefund,
+                approvedAmount = c.ApprovedAmount,
+                status = c.Status,
+                resolution = c.Resolution,
+                staffNote = c.StaffNote,
+                resolvedBy = c.ResolvedBy,
+                resolvedAt = c.ResolvedAt.HasValue ? c.ResolvedAt.Value.ToString("o") : null,
+                sealCode = c.SealCode ?? (c.OrderId.HasValue ? $"WS-SEAL-{c.OrderId.Value:D4}" : "WS-SEAL-TRỰC TIẾP"),
+                sealStatus = c.SealStatus ?? "Intact",
+                drumInfo = c.DrumInfo ?? "Lồng giặt sấy thông minh LG Turbo #02",
+                shipperName = c.ShipperName ?? "Shipper giao nhận WashSmart 3T",
+                createdAt = c.CreatedAt.ToString("o")
+            })
+            .ToListAsync();
+
+        return Ok(list);
     }
 
     // ============================================================
@@ -81,36 +131,64 @@ public class ComplaintsController : ControllerBase
     // Lấy chi tiết khiếu nại (có kiểm tra quyền sở hữu).
     // ============================================================
     [HttpGet("{id}")]
-    public IActionResult GetById(int id)
+    public async Task<IActionResult> GetById(int id)
     {
         var (userId, role, phone, _) = GetCurrentUser();
 
-        lock (_fileLock)
+        var item = await _context.Complaints
+            .Include(c => c.Customer)
+            .Include(c => c.Order)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(c => c.Id == id);
+
+        if (item == null) return NotFound(new { message = "Không tìm thấy khiếu nại." });
+
+        // Kiểm tra quyền: nếu là Customer thì phải là chủ khiếu nại
+        if (role != "Admin" && role != "Staff")
         {
-            var list = LoadComplaints();
-            var item = list.FirstOrDefault(c => c.Id == id);
-            if (item == null) return NotFound(new { message = "Không tìm thấy khiếu nại." });
-
-            // Kiểm tra quyền: nếu là Customer thì phải là chủ khiếu nại
-            if (role != "Admin" && role != "Staff")
+            var isOwner = (item.CustomerId.HasValue && item.CustomerId == userId) ||
+                          (!string.IsNullOrEmpty(phone) && item.Customer != null && item.Customer.Phone == phone);
+            if (!isOwner)
             {
-                var isOwner = (item.UserId.HasValue && item.UserId == userId) ||
-                              (!string.IsNullOrEmpty(phone) && item.CustomerPhone == phone);
-                if (!isOwner)
-                {
-                    return Forbid();
-                }
+                return Forbid();
             }
-
-            return Ok(item);
         }
+
+        return Ok(new
+        {
+            id = item.Id,
+            ticketCode = item.TicketCode,
+            userId = item.CustomerId,
+            orderId = item.OrderId,
+            orderCode = item.OrderCode,
+            customerName = item.Customer?.FullName ?? "Khách hàng",
+            customerPhone = item.Customer?.Phone ?? "",
+            incidentType = item.IncidentType,
+            severity = item.Severity,
+            itemDescription = item.ItemDescription,
+            photoUrl = item.PhotoUrl ?? "",
+            customerNote = item.CustomerNote ?? "",
+            requestedRefund = item.RequestedRefund,
+            approvedAmount = item.ApprovedAmount,
+            status = item.Status,
+            resolution = item.Resolution,
+            staffNote = item.StaffNote,
+            resolvedBy = item.ResolvedBy,
+            resolvedAt = item.ResolvedAt.HasValue ? item.ResolvedAt.Value.ToString("o") : null,
+            sealCode = item.SealCode,
+            sealStatus = item.SealStatus,
+            drumInfo = item.DrumInfo,
+            shipperName = item.ShipperName,
+            createdAt = item.CreatedAt.ToString("o")
+        });
     }
 
     // ============================================================
     // POST: api/Complaints
-    // Tạo khiếu nại mới:
-    // 1. Gắn trực tiếp với UserId của người dùng đang đăng nhập.
+    // Tạo khiếu nại mới lưu trực tiếp vào CSDL SQL Server:
+    // 1. Gắn trực tiếp với CustomerId của người dùng đang đăng nhập.
     // 2. Nếu có OrderId, xác thực đơn hàng tồn tại và thuộc về người dùng này.
+    // 3. Sử dụng DateTime.UtcNow để tạo TicketCode chuẩn KN-yyyyMMdd-XXX.
     // ============================================================
     [HttpPost]
     public async Task<IActionResult> CreateComplaint([FromBody] CreateComplaintRequest request)
@@ -165,50 +243,65 @@ public class ComplaintsController : ControllerBase
             shipperName = order.Shipper != null ? $"{order.Shipper.FullName} ({order.Shipper.Phone})" : "Shipper giao nhận WashSmart 3T";
         }
 
-        lock (_fileLock)
+        // Tạo mã ticket dựa trên DateTime.UtcNow
+        var todayPrefix = $"KN-{DateTime.UtcNow:yyyyMMdd}";
+        var todayCount = await _context.Complaints.CountAsync(c => c.TicketCode.StartsWith(todayPrefix));
+        var ticketCode = $"{todayPrefix}-{(todayCount + 1):D3}";
+
+        var ticket = new Complaint
         {
-            var list = LoadComplaints();
-            int nextId = list.Any() ? list.Max(c => c.Id) + 1 : 1;
+            TicketCode = ticketCode,
+            CustomerId = userId.Value,
+            OrderId = request.OrderId,
+            OrderCode = orderCode,
+            IncidentType = string.IsNullOrWhiteSpace(request.IncidentType) ? "Hỏng / Rách vải" : request.IncidentType.Trim(),
+            Severity = request.Severity ?? "Medium",
+            ItemDescription = request.ItemDescription.Trim(),
+            PhotoUrl = request.PhotoUrl ?? "",
+            CustomerNote = request.CustomerNote ?? "",
+            RequestedRefund = request.RequestedRefund ?? 0,
+            Status = "Pending",
+            SealCode = sealCode,
+            SealStatus = sealStatus,
+            DrumInfo = drumInfo,
+            ShipperName = shipperName,
+            CreatedAt = DateTime.UtcNow
+        };
 
-            var ticket = new ComplaintModel
+        _context.Complaints.Add(ticket);
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = "Gửi khiếu nại thành công! Chuyên viên bảo hiểm sẽ phản hồi trong vòng 15 phút.",
+            complaint = new
             {
-                Id = nextId,
-                TicketCode = $"KN-{DateTime.Now:yyyyMMdd}-{nextId:D3}",
-                UserId = userId.Value,
-                OrderId = request.OrderId,
-                OrderCode = orderCode,
-                CustomerName = effectiveName,
-                CustomerPhone = effectivePhone,
-                IncidentType = string.IsNullOrWhiteSpace(request.IncidentType) ? "Hỏng / Rách vải" : request.IncidentType.Trim(),
-                Severity = request.Severity ?? "Medium",
-                ItemDescription = request.ItemDescription.Trim(),
-                PhotoUrl = request.PhotoUrl ?? "",
-                CustomerNote = request.CustomerNote ?? "",
-                RequestedRefund = request.RequestedRefund ?? 0,
-                Status = "Pending",
-                SealCode = sealCode,
-                SealStatus = sealStatus,
-                DrumInfo = drumInfo,
-                ShipperName = shipperName,
-                CreatedAt = DateTime.UtcNow.ToString("o")
-            };
-
-            list.Insert(0, ticket);
-            SaveComplaints(list);
-
-            return Ok(new
-            {
-                message = "Gửi khiếu nại thành công! Chuyên viên bảo hiểm sẽ phản hồi trong vòng 15 phút.",
-                complaint = ticket
-            });
-        }
+                id = ticket.Id,
+                ticketCode = ticket.TicketCode,
+                orderId = ticket.OrderId,
+                orderCode = ticket.OrderCode,
+                customerName = effectiveName,
+                customerPhone = effectivePhone,
+                incidentType = ticket.IncidentType,
+                severity = ticket.Severity,
+                itemDescription = ticket.ItemDescription,
+                photoUrl = ticket.PhotoUrl,
+                customerNote = ticket.CustomerNote,
+                requestedRefund = ticket.RequestedRefund,
+                status = ticket.Status,
+                sealCode = ticket.SealCode,
+                sealStatus = ticket.SealStatus,
+                drumInfo = ticket.DrumInfo,
+                shipperName = ticket.ShipperName,
+                createdAt = ticket.CreatedAt.ToString("o")
+            }
+        });
     }
 
     // ============================================================
     // PUT: api/Complaints/{id}/resolve
     // Chỉ Quản trị viên (Admin) hoặc Nhân viên cửa hàng (Staff) mới được duyệt bồi hoàn.
-    // LƯU Ý BẢO MẬT: ResolvedBy được lấy tự động từ tài khoản nhân viên đang đăng nhập,
-    // nghiêm cấm client tự khai khống hoặc tự duyệt số tiền bồi hoàn.
+    // LƯU Ý BẢO MẬT: ResolvedBy được lấy tự động từ tài khoản nhân viên đang đăng nhập.
     // ============================================================
     [HttpPut("{id}/resolve")]
     [Authorize(Roles = "Admin,Staff")]
@@ -220,188 +313,68 @@ public class ComplaintsController : ControllerBase
             staffName = role == "Admin" ? "Quản trị viên" : "Nhân viên tiếp nhận";
         }
 
-        ComplaintModel? resolvedItem = null;
-        lock (_fileLock)
+        var item = await _context.Complaints
+            .Include(c => c.Customer)
+            .FirstOrDefaultAsync(c => c.Id == id);
+
+        if (item == null) return NotFound(new { message = "Không tìm thấy hồ sơ khiếu nại." });
+
+        var amount = request.ApprovedAmount ?? item.RequestedRefund;
+        if (amount < 0)
         {
-            var list = LoadComplaints();
-            var item = list.FirstOrDefault(c => c.Id == id);
-            if (item == null) return NotFound(new { message = "Không tìm thấy hồ sơ khiếu nại." });
-
-            var amount = request.ApprovedAmount ?? item.RequestedRefund;
-            if (amount < 0)
-            {
-                return BadRequest(new { message = "Số tiền bồi hoàn không hợp lệ." });
-            }
-
-            item.Status = "Completed";
-            item.Resolution = request.Resolution ?? "Approved";
-            item.ApprovedAmount = amount;
-            item.StaffNote = request.StaffNote ?? "Đã giải quyết theo quy chuẩn bảo hành WashSmart 3T.";
-            item.ResolvedAt = DateTime.UtcNow.ToString("o");
-            item.ResolvedBy = staffName;
-
-            SaveComplaints(list);
-            resolvedItem = item;
+            return BadRequest(new { message = "Số tiền bồi hoàn không hợp lệ." });
         }
 
-        // Tự động kích hoạt ghi nhận bồi hoàn/hoàn tiền vào Payment của đơn hàng (ngoài lock)
-        if (resolvedItem != null && resolvedItem.ApprovedAmount.HasValue && resolvedItem.ApprovedAmount.Value > 0 && resolvedItem.OrderId.HasValue && resolvedItem.OrderId.Value > 0)
+        item.Status = "Completed";
+        item.Resolution = request.Resolution ?? "Approved";
+        item.ApprovedAmount = amount;
+        item.StaffNote = request.StaffNote ?? "Đã giải quyết theo quy chuẩn bảo hành WashSmart 3T.";
+        item.ResolvedAt = DateTime.UtcNow;
+        item.ResolvedBy = staffName;
+        item.UpdatedAt = DateTime.UtcNow;
+
+        // Tự động kích hoạt ghi nhận bồi hoàn/hoàn tiền vào Payment của đơn hàng
+        if (item.ApprovedAmount.HasValue && item.ApprovedAmount.Value > 0 && item.OrderId.HasValue && item.OrderId.Value > 0)
         {
             try
             {
-                var payment = await _context.Payments.FirstOrDefaultAsync(p => p.OrderId == resolvedItem.OrderId.Value);
+                var payment = await _context.Payments.FirstOrDefaultAsync(p => p.OrderId == item.OrderId.Value);
                 if (payment != null)
                 {
-                    payment.RefundedAmount = resolvedItem.ApprovedAmount.Value;
-                    payment.RefundReason = $"Bồi hoàn bảo hiểm theo khiếu nại #{resolvedItem.TicketCode}: {resolvedItem.IncidentType}";
+                    payment.RefundedAmount = item.ApprovedAmount.Value;
+                    payment.RefundReason = $"Bồi hoàn bảo hiểm theo khiếu nại #{item.TicketCode}: {item.IncidentType}";
                     payment.RefundedAt = DateTime.UtcNow;
                     payment.RefundedBy = staffName;
-                    payment.ComplaintId = resolvedItem.Id;
+                    payment.ComplaintId = item.Id;
                     if (payment.RefundedAmount >= payment.Amount)
                     {
                         payment.Status = PaymentStatus.Refunded;
                     }
-                    await _context.SaveChangesAsync();
                 }
             }
             catch { }
         }
 
+        await _context.SaveChangesAsync();
+
         return Ok(new
         {
             message = "Hồ sơ khiếu nại đã được phê duyệt xử lý thành công!",
-            complaint = resolvedItem
+            complaint = new
+            {
+                id = item.Id,
+                ticketCode = item.TicketCode,
+                orderId = item.OrderId,
+                orderCode = item.OrderCode,
+                customerName = item.Customer?.FullName ?? "Khách hàng",
+                customerPhone = item.Customer?.Phone ?? "",
+                status = item.Status,
+                resolution = item.Resolution,
+                approvedAmount = item.ApprovedAmount,
+                staffNote = item.StaffNote,
+                resolvedBy = item.ResolvedBy,
+                resolvedAt = item.ResolvedAt.HasValue ? item.ResolvedAt.Value.ToString("o") : null
+            }
         });
     }
-
-    private static void EnsureInitialData()
-    {
-        lock (_fileLock)
-        {
-            if (!System.IO.File.Exists(ComplaintsFilePath))
-            {
-                var initial = new List<ComplaintModel>
-                {
-                    new ComplaintModel
-                    {
-                        Id = 1,
-                        TicketCode = "KN-20261104-001",
-                        UserId = 1,
-                        OrderId = 19,
-                        OrderCode = "#WS3T-0019",
-                        CustomerName = "Như Nguyễn",
-                        CustomerPhone = "0999222111",
-                        IncidentType = "Bung chỉ mép áo sơ mi",
-                        Severity = "Low",
-                        ItemDescription = "Áo sơ mi trắng lụa công sở bị sờn mép chỉ cổ tay sau khi giặt sấy.",
-                        PhotoUrl = "",
-                        CustomerNote = "Nhờ xưởng giặt hỗ trợ may dằn chỉ lại hoặc bồi thường phí sửa áo.",
-                        RequestedRefund = 50000,
-                        Status = "Pending",
-                        SealCode = "WS-SEAL-0019",
-                        SealStatus = "Intact",
-                        DrumInfo = "Lồng giặt sấy thông minh LG Turbo #02",
-                        ShipperName = "Lê Minh Hoàng (0922222222)",
-                        CreatedAt = DateTime.UtcNow.AddMinutes(-45).ToString("o")
-                    },
-                    new ComplaintModel
-                    {
-                        Id = 2,
-                        TicketCode = "KN-20261103-002",
-                        UserId = 2,
-                        OrderId = 18,
-                        OrderCode = "#WS3T-0018",
-                        CustomerName = "Hoàng Tuấn Kiên",
-                        CustomerPhone = "0944444444",
-                        IncidentType = "Lem màu khăn tắm",
-                        Severity = "Medium",
-                        ItemDescription = "Khăn tắm cotton màu trắng bị phai màu xanh nhạt từ đồ giặt chung.",
-                        PhotoUrl = "",
-                        CustomerNote = "Đã giặt hấp xử lý màu lại, khách hàng hài lòng.",
-                        RequestedRefund = 120000,
-                        ApprovedAmount = 120000,
-                        Status = "Completed",
-                        Resolution = "Approved",
-                        StaffNote = "Đã chi trả đền bù 100% giá trị khăn tắm qua ví WashPoints và tặng mã freeship.",
-                        ResolvedAt = DateTime.UtcNow.AddHours(-18).ToString("o"),
-                        ResolvedBy = "Nguyễn Kiều Như",
-                        SealCode = "WS-SEAL-0018",
-                        SealStatus = "Inspected",
-                        DrumInfo = "Lồng hấp chuyên dụng Electrolux #01",
-                        ShipperName = "Lê Minh Hoàng (0922222222)",
-                        CreatedAt = DateTime.UtcNow.AddDays(-1).ToString("o")
-                    }
-                };
-                SaveComplaints(initial);
-            }
-        }
-    }
-
-    private static List<ComplaintModel> LoadComplaints()
-    {
-        try
-        {
-            if (!System.IO.File.Exists(ComplaintsFilePath)) return new List<ComplaintModel>();
-            var json = System.IO.File.ReadAllText(ComplaintsFilePath);
-            return JsonSerializer.Deserialize<List<ComplaintModel>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<ComplaintModel>();
-        }
-        catch
-        {
-            return new List<ComplaintModel>();
-        }
-    }
-
-    private static void SaveComplaints(List<ComplaintModel> list)
-    {
-        var json = JsonSerializer.Serialize(list, new JsonSerializerOptions { WriteIndented = true });
-        System.IO.File.WriteAllText(ComplaintsFilePath, json);
-    }
-}
-
-public class ComplaintModel
-{
-    public int Id { get; set; }
-    public string TicketCode { get; set; } = string.Empty;
-    public int? UserId { get; set; }
-    public int? OrderId { get; set; }
-    public string OrderCode { get; set; } = string.Empty;
-    public string CustomerName { get; set; } = string.Empty;
-    public string CustomerPhone { get; set; } = string.Empty;
-    public string IncidentType { get; set; } = string.Empty;
-    public string Severity { get; set; } = "Low";
-    public string ItemDescription { get; set; } = string.Empty;
-    public string PhotoUrl { get; set; } = string.Empty;
-    public string CustomerNote { get; set; } = string.Empty;
-    public decimal RequestedRefund { get; set; }
-    public decimal? ApprovedAmount { get; set; }
-    public string Status { get; set; } = "Pending";
-    public string? Resolution { get; set; }
-    public string? StaffNote { get; set; }
-    public string? ResolvedBy { get; set; }
-    public string? ResolvedAt { get; set; }
-    public string? SealCode { get; set; }
-    public string? SealStatus { get; set; } = "Intact";
-    public string? DrumInfo { get; set; }
-    public string? ShipperName { get; set; }
-    public string CreatedAt { get; set; } = string.Empty;
-}
-
-public class CreateComplaintRequest
-{
-    public int? OrderId { get; set; }
-    public string? CustomerName { get; set; }
-    public string? CustomerPhone { get; set; }
-    public string? IncidentType { get; set; }
-    public string? Severity { get; set; }
-    public string ItemDescription { get; set; } = string.Empty;
-    public string? PhotoUrl { get; set; }
-    public string? CustomerNote { get; set; }
-    public decimal? RequestedRefund { get; set; }
-}
-
-public class ResolveComplaintRequest
-{
-    public string? Resolution { get; set; }
-    public decimal? ApprovedAmount { get; set; }
-    public string? StaffNote { get; set; }
 }

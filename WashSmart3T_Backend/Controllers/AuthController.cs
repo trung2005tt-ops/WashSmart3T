@@ -33,23 +33,9 @@ public class AuthController : ControllerBase
         _env = env;
     }
 
-    private StoreConfigModel GetStoreConfig()
+    private async Task<StoreConfig> GetStoreConfigAsync()
     {
-        var path = Path.Combine(_env.ContentRootPath, "store_config.json");
-        if (System.IO.File.Exists(path))
-        {
-            try
-            {
-                var json = System.IO.File.ReadAllText(path);
-                var cfg = JsonSerializer.Deserialize<StoreConfigModel>(json, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
-                if (cfg != null) return cfg;
-            }
-            catch { }
-        }
-        return new StoreConfigModel();
+        return await _context.StoreConfigs.AsNoTracking().FirstOrDefaultAsync(c => c.Id == 1) ?? new StoreConfig();
     }
 
     // ============================================================
@@ -103,7 +89,7 @@ public class AuthController : ControllerBase
 
         // 3. Sinh mã OTP bảo mật 6 số và lưu cache (hạn 5 phút, tối đa 5 lần thử)
         var otpCode = OtpManager.GenerateOtp("Register", phone);
-        var storeConfig = GetStoreConfig();
+        var storeConfig = await GetStoreConfigAsync();
 
         // 4. Gửi SMS đến số điện thoại thật
         var smsResult = await SmsService.SendOtpSmsAsync(phone, otpCode, "Register", storeConfig);

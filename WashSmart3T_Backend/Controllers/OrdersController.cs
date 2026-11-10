@@ -34,38 +34,23 @@ public class OrdersController : ControllerBase
         _hubContext = hubContext;
     }
 
-    private StoreConfigModel GetStoreConfig()
+    private StoreConfig GetStoreConfig()
     {
-        var path = Path.Combine(_env.ContentRootPath, "store_config.json");
-        if (System.IO.File.Exists(path))
-        {
-            try
-            {
-                var json = System.IO.File.ReadAllText(path);
-                var cfg = JsonSerializer.Deserialize<StoreConfigModel>(json, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true
-                });
-                if (cfg != null) return cfg;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Lỗi đọc store_config.json, dùng cấu hình mặc định.");
-            }
-        }
-        return new StoreConfigModel();
+        return _context.StoreConfigs.AsNoTracking().FirstOrDefault(c => c.Id == 1) ?? new StoreConfig();
     }
 
-    private decimal CalculateShippingFee(double distanceKm, bool isExpress, StoreConfigModel config)
+    private decimal CalculateShippingFee(double distanceKm, bool isExpress, StoreConfig config)
     {
+        if (distanceKm <= 0) return 0;
+
         decimal fee = config.BaseShippingFee;
-        if (distanceKm > config.Tier1MaxKm && distanceKm <= config.Tier2MaxKm)
-        {
-            fee = config.Tier2ShippingFee;
-        }
-        else if (distanceKm > config.Tier2MaxKm)
+        if (distanceKm > config.Tier2MaxKm)
         {
             fee = config.Tier3ShippingFee;
+        }
+        else if (distanceKm > config.Tier1MaxKm)
+        {
+            fee = config.Tier2ShippingFee;
         }
 
         if (isExpress)

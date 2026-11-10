@@ -141,13 +141,163 @@ public static class DbSeeder
                     PasswordHash = passwordHash,
                     RoleId = customerRole.Id,
                     IsActive = true,
+                    LoyaltyPoints = c.Phone == "0999222111" ? 350 : 120,
+                    MembershipTier = c.Phone == "0999222111" ? "Gold" : "Silver",
+                    TotalSpent = c.Phone == "0999222111" ? 1250000 : 480000,
                     CreatedAt = DateTime.UtcNow
                 });
             }
             else
             {
                 u.PasswordHash = passwordHash;
+                if (u.LoyaltyPoints == 0) u.LoyaltyPoints = c.Phone == "0999222111" ? 350 : 120;
+                if (u.MembershipTier == "Bronze") u.MembershipTier = c.Phone == "0999222111" ? "Gold" : "Silver";
+                if (u.TotalSpent == 0) u.TotalSpent = c.Phone == "0999222111" ? 1250000 : 480000;
             }
+        }
+
+        // =========================
+        // SEED STORE CONFIG
+        // Lưu trữ trực tiếp trong CSDL SQL Server (Singleton Id=1)
+        // =========================
+        if (!await context.StoreConfigs.AnyAsync())
+        {
+            context.StoreConfigs.Add(new StoreConfig
+            {
+                Id = 1,
+                StoreName = "Cửa hàng WashSmart 3T - Trụ sở chính",
+                Address = "140 Lê Trọng Tấn, phường Tây Thạnh, TP. Hồ Chí Minh",
+                Latitude = 10.8070,
+                Longitude = 106.6287,
+                Hotline = "0900000000",
+                OpenHours = "07:00 - 22:00",
+                BaseShippingFee = 20000,
+                Tier2ShippingFee = 30000,
+                Tier3ShippingFee = 45000,
+                Tier1MaxKm = 2.0,
+                Tier2MaxKm = 5.0,
+                Tier3MaxKm = 10.0,
+                ExpressExtraFee = 25000,
+                AddonComfortFee = 10000,
+                AddonBagFee = 5000,
+                FreeShipMinAmount = 250000,
+                BankName = "MBBank (Ngân hàng Quân Đội)",
+                BankBin = "970422",
+                BankAccountNo = "0818606505",
+                BankAccountHolder = "TRAN DIEP MINH TRUNG",
+                SmsApiKey = "DEV_DEMO_KEY",
+                SmsApiSecret = "DEV_DEMO_SECRET",
+                SmsBrandName = "WASHSMART3T",
+                SmsOtpTemplate = "Ma OTP xac thuc WashSmart 3T cua ban la {OTP}. Hieu luc trong 5 phut.",
+                UpdatedAt = DateTime.UtcNow
+            });
+        }
+
+        // =========================
+        // SEED PROMOTIONS / VOUCHERS
+        // =========================
+        if (!await context.Promotions.AnyAsync())
+        {
+            context.Promotions.AddRange(
+                new Promotion
+                {
+                    Code = "CHAOBANMOI",
+                    Title = "Giảm 20% cho đơn hàng đầu tiên",
+                    Description = "Áp dụng cho khách hàng mới đặt giặt sấy qua ứng dụng",
+                    DiscountType = "Percentage",
+                    DiscountValue = 20,
+                    MinOrderAmount = 50000,
+                    MaxDiscountAmount = 50000,
+                    StartDate = DateTime.UtcNow.AddDays(-7),
+                    EndDate = DateTime.UtcNow.AddMonths(6),
+                    UsageLimit = 500,
+                    UsedCount = 42,
+                    IsActive = true
+                },
+                new Promotion
+                {
+                    Code = "FREESHIP50K",
+                    Title = "Miễn phí vận chuyển 2 chiều",
+                    Description = "Freeship tối đa 30k cho đơn hàng từ 200.000đ",
+                    DiscountType = "FixedAmount",
+                    DiscountValue = 20000,
+                    MinOrderAmount = 200000,
+                    MaxDiscountAmount = 20000,
+                    StartDate = DateTime.UtcNow.AddDays(-3),
+                    EndDate = DateTime.UtcNow.AddMonths(3),
+                    UsageLimit = 1000,
+                    UsedCount = 85,
+                    IsActive = true
+                },
+                new Promotion
+                {
+                    Code = "GIAT3T15",
+                    Title = "Ưu đãi khách hàng thân thiết 15K",
+                    Description = "Giảm trực tiếp 15.000đ cho đơn giặt sấy từ 100.000đ",
+                    DiscountType = "FixedAmount",
+                    DiscountValue = 15000,
+                    MinOrderAmount = 100000,
+                    MaxDiscountAmount = 15000,
+                    StartDate = DateTime.UtcNow.AddDays(-10),
+                    EndDate = DateTime.UtcNow.AddMonths(2),
+                    UsageLimit = 300,
+                    UsedCount = 18,
+                    IsActive = true
+                }
+            );
+        }
+
+        // =========================
+        // SEED COMPLAINTS (BẢO HIỂM 3T CARE TRONG CSDL)
+        // =========================
+        if (!await context.Complaints.AnyAsync())
+        {
+            var customer1 = await context.Users.FirstOrDefaultAsync(u => u.Phone == "0999222111");
+            var customer2 = await context.Users.FirstOrDefaultAsync(u => u.Phone == "0944444444");
+
+            context.Complaints.AddRange(
+                new Complaint
+                {
+                    TicketCode = "KN-20261104-001",
+                    CustomerId = customer1?.Id,
+                    OrderId = 19,
+                    OrderCode = "#WS3T-0019",
+                    IncidentType = "Bung chỉ mép áo sơ mi",
+                    Severity = "Low",
+                    ItemDescription = "Áo sơ mi trắng lụa công sở bị sờn mép chỉ cổ tay sau khi giặt sấy.",
+                    CustomerNote = "Nhờ xưởng giặt hỗ trợ may dằn chỉ lại hoặc bồi thường phí sửa áo.",
+                    RequestedRefund = 50000,
+                    Status = "Pending",
+                    SealCode = "WS-SEAL-0019",
+                    SealStatus = "Intact",
+                    DrumInfo = "Lồng giặt sấy thông minh LG Turbo #02",
+                    ShipperName = "Lê Minh Hoàng (0922222222)",
+                    CreatedAt = DateTime.UtcNow.AddMinutes(-45)
+                },
+                new Complaint
+                {
+                    TicketCode = "KN-20261103-002",
+                    CustomerId = customer2?.Id,
+                    OrderId = 18,
+                    OrderCode = "#WS3T-0018",
+                    IncidentType = "Lem màu khăn tắm",
+                    Severity = "Medium",
+                    ItemDescription = "Khăn tắm cotton màu trắng bị phai màu xanh nhạt từ đồ giặt chung.",
+                    CustomerNote = "Đã giặt hấp xử lý màu lại, khách hàng hài lòng.",
+                    RequestedRefund = 120000,
+                    ApprovedAmount = 120000,
+                    Status = "Completed",
+                    Resolution = "Approved",
+                    StaffNote = "Đã chi trả đền bù 100% giá trị khăn tắm qua ví WashPoints và tặng mã freeship.",
+                    ResolvedAt = DateTime.UtcNow.AddHours(-18),
+                    ResolvedBy = "Nguyễn Kiều Như",
+                    SealCode = "WS-SEAL-0018",
+                    SealStatus = "Inspected",
+                    DrumInfo = "Lồng hấp chuyên dụng Electrolux #01",
+                    ShipperName = "Lê Minh Hoàng (0922222222)",
+                    CreatedAt = DateTime.UtcNow.AddDays(-1)
+                }
+            );
         }
 
         await context.SaveChangesAsync();

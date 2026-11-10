@@ -1,4 +1,4 @@
-﻿namespace WashSmart.API.Models;
+namespace WashSmart.API.Models;
 
 public class User
 {
@@ -17,6 +17,15 @@ public class User
     public Role? Role { get; set; }
 
     public bool IsActive { get; set; } = true;
+
+    // ============================
+    // CUSTOMER LOYALTY & TIERS
+    // ============================
+    public int LoyaltyPoints { get; set; } = 0;
+
+    public string MembershipTier { get; set; } = "Bronze"; // Bronze, Silver, Gold, Diamond
+
+    public decimal TotalSpent { get; set; } = 0;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 }

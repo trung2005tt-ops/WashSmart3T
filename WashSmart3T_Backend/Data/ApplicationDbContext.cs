@@ -22,6 +22,10 @@ public class ApplicationDbContext : DbContext
             .HasIndex(x => x.Phone)
             .IsUnique();
 
+        modelBuilder.Entity<User>()
+            .Property(x => x.TotalSpent)
+            .HasColumnType("decimal(18,2)");
+
         // ============================
         // ORDER
         // ============================
@@ -148,6 +152,55 @@ public class ApplicationDbContext : DbContext
 
         modelBuilder.Entity<Review>()
             .HasIndex(x => x.Rating);
+
+        // ============================
+        // COMPLAINT (BẢO HIỂM 3T CARE)
+        // ============================
+        modelBuilder.Entity<Complaint>(entity =>
+        {
+            entity.HasIndex(x => x.TicketCode).IsUnique();
+            entity.HasIndex(x => x.CustomerId);
+            entity.HasIndex(x => x.OrderId);
+            entity.HasIndex(x => x.Status);
+
+            entity.HasOne(x => x.Customer)
+                .WithMany()
+                .HasForeignKey(x => x.CustomerId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.HasOne(x => x.Order)
+                .WithMany()
+                .HasForeignKey(x => x.OrderId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            entity.Property(x => x.RequestedRefund).HasColumnType("decimal(18,2)");
+            entity.Property(x => x.ApprovedAmount).HasColumnType("decimal(18,2)");
+        });
+
+        // ============================
+        // STORE CONFIG
+        // ============================
+        modelBuilder.Entity<StoreConfig>(entity =>
+        {
+            entity.Property(x => x.BaseShippingFee).HasColumnType("decimal(18,2)");
+            entity.Property(x => x.Tier2ShippingFee).HasColumnType("decimal(18,2)");
+            entity.Property(x => x.Tier3ShippingFee).HasColumnType("decimal(18,2)");
+            entity.Property(x => x.ExpressExtraFee).HasColumnType("decimal(18,2)");
+            entity.Property(x => x.AddonComfortFee).HasColumnType("decimal(18,2)");
+            entity.Property(x => x.AddonBagFee).HasColumnType("decimal(18,2)");
+            entity.Property(x => x.FreeShipMinAmount).HasColumnType("decimal(18,2)");
+        });
+
+        // ============================
+        // PROMOTION (VOUCHERS)
+        // ============================
+        modelBuilder.Entity<Promotion>(entity =>
+        {
+            entity.HasIndex(x => x.Code).IsUnique();
+            entity.Property(x => x.DiscountValue).HasColumnType("decimal(18,2)");
+            entity.Property(x => x.MinOrderAmount).HasColumnType("decimal(18,2)");
+            entity.Property(x => x.MaxDiscountAmount).HasColumnType("decimal(18,2)");
+        });
     }
 
     public DbSet<User> Users => Set<User>();
@@ -159,4 +212,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<OrderStatusHistory> OrderStatusHistories => Set<OrderStatusHistory>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<Review> Reviews => Set<Review>();
+    public DbSet<Complaint> Complaints => Set<Complaint>();
+    public DbSet<StoreConfig> StoreConfigs => Set<StoreConfig>();
+    public DbSet<Promotion> Promotions => Set<Promotion>();
 }

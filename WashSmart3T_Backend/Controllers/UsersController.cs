@@ -32,6 +32,16 @@ public class ResetPasswordRequest
     public string NewPassword { get; set; } = "123456";
 }
 
+public class UpgradeTierRequest
+{
+    public string Tier { get; set; } = "Silver";
+}
+
+public class AdjustPointsRequest
+{
+    public int PointsDelta { get; set; }
+}
+
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(Roles = "Admin,Staff")]
@@ -117,12 +127,57 @@ public class UsersController : ControllerBase
                 email = u.Email,
                 isActive = u.IsActive,
                 createdAt = u.CreatedAt,
+                loyaltyPoints = u.LoyaltyPoints,
+                membershipTier = u.MembershipTier,
                 ordersCount = _context.Orders.Count(o => o.CustomerId == u.Id),
-                totalSpent = _context.Orders.Where(o => o.CustomerId == u.Id && o.Status == OrderStatus.Completed).Sum(o => o.TotalAmount)
+                totalSpent = u.TotalSpent > 0 ? u.TotalSpent : _context.Orders.Where(o => o.CustomerId == u.Id && o.Status == OrderStatus.Completed).Sum(o => o.TotalAmount)
             })
             .ToListAsync();
 
         return Ok(customers);
+    }
+
+    // ============================================================
+    // POST: api/Users/customers/{id}/upgrade-tier
+    // ============================================================
+    [HttpPost("customers/{id}/upgrade-tier")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> UpgradeCustomerTier(int id, [FromBody] UpgradeTierRequest request)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+        if (user == null) return NotFound(new { message = "Không tìm thấy khách hàng." });
+
+        user.MembershipTier = request.Tier;
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = $"Đã nâng hạng thành viên của khách {user.FullName} lên '{user.MembershipTier}' thành công!",
+            userId = user.Id,
+            membershipTier = user.MembershipTier
+        });
+    }
+
+    // ============================================================
+    // POST: api/Users/customers/{id}/adjust-points
+    // ============================================================
+    [HttpPost("customers/{id}/adjust-points")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> AdjustCustomerPoints(int id, [FromBody] AdjustPointsRequest request)
+    {
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id);
+        if (user == null) return NotFound(new { message = "Không tìm thấy khách hàng." });
+
+        user.LoyaltyPoints += request.PointsDelta;
+        if (user.LoyaltyPoints < 0) user.LoyaltyPoints = 0;
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = $"Đã điều chỉnh điểm tích lũy của {user.FullName}: {(request.PointsDelta >= 0 ? "+" : "")}{request.PointsDelta} điểm. Điểm hiện tại: {user.LoyaltyPoints}.",
+            userId = user.Id,
+            loyaltyPoints = user.LoyaltyPoints
+        });
     }
 
     // ============================================================
