@@ -2,7 +2,7 @@ namespace WashSmart.API.Models;
 
 public class StoreConfig
 {
-    public int Id { get; set; } = 1;
+    public int Id { get; set; }
 
     public string StoreName { get; set; } = "Cửa hàng WashSmart 3T - Trụ sở chính";
     public string Address { get; set; } = "140 Lê Trọng Tấn, phường Tây Thạnh, TP. Hồ Chí Minh";

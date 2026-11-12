@@ -164,7 +164,6 @@ public static class DbSeeder
         {
             context.StoreConfigs.Add(new StoreConfig
             {
-                Id = 1,
                 StoreName = "Cửa hàng WashSmart 3T - Trụ sở chính",
                 Address = "140 Lê Trọng Tấn, phường Tây Thạnh, TP. Hồ Chí Minh",
                 Latitude = 10.8070,
@@ -254,14 +253,16 @@ public static class DbSeeder
         {
             var customer1 = await context.Users.FirstOrDefaultAsync(u => u.Phone == "0999222111");
             var customer2 = await context.Users.FirstOrDefaultAsync(u => u.Phone == "0944444444");
+            var latestOrder = await context.Orders.OrderByDescending(o => o.Id).FirstOrDefaultAsync();
+            var prevOrder = await context.Orders.Where(o => o.Id != (latestOrder != null ? latestOrder.Id : 0)).OrderByDescending(o => o.Id).FirstOrDefaultAsync();
 
             context.Complaints.AddRange(
                 new Complaint
                 {
                     TicketCode = "KN-20261104-001",
                     CustomerId = customer1?.Id,
-                    OrderId = 19,
-                    OrderCode = "#WS3T-0019",
+                    OrderId = latestOrder?.Id,
+                    OrderCode = latestOrder != null ? $"#WS3T-{latestOrder.Id:D4}" : "#WS3T-0019",
                     IncidentType = "Bung chỉ mép áo sơ mi",
                     Severity = "Low",
                     ItemDescription = "Áo sơ mi trắng lụa công sở bị sờn mép chỉ cổ tay sau khi giặt sấy.",
@@ -278,8 +279,8 @@ public static class DbSeeder
                 {
                     TicketCode = "KN-20261103-002",
                     CustomerId = customer2?.Id,
-                    OrderId = 18,
-                    OrderCode = "#WS3T-0018",
+                    OrderId = prevOrder?.Id,
+                    OrderCode = prevOrder != null ? $"#WS3T-{prevOrder.Id:D4}" : "#WS3T-0018",
                     IncidentType = "Lem màu khăn tắm",
                     Severity = "Medium",
                     ItemDescription = "Khăn tắm cotton màu trắng bị phai màu xanh nhạt từ đồ giặt chung.",

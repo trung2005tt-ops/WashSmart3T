@@ -57,10 +57,10 @@ public class StoreConfigController : ControllerBase
     [NonAction]
     public async Task<StoreConfig> GetOrCreateConfigAsync()
     {
-        var cfg = await _context.StoreConfigs.FirstOrDefaultAsync(c => c.Id == 1);
+        var cfg = await _context.StoreConfigs.FirstOrDefaultAsync();
         if (cfg == null)
         {
-            cfg = new StoreConfig { Id = 1 };
+            cfg = new StoreConfig();
             _context.StoreConfigs.Add(cfg);
             await _context.SaveChangesAsync();
         }
