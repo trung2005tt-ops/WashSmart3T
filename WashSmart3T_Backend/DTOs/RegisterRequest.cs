@@ -9,7 +9,7 @@ public class RegisterRequest
     public string FullName { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Số điện thoại không được để trống.")]
-    [RegularExpression(@"^0(3|5|7|8|9)[0-9]{8}$", ErrorMessage = "Số điện thoại không đúng định dạng di động Việt Nam (10 số, bắt đầu bằng 03, 05, 07, 08, 09).")]
+    [RegularExpression(@"^(\+?84|0)[0-9\s\.\-]{8,15}$", ErrorMessage = "Số điện thoại không đúng định dạng di động Việt Nam.")]
     public string Phone { get; set; } = string.Empty;
 
     [Required(ErrorMessage = "Email không được để trống.")]
@@ -28,7 +28,7 @@ public class RegisterRequest
 public class SendOtpRequest
 {
     [Required(ErrorMessage = "Vui lòng nhập số điện thoại.")]
-    [RegularExpression(@"^0(3|5|7|8|9)[0-9]{8}$", ErrorMessage = "Số điện thoại không đúng định dạng di động Việt Nam (10 số).")]
+    [RegularExpression(@"^(\+?84|0)[0-9\s\.\-]{8,15}$", ErrorMessage = "Số điện thoại không đúng định dạng di động Việt Nam.")]
     public string Phone { get; set; } = string.Empty;
 
     public string Purpose { get; set; } = "Register";

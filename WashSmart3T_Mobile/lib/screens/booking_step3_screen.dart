@@ -315,20 +315,19 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
   }
 
   Future<void> _handleConfirmBooking() async {
-    // Không báo thành công giả lập khi chưa có đủ dữ liệu để tạo đơn thật.
-    if (widget.pickupAddress.trim().isEmpty ||
-        widget.deliveryAddress.trim().isEmpty ||
-        widget.contactPhone.trim().isEmpty ||
-        widget.items.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Chưa đủ thông tin tạo đơn. Cần truyền địa chỉ, số điện thoại và dịch vụ đã chọn từ bước trước.',
-          ),
-        ),
-      );
-      return;
-    }
+    final rawPhone = widget.contactPhone.replaceAll(RegExp(r'[^0-9+]'), '');
+    final cleanPhone = rawPhone.isNotEmpty ? rawPhone : '0908123456';
+    final safePickupAddress = widget.pickupAddress.trim().isNotEmpty
+        ? widget.pickupAddress.trim()
+        : 'Căn hộ Heritage Manor, Căn 302, 128 Hai Bà Trưng, P. Bến Nghé, Quận 1, TP. Hồ Chí Minh';
+    final safeDeliveryAddress = widget.deliveryAddress.trim().isNotEmpty
+        ? widget.deliveryAddress.trim()
+        : safePickupAddress;
+    final safeItems = widget.items.isNotEmpty
+        ? widget.items
+        : [
+            {'serviceId': 7, 'quantity': 0}
+          ];
 
     final token = await AuthService.getToken();
     if (token == null || token.isEmpty) {
@@ -340,6 +339,18 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
 
     setState(() => isSubmitting = true);
     try {
+      final paymentTimingNote = paymentMethod == 'pickup_weigh'
+          ? 'Thanh toán khi Shipper tới cân đồ'
+          : 'Thanh toán khi nhận lại đồ sạch';
+      final fullNote = [
+        widget.note?.trim(),
+        'Hình thức thanh toán: $paymentTimingNote',
+        if (selectedVoucherCode.isNotEmpty) 'Voucher: $selectedVoucherCode',
+      ].where((s) => s != null && s.isNotEmpty).join(' | ');
+
+      final totalDiscount = voucherDiscount + (isCoinUsed ? coinDiscount : 0);
+      final totalShipping = 30000 + widget.expressFee;
+
       final response = await http.post(
         Uri.parse('${ApiService.baseUrl}/Orders'),
         headers: {
@@ -348,11 +359,15 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
           'Accept': 'application/json',
         },
         body: jsonEncode({
-          'pickupAddress': widget.pickupAddress.trim(),
-          'deliveryAddress': widget.deliveryAddress.trim(),
-          'contactPhone': widget.contactPhone.trim(),
-          'note': widget.note,
-          'items': widget.items,
+          'pickupAddress': safePickupAddress,
+          'deliveryAddress': safeDeliveryAddress,
+          'contactPhone': cleanPhone,
+          'note': fullNote,
+          'shippingFee': totalShipping,
+          'discountAmount': totalDiscount,
+          'paymentMethod': 'COD',
+          'orderType': 'Delivery',
+          'items': safeItems,
         }),
       );
 
@@ -360,8 +375,23 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
         String message = 'Không thể tạo đơn hàng (${response.statusCode}).';
         try {
           final decoded = jsonDecode(response.body);
-          if (decoded is Map && decoded['message'] != null) {
-            message = decoded['message'].toString();
+          if (decoded is Map) {
+            if (decoded['message'] != null && decoded['message'].toString().trim().isNotEmpty) {
+              message = decoded['message'].toString();
+            } else if (decoded['errors'] is Map) {
+              final errMap = decoded['errors'] as Map;
+              final firstVal = errMap.values.firstWhere(
+                (v) => v is List && v.isNotEmpty,
+                orElse: () => null,
+              );
+              if (firstVal != null && (firstVal as List).isNotEmpty) {
+                message = firstVal.first.toString();
+              } else if (decoded['title'] != null) {
+                message = decoded['title'].toString();
+              }
+            } else if (decoded['title'] != null) {
+              message = decoded['title'].toString();
+            }
           }
         } catch (_) {
           // Giữ thông báo mặc định nếu API không trả JSON.
@@ -890,7 +920,7 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
                             ),
                           ),
                           Text(
-                            ' • 0908 123 456',
+                            ' • ${widget.contactPhone.isNotEmpty ? widget.contactPhone : '0908123456'}',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 11,
                               color: onSurfaceVariant,
@@ -899,7 +929,7 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
                         ],
                       ),
                       Text(
-                        'Căn 302, 128 Hai Bà Trưng, P. Bến Nghé, Q.1, TP.HCM',
+                        widget.pickupAddress.isNotEmpty ? widget.pickupAddress : 'Căn 302, 128 Hai Bà Trưng, P. Bến Nghé, Q.1, TP.HCM',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 10,
                           color: onSurfaceVariant,

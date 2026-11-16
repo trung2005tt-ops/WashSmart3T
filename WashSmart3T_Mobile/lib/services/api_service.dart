@@ -248,10 +248,11 @@ class ApiService {
       throw Exception('Vui lòng chọn ít nhất một dịch vụ.');
     }
 
+    final cleanPhone = contactPhone.replaceAll(RegExp(r'[^0-9+]'), '');
     final payload = <String, dynamic>{
       'pickupAddress': pickupAddress.trim(),
-      'deliveryAddress': deliveryAddress.trim(),
-      'contactPhone': contactPhone.trim(),
+      'deliveryAddress': deliveryAddress.trim().isNotEmpty ? deliveryAddress.trim() : pickupAddress.trim(),
+      'contactPhone': cleanPhone.isNotEmpty ? cleanPhone : contactPhone.trim(),
       'note': note?.trim(),
       'items': items
           .map(
@@ -282,10 +283,25 @@ class ApiService {
     }
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
-      final message = decoded is Map
-          ? (decoded['message'] ?? decoded['title'] ?? 'Đặt đơn thất bại')
-                .toString()
-          : 'Đặt đơn thất bại (${response.statusCode}).';
+      String message = 'Đặt đơn thất bại (${response.statusCode}).';
+      if (decoded is Map) {
+        if (decoded['message'] != null && decoded['message'].toString().trim().isNotEmpty) {
+          message = decoded['message'].toString();
+        } else if (decoded['errors'] is Map) {
+          final errMap = decoded['errors'] as Map;
+          final firstVal = errMap.values.firstWhere(
+            (v) => v is List && v.isNotEmpty,
+            orElse: () => null,
+          );
+          if (firstVal != null && (firstVal as List).isNotEmpty) {
+            message = firstVal.first.toString();
+          } else if (decoded['title'] != null) {
+            message = decoded['title'].toString();
+          }
+        } else if (decoded['title'] != null) {
+          message = decoded['title'].toString();
+        }
+      }
       throw Exception(message);
     }
 

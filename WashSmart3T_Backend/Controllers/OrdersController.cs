@@ -328,7 +328,14 @@ public class OrdersController : ControllerBase
         try
         {
             // 1. Chuẩn hóa số điện thoại
-            var (_, _, cleanPhone) = SmsService.NormalizePhone(!string.IsNullOrWhiteSpace(request.ContactPhone) ? request.ContactPhone : customer.Phone);
+            var rawPhone = !string.IsNullOrWhiteSpace(request.ContactPhone) ? request.ContactPhone : customer.Phone;
+            var (_, _, cleanPhone) = SmsService.NormalizePhone(rawPhone);
+            if (string.IsNullOrWhiteSpace(cleanPhone) || cleanPhone.Length < 9)
+            {
+                return BadRequest(new { message = "Số điện thoại liên hệ không hợp lệ. Vui lòng kiểm tra lại." });
+            }
+
+            var deliveryAddress = string.IsNullOrWhiteSpace(request.DeliveryAddress) ? request.PickupAddress.Trim() : request.DeliveryAddress.Trim();
 
             // 2. Tải tất cả dịch vụ trong 1 QUERY DUY NHẤT (Loại bỏ N+1)
             var serviceIds = request.Items.Select(x => x.ServiceId).Distinct().ToList();
@@ -355,7 +362,9 @@ public class OrdersController : ControllerBase
                 var currentPrice = service.Prices
                     .Where(p => p.IsActive && p.EffectiveTo == null)
                     .OrderByDescending(p => p.EffectiveFrom)
-                    .FirstOrDefault();
+                    .FirstOrDefault()
+                    ?? service.Prices.Where(p => p.IsActive).OrderByDescending(p => p.EffectiveFrom).FirstOrDefault()
+                    ?? service.Prices.FirstOrDefault();
 
                 if (currentPrice == null)
                 {
@@ -408,7 +417,7 @@ public class OrdersController : ControllerBase
                 CustomerId = customerId,
                 OrderType = orderType,
                 PickupAddress = request.PickupAddress.Trim(),
-                DeliveryAddress = request.DeliveryAddress.Trim(),
+                DeliveryAddress = deliveryAddress,
                 ContactPhone = cleanPhone,
                 Note = request.Note,
                 ShippingFee = shippingFee,
@@ -643,7 +652,7 @@ public class OrdersController : ControllerBase
                 CustomerId = customer.Id,
                 OrderType = request.DeliveryMethod,
                 PickupAddress = request.PickupAddress.Trim(),
-                DeliveryAddress = request.DeliveryAddress.Trim(),
+                DeliveryAddress = (request.DeliveryAddress ?? string.Empty).Trim(),
                 ContactPhone = cleanPhone,
                 Note = request.Note?.Trim(),
                 ShippingFee = actualDeliveryFee,
@@ -913,7 +922,9 @@ public class OrdersController : ControllerBase
                 var currentPrice = service.Prices
                     .Where(p => p.IsActive && p.EffectiveTo == null)
                     .OrderByDescending(p => p.EffectiveFrom)
-                    .FirstOrDefault();
+                    .FirstOrDefault()
+                    ?? service.Prices.Where(p => p.IsActive).OrderByDescending(p => p.EffectiveFrom).FirstOrDefault()
+                    ?? service.Prices.FirstOrDefault();
 
                 if (currentPrice == null)
                     return BadRequest(new { message = $"Dịch vụ '{service.Name}' chưa có bảng giá." });

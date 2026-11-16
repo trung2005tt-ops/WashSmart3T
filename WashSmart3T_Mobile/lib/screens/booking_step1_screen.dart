@@ -75,6 +75,17 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
         availableServices
           ..clear()
           ..addAll(services);
+        // Tự động chọn dịch vụ đầu tiên hoặc dịch vụ ID 7 (Giặt sấy tiêu chuẩn)
+        if (selectedServiceIds.isEmpty && availableServices.isNotEmpty) {
+          final defaultSvc = availableServices.firstWhere(
+            (s) => s['id'] == 7,
+            orElse: () => availableServices.first,
+          );
+          final defaultId = (defaultSvc['id'] as num?)?.toInt();
+          if (defaultId != null) {
+            selectedServiceIds.add(defaultId);
+          }
+        }
       });
     } catch (e) {
       if (!mounted) return;
@@ -91,7 +102,7 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
   }
 
   List<Map<String, dynamic>> _buildOrderItems() {
-    return availableServices
+    var items = availableServices
         .where(
           (service) =>
               selectedServiceIds.contains((service['id'] as num?)?.toInt()),
@@ -103,6 +114,25 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
           },
         )
         .toList();
+
+    // Fallback an toàn: Nếu chưa có dịch vụ nào, chọn dịch vụ đầu tiên khả dụng
+    if (items.isEmpty && availableServices.isNotEmpty) {
+      final defaultSvc = availableServices.firstWhere(
+        (s) => s['id'] == 7,
+        orElse: () => availableServices.first,
+      );
+      final defaultId = (defaultSvc['id'] as num?)?.toInt() ?? 7;
+      items.add({
+        'serviceId': defaultId,
+        'quantity': 0,
+      });
+    } else if (items.isEmpty) {
+      items.add({
+        'serviceId': 7,
+        'quantity': 0,
+      });
+    }
+    return items;
   }
 
   String _buildBookingNote() {
@@ -1383,7 +1413,16 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
                 height: 52,
                 child: ElevatedButton(
                   onPressed: () {
-                    if (selectedServiceIds.isEmpty) {
+                    if (selectedServiceIds.isEmpty && availableServices.isNotEmpty) {
+                      final defaultSvc = availableServices.firstWhere(
+                        (s) => s['id'] == 7,
+                        orElse: () => availableServices.first,
+                      );
+                      final defaultId = (defaultSvc['id'] as num?)?.toInt();
+                      if (defaultId != null) selectedServiceIds.add(defaultId);
+                    }
+                    final orderItems = _buildOrderItems();
+                    if (orderItems.isEmpty) {
                       _showToast('Vui lòng chọn ít nhất một dịch vụ.');
                       return;
                     }
@@ -1391,7 +1430,7 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
                       context,
                       MaterialPageRoute(
                         builder: (context) =>
-                            BookingStep2Screen(items: _buildOrderItems()),
+                            BookingStep2Screen(items: orderItems),
                       ),
                     );
                   },

@@ -1,5 +1,9 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import '../services/auth_service.dart';
+import '../services/api_service.dart';
 import 'booking_step3_screen.dart'; // 🚀 Giữ nguyên luồng chuyển sang Bước 3
 
 class BookingStep2Screen extends StatefulWidget {
@@ -13,7 +17,7 @@ class BookingStep2Screen extends StatefulWidget {
     this.items = const [],
     this.pickupAddress =
         'Căn hộ Heritage Manor, Căn 302, 128 Hai Bà Trưng, P. Bến Nghé, Quận 1, TP. Hồ Chí Minh',
-    this.contactPhone = '0908 123 456',
+    this.contactPhone = '0908123456',
     this.initialNote = '',
   });
 
@@ -53,6 +57,8 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
   bool isSameDeliveryAddress = true; // Giao trả về cùng địa chỉ lấy
 
   late final TextEditingController _pickupNoteController;
+  String userPhone = '0908123456';
+  String userName = 'Kiều Như';
 
   @override
   void initState() {
@@ -64,6 +70,34 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
         defaultNote,
       ].where((note) => note.isNotEmpty).join(' | '),
     );
+    userPhone = widget.contactPhone.replaceAll(RegExp(r'[^0-9+]'), '');
+    if (userPhone.isEmpty) userPhone = '0908123456';
+    _loadUserProfile();
+  }
+
+  Future<void> _loadUserProfile() async {
+    try {
+      final token = await AuthService.getToken();
+      if (token != null && token.isNotEmpty) {
+        final res = await http.get(
+          Uri.parse('${ApiService.baseUrl}/Auth/me'),
+          headers: {'Authorization': 'Bearer $token'},
+        );
+        if (res.statusCode == 200) {
+          final data = jsonDecode(res.body);
+          if (mounted && data is Map) {
+            setState(() {
+              if (data['phone'] != null && data['phone'].toString().isNotEmpty) {
+                userPhone = data['phone'].toString().replaceAll(RegExp(r'[^0-9+]'), '');
+              }
+              if (data['fullName'] != null && data['fullName'].toString().isNotEmpty) {
+                userName = data['fullName'].toString();
+              }
+            });
+          }
+        }
+      }
+    } catch (_) {}
   }
 
   // Giá giặt chưa xác định cho đến khi shipper cân/đếm thực tế.
@@ -534,7 +568,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                     Row(
                       children: [
                         Text(
-                          'Kiều Như',
+                          userName,
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
@@ -542,7 +576,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                           ),
                         ),
                         Text(
-                          ' • 0908 123 456',
+                          ' • $userPhone',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 11,
                             color: onSurfaceVariant,
@@ -1336,7 +1370,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                         builder: (context) => BookingStep3Screen(
                           pickupAddress: widget.pickupAddress,
                           deliveryAddress: widget.pickupAddress,
-                          contactPhone: widget.contactPhone,
+                          contactPhone: userPhone,
                           note: [
                             _pickupNoteController.text.trim(),
                             'Lịch lấy đồ dự kiến: $pickupDateLabel, $pickupTimeTitle',

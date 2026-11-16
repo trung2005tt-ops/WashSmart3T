@@ -163,18 +163,20 @@
     </header>
 
     <!-- Main Container -->
-        <!-- Main Container -->
+    <!-- Main Container -->
     <main class="p-6 space-y-6">
 
       <!-- Page Title & Quick Actions -->
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div class="flex items-center gap-2">
-            <div id="signalr-status-badge" class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 shadow-2xs">
+            <div id="signalr-status-badge"
+              class="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 shadow-2xs">
               <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
               <span class="text-[11px] font-bold text-emerald-800">SignalR Realtime Live</span>
             </div>
-            <span class="text-xs font-bold text-secondary uppercase tracking-wider">Hệ thống vận hành trực tiếp · Đồng bộ C# API</span>
+            <span class="text-xs font-bold text-secondary uppercase tracking-wider">Hệ thống vận hành trực tiếp · Đồng
+              bộ C# API</span>
           </div>
           <h1 class="text-2xl font-bold tracking-tight text-on-surface mt-1">Tổng Quan Hoạt Động & Doanh Thu</h1>
         </div>
@@ -186,7 +188,8 @@
             <span>Tải lại dữ liệu</span>
           </button>
           <button onclick="exportToExcel()"
-            class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-colors shadow-sm" title="Xuất báo cáo Excel / CSV">
+            class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold transition-colors shadow-sm"
+            title="Xuất báo cáo Excel / CSV">
             <span class="material-symbols-outlined text-base">file_download</span>
             <span>Xuất Excel</span>
           </button>
@@ -199,36 +202,53 @@
       </div>
 
       <!-- Thống kê theo ngày & Bộ lọc thời gian chuẩn xác -->
-      <div class="p-3.5 rounded-xl bg-surface-card border border-surface-container flex flex-wrap items-center justify-between gap-3 shadow-xs">
+      <div
+        class="p-3.5 rounded-xl bg-surface-card border border-surface-container flex flex-wrap items-center justify-between gap-3 shadow-xs">
         <div class="flex items-center gap-1.5 flex-wrap" id="date-filter-buttons">
           <span class="text-xs font-bold text-secondary mr-1 flex items-center gap-1">
             <span class="material-symbols-outlined text-base text-primary">calendar_month</span>
             Kỳ thống kê:
           </span>
-          <button class="date-filter-btn px-3 py-1.5 rounded-lg text-secondary hover:bg-surface-container text-xs font-semibold transition-colors" data-range="today">
+          <button
+            class="date-filter-btn px-3 py-1.5 rounded-lg text-secondary hover:bg-surface-container text-xs font-semibold transition-colors"
+            data-range="today">
             Hôm nay
           </button>
-          <button class="date-filter-btn px-3 py-1.5 rounded-lg text-secondary hover:bg-surface-container text-xs font-semibold transition-colors" data-range="yesterday">
+          <button
+            class="date-filter-btn px-3 py-1.5 rounded-lg text-secondary hover:bg-surface-container text-xs font-semibold transition-colors"
+            data-range="yesterday">
             Hôm qua
           </button>
-          <button class="date-filter-btn px-3 py-1.5 rounded-lg text-secondary hover:bg-surface-container text-xs font-semibold transition-colors" data-range="7days">
+          <button
+            class="date-filter-btn px-3 py-1.5 rounded-lg text-secondary hover:bg-surface-container text-xs font-semibold transition-colors"
+            data-range="7days">
             7 ngày qua
           </button>
-          <button class="date-filter-btn px-3 py-1.5 rounded-lg text-secondary hover:bg-surface-container text-xs font-semibold transition-colors" data-range="month">
+          <button
+            class="date-filter-btn px-3 py-1.5 rounded-lg text-secondary hover:bg-surface-container text-xs font-semibold transition-colors"
+            data-range="month">
             Tháng này
           </button>
-          <button class="date-filter-btn active px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold transition-colors" data-range="all">
+          <button
+            class="date-filter-btn active px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-bold transition-colors"
+            data-range="all">
             Toàn thời gian
           </button>
         </div>
 
         <div class="flex items-center gap-1.5 flex-wrap">
           <span class="text-xs text-secondary font-medium">Từ ngày:</span>
-          <input type="date" id="filter-from-date" class="bg-surface-container-low border border-surface-container rounded-lg px-2 py-1 text-xs text-on-surface font-semibold focus:outline-none focus:ring-1 focus:ring-primary">
+          <input type="date" id="filter-from-date"
+            class="bg-surface-container-low border border-surface-container rounded-lg px-2 py-1 text-xs text-on-surface font-semibold focus:outline-none focus:ring-1 focus:ring-primary">
           <span class="text-xs text-secondary font-medium">Đến ngày:</span>
-          <input type="date" id="filter-to-date" class="bg-surface-container-low border border-surface-container rounded-lg px-2 py-1 text-xs text-on-surface font-semibold focus:outline-none focus:ring-1 focus:ring-primary">
-          <button onclick="applyCustomDateRange()" class="px-3 py-1 rounded-lg bg-primary hover:bg-primary-container text-white text-xs font-bold transition-colors shadow-xs">Áp dụng</button>
-          <button onclick="resetToAllTime()" class="px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-medium transition-colors">Toàn bộ</button>
+          <input type="date" id="filter-to-date"
+            class="bg-surface-container-low border border-surface-container rounded-lg px-2 py-1 text-xs text-on-surface font-semibold focus:outline-none focus:ring-1 focus:ring-primary">
+          <button onclick="applyCustomDateRange()"
+            class="px-3 py-1 rounded-lg bg-primary hover:bg-primary-container text-white text-xs font-bold transition-colors shadow-xs">Áp
+            dụng</button>
+          <button onclick="resetToAllTime()"
+            class="px-2.5 py-1 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-medium transition-colors">Toàn
+            bộ</button>
           <span class="text-xs font-bold text-primary px-2.5 py-1 bg-red-50 rounded-lg" id="active-range-badge">
             Toàn thời gian
           </span>
@@ -262,13 +282,16 @@
               <p class="text-xs font-semibold text-secondary uppercase tracking-wider">Tổng Đơn Hàng</p>
               <p class="text-2xl lg:text-3xl font-extrabold text-on-surface mt-1" id="kpi-total-orders">0 đơn</p>
             </div>
-            <div class="w-10 h-10 rounded-lg bg-surface-container text-on-surface flex items-center justify-center shrink-0">
+            <div
+              class="w-10 h-10 rounded-lg bg-surface-container text-on-surface flex items-center justify-center shrink-0">
               <span class="material-symbols-outlined text-xl">local_laundry_service</span>
             </div>
           </div>
           <div class="flex items-center justify-between pt-2 border-t border-surface-container text-xs">
-            <span class="text-secondary">Đang xử lý: <strong id="kpi-processing-orders" class="text-on-surface">0 đơn</strong></span>
-            <span class="text-secondary">Hoàn thành: <strong id="kpi-completed-orders" class="text-primary">0 đơn</strong></span>
+            <span class="text-secondary">Đang xử lý: <strong id="kpi-processing-orders" class="text-on-surface">0
+                đơn</strong></span>
+            <span class="text-secondary">Hoàn thành: <strong id="kpi-completed-orders" class="text-primary">0
+                đơn</strong></span>
           </div>
         </div>
 
@@ -282,7 +305,8 @@
                 <span class="text-xs text-secondary" id="kpi-cancelled-count">Hủy: 0 đơn</span>
               </div>
             </div>
-            <div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center shrink-0">
+            <div
+              class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center shrink-0">
               <span class="material-symbols-outlined text-xl">task_alt</span>
             </div>
           </div>
@@ -315,7 +339,8 @@
 
       <!-- BẢNG THỐNG KÊ SHIPPER GIAO NHẬN & TIỀN THU HỘ (ĐI BAO NHIÊU ĐƠN - THU BAO NHIÊU TIỀN) -->
       <div class="bg-surface-card rounded-xl border border-surface-container overflow-hidden space-y-3 p-5 shadow-xs">
-        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-surface-container gap-2">
+        <div
+          class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-surface-container gap-2">
           <div>
             <div class="flex items-center gap-3">
               <h2 class="font-bold text-sm text-on-surface flex items-center gap-2">
@@ -323,14 +348,19 @@
                 Thống Kê Vận Chuyển & Tiền Thu Hộ Theo Shipper
               </h2>
               <div class="flex items-center gap-1 bg-surface-container p-0.5 rounded-lg text-[11px]">
-                <button onclick="setShipperFilter('all')" id="btn-sp-all" class="px-2.5 py-0.5 rounded font-bold bg-primary text-white shadow-xs">Tất cả</button>
-                <button onclick="setShipperFilter('active')" id="btn-sp-active" class="px-2.5 py-0.5 rounded text-secondary hover:text-on-surface">Đang chạy đơn</button>
-                <button onclick="setShipperFilter('idle')" id="btn-sp-idle" class="px-2.5 py-0.5 rounded text-secondary hover:text-on-surface">Sẵn sàng (0 đơn)</button>
+                <button onclick="setShipperFilter('all')" id="btn-sp-all"
+                  class="px-2.5 py-0.5 rounded font-bold bg-primary text-white shadow-xs">Tất cả</button>
+                <button onclick="setShipperFilter('active')" id="btn-sp-active"
+                  class="px-2.5 py-0.5 rounded text-secondary hover:text-on-surface">Đang chạy đơn</button>
+                <button onclick="setShipperFilter('idle')" id="btn-sp-idle"
+                  class="px-2.5 py-0.5 rounded text-secondary hover:text-on-surface">Sẵn sàng (0 đơn)</button>
               </div>
             </div>
-            <p class="text-xs text-secondary mt-0.5" id="shipper-stats-date-label">Theo dõi số đơn shipper phụ trách và tổng tiền COD thu tại chỗ trong kỳ</p>
+            <p class="text-xs text-secondary mt-0.5" id="shipper-stats-date-label">Theo dõi số đơn shipper phụ trách và
+              tổng tiền COD thu tại chỗ trong kỳ</p>
           </div>
-          <div class="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-lg border border-surface-container">
+          <div
+            class="flex items-center gap-2 bg-surface-container-low px-3 py-1.5 rounded-lg border border-surface-container">
             <span class="text-xs text-secondary font-medium">Tổng tiền Shipper đã thu / đang giữ:</span>
             <span class="text-sm font-extrabold text-primary" id="kpi-total-shipper-cod">0 đ</span>
           </div>
@@ -339,7 +369,8 @@
         <div class="overflow-x-auto">
           <table class="w-full text-left border-collapse text-xs">
             <thead>
-              <tr class="bg-surface-container-low text-secondary text-[11px] uppercase tracking-wider border-b border-surface-container">
+              <tr
+                class="bg-surface-container-low text-secondary text-[11px] uppercase tracking-wider border-b border-surface-container">
                 <th class="py-2.5 px-4 font-semibold">Shipper & SĐT</th>
                 <th class="py-2.5 px-3 font-semibold text-center">Số đơn phụ trách</th>
                 <th class="py-2.5 px-3 font-semibold text-center">Đã giao thành công</th>
@@ -564,7 +595,7 @@
       });
     }
 
-    
+
     function applyCustomDateRange() {
       const from = document.getElementById('filter-from-date')?.value;
       const to = document.getElementById('filter-to-date')?.value;
@@ -893,7 +924,7 @@
       orders.forEach(order => {
         const amount = Number(order.totalAmount || order.TotalAmount || 0);
         const note = (order.note || order.Note || '').toLowerCase();
-        
+
         // Nhận diện chuẩn xác từ trường cấu trúc PaymentMethod của CSDL
         const payMethod = String(order.paymentMethod || order.PaymentMethod || '').trim().toLowerCase();
         if (payMethod === 'banktransfer' || payMethod === 'vietqr' || payMethod === 'momo' || note.includes('chuyển khoản') || note.includes('vietqr') || note.includes('napas')) {
@@ -1134,7 +1165,7 @@
             localStorage.setItem('ws_role', 'Admin');
             localStorage.setItem('ws_fullname', 'Nguyễn Kiều Như');
           }
-        } catch (e) {}
+        } catch (e) { }
       }
       if (typeof Auth !== 'undefined') {
         const me = await Auth.requireAdminOrStaff();
