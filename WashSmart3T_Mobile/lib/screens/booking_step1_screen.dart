@@ -1426,11 +1426,17 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
                       _showToast('Vui lòng chọn ít nhất một dịch vụ.');
                       return;
                     }
+                    final int addonFee = isIronChecked ? 20000 : 0;
+                    final String step1Note = _buildBookingNote();
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) =>
-                            BookingStep2Screen(items: orderItems),
+                            BookingStep2Screen(
+                              items: orderItems,
+                              addonFee: addonFee,
+                              initialNote: step1Note,
+                            ),
                       ),
                     );
                   },

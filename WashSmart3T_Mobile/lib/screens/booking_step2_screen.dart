@@ -11,6 +11,7 @@ class BookingStep2Screen extends StatefulWidget {
   final String pickupAddress;
   final String contactPhone;
   final String initialNote;
+  final int addonFee;
 
   const BookingStep2Screen({
     super.key,
@@ -19,6 +20,7 @@ class BookingStep2Screen extends StatefulWidget {
         'Căn hộ Heritage Manor, Căn 302, 128 Hai Bà Trưng, P. Bến Nghé, Quận 1, TP. Hồ Chí Minh',
     this.contactPhone = '0908123456',
     this.initialNote = '',
+    this.addonFee = 0,
   });
 
   @override
@@ -1376,6 +1378,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                             'Lịch lấy đồ dự kiến: $pickupDateLabel, $pickupTimeTitle',
                           ].where((value) => value.trim().isNotEmpty).join(' | '),
                           items: widget.items,
+                          addonFee: widget.addonFee,
                         ),
                       ),
                     );

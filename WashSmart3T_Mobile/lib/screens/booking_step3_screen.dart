@@ -15,6 +15,7 @@ class BookingStep3Screen extends StatefulWidget {
   final String pickupTime;
   final String deliveryTime;
   final int expressFee;
+  final int addonFee;
 
   const BookingStep3Screen({
     super.key,
@@ -26,6 +27,7 @@ class BookingStep3Screen extends StatefulWidget {
     this.pickupTime = '14:00 – 16:00 Hôm nay',
     this.deliveryTime = '10:00 – 12:00 Ngày mai (Chuẩn 24h)',
     this.expressFee = 0,
+    this.addonFee = 0,
   });
 
   @override
@@ -90,7 +92,7 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
   ];
 
   int get finalPrice {
-    int total = shippingFee + widget.expressFee - voucherDiscount - (isCoinUsed ? coinDiscount : 0);
+    int total = shippingFee + widget.expressFee + widget.addonFee - voucherDiscount - (isCoinUsed ? coinDiscount : 0);
     return total < 0 ? 0 : total;
   }
 
@@ -364,6 +366,7 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
           'contactPhone': cleanPhone,
           'note': fullNote,
           'shippingFee': totalShipping,
+          'addonFee': widget.addonFee,
           'discountAmount': totalDiscount,
           'paymentMethod': 'COD',
           'orderType': 'Delivery',
@@ -1303,6 +1306,15 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
                   'Phí vận chuyển 2 chiều',
                   _formatCurrency(shippingFee),
                 ),
+                if (widget.addonFee > 0) ...[
+                  const SizedBox(height: 6),
+                  _buildPriceRow(
+                    'Phụ phí tiện ích & ủi hơi nước',
+                    '+${_formatCurrency(widget.addonFee)}',
+                    textColor: primaryColor,
+                    icon: Icons.auto_awesome,
+                  ),
+                ],
                 if (widget.expressFee > 0) ...[
                   const SizedBox(height: 6),
                   _buildPriceRow(

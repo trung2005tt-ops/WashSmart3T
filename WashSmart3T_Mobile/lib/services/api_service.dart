@@ -168,7 +168,17 @@ class ApiService {
       throw Exception('Không tải được lịch sử đơn (${response.statusCode}).');
     }
 
-    return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+    final decoded = jsonDecode(response.body);
+    if (decoded is List) {
+      return {'history': decoded};
+    } else if (decoded is Map) {
+      final map = Map<String, dynamic>.from(decoded);
+      if (map.containsKey('history') && map['history'] is List) {
+        return map;
+      }
+      return {'history': [map]};
+    }
+    return {'history': []};
   }
 
   /// Lấy danh sách đơn hàng dành cho Admin/Staff.

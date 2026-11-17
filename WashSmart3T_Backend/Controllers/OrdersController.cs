@@ -1074,7 +1074,7 @@ public class OrdersController : ControllerBase
             })
             .ToListAsync();
 
-        return Ok(history);
+        return Ok(new { history = history });
     }
 
     // ============================================================

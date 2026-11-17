@@ -44,18 +44,16 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
 
       final order = results[0];
       final historyData = results[1];
-      final rawHistory = historyData['history'];
-
-      if (rawHistory is! List) {
-        throw Exception('Dữ liệu lịch sử đơn hàng không hợp lệ.');
-      }
+      final dynamic raw = historyData['history'];
+      final List<dynamic> rawHistory = raw is List ? raw : <dynamic>[];
 
       if (!mounted) return;
 
       setState(() {
         _order = order;
         _history = rawHistory
-            .map((item) => Map<String, dynamic>.from(item as Map))
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
             .toList();
         _loading = false;
       });
@@ -270,10 +268,40 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
             'Ngày tạo',
             _formatDate(order['createdAt'] ?? order['CreatedAt']),
           ),
+          if ((order['shippingFee'] ?? order['ShippingFee'] ?? 0) as num > 0) ...[
+            const Divider(height: 18),
+            _infoRow(
+              Icons.local_shipping_outlined,
+              'Phí vận chuyển',
+              _formatMoney(order['shippingFee'] ?? order['ShippingFee']),
+            ),
+          ],
+          if ((order['addonFee'] ?? order['AddonFee'] ?? 0) as num > 0) ...[
+            const Divider(height: 18),
+            _infoRow(
+              Icons.auto_awesome_outlined,
+              'Phụ phí tiện ích & ủi',
+              _formatMoney(order['addonFee'] ?? order['AddonFee']),
+            ),
+          ],
+          if ((order['discountAmount'] ?? order['DiscountAmount'] ?? 0) as num > 0) ...[
+            const Divider(height: 18),
+            _infoRow(
+              Icons.discount_outlined,
+              'Giảm giá ưu đãi',
+              '-${_formatMoney(order['discountAmount'] ?? order['DiscountAmount'])}',
+            ),
+          ],
+          const Divider(height: 18),
+          _infoRow(
+            Icons.credit_card_outlined,
+            'Phương thức',
+            (order['paymentMethod'] ?? order['PaymentMethod'] ?? 'COD').toString(),
+          ),
           const Divider(height: 24),
           _infoRow(
             Icons.payments_outlined,
-            'Tổng tiền',
+            'Tổng thanh toán',
             _formatMoney(order['totalAmount'] ?? order['TotalAmount']),
           ),
         ],
