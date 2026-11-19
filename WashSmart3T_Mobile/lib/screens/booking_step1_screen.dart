@@ -232,10 +232,6 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 2. BANNER TIÊU CHUẨN 3T
-                      _buildBanner3T(),
-                      const SizedBox(height: 16),
-
                       // 3. GÓI DỊCH VỤ GIẶT ỦI CHÍNH
                       _buildServicePackageSection(),
                       const SizedBox(height: 16),
@@ -393,101 +389,6 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
                 ),
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- WIDGET 2: BANNER TIÊU CHUẨN 3T ---
-  Widget _buildBanner3T() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: secondaryFixed,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.verified,
-                        size: 14,
-                        color: Color(0xFF3E0022),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Tiêu chuẩn WashSmart 3T',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: const Color(0xFF3E0022),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Giặt Riêng 1 Máy / Khách',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: onSurface,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Khử khuẩn UV 99.9%, sấy thơm tự nhiên & gấp nếp tươm tất chuẩn tủ đồ cao cấp.',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11,
-                    color: onSurfaceVariant,
-                    height: 1.3,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.network(
-              'https://lh3.googleusercontent.com/aida-public/AB6AXuB40T_eeTL8ZWeMgTM5cDBWPWC_w8J2kTj5QMKs3-gAxrupHisWQPvfYUA4dpir38BqEgggwmT9swjyXU8j7Vcr9R62seh0lsIexutDFGKunAfSZffl2fuKvf9aXlaalMSdmLXA_Aa-ceCym0XTtHZi7uZCLsQ_c99SyW0epHqI_bIbSVDFU4_uT7qTZvQ8KO_P4O4kWs_j14NqWrz9lzCZfFl6BRIjHtfNknUm1EasS9Useu-bYyCnZA',
-              width: 80,
-              height: 80,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) => Container(
-                width: 80,
-                height: 80,
-                color: surfaceContainer,
-                child: const Icon(
-                  Icons.local_laundry_service,
-                  color: primaryColor,
-                ),
-              ),
-            ),
           ),
         ],
       ),
@@ -924,28 +825,15 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
                   color: onSurface,
                 ),
               ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (description.isNotEmpty)
-                    Text(
+              subtitle: description.isNotEmpty
+                  ? Text(
                       description,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         color: onSurfaceVariant,
                       ),
-                    ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '✓ Giặt riêng 1 máy • Sấy diệt khuẩn 99.9% • Gấp nếp tinh tươm',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: secondaryColor,
-                    ),
-                  ),
-                ],
-              ),
+                    )
+                  : null,
               secondary: const Icon(
                 Icons.local_laundry_service,
                 color: primaryColor,
