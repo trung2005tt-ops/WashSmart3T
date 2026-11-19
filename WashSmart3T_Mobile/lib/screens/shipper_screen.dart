@@ -2281,35 +2281,40 @@ class _ShipperScreenState extends State<ShipperScreen>
         return successColor;
       case ShipperOrderStatus.completed:
         return outlineColor;
+      case ShipperOrderStatus.cancelled:
+        return const Color(0xFF6B7280); // Xám cho đơn đã hủy
       default:
         return primaryColor;
     }
   }
 
   String _getActionButtonText(ShipperOrderModel order) {
+    if (order.status == ShipperOrderStatus.cancelled) {
+      return 'Đơn đã hủy';
+    }
+    if (order.status == ShipperOrderStatus.completed) {
+      return 'Đã hoàn tất';
+    }
+
     if (order.type == OrderType.pickup) {
       switch (order.status) {
         case ShipperOrderStatus.available:
           return 'Nhận đơn lấy hàng';
         case ShipperOrderStatus.pickingUp:
-          return 'Đã lấy đồ từ khách';
+          return 'Đã lấy đồ & Cân tại chỗ';
         case ShipperOrderStatus.inStore:
           return 'Đã về tiệm giặt';
-        case ShipperOrderStatus.completed:
-          return 'Đã hoàn thành';
         default:
-          return 'Cập nhật';
+          return 'Cập nhật tiến độ';
       }
     } else {
       switch (order.status) {
         case ShipperOrderStatus.available:
           return 'Nhận đơn giao hàng';
         case ShipperOrderStatus.delivering:
-          return 'Xác nhận đã giao';
-        case ShipperOrderStatus.completed:
-          return 'Đã hoàn thành';
+          return 'Xác nhận đã giao & Thu tiền';
         default:
-          return 'Cập nhật';
+          return 'Cập nhật tiến độ';
       }
     }
   }
@@ -2317,6 +2322,15 @@ class _ShipperScreenState extends State<ShipperScreen>
   Future<void> _handleOrderMainAction(ShipperOrderModel order) async {
     if (order.orderId == null || order.orderId! <= 0) {
       _showToast('Đơn hàng chưa có mã từ máy chủ.', isSuccess: false);
+      return;
+    }
+
+    if (order.status == ShipperOrderStatus.cancelled) {
+      _showToast('Đơn hàng này đã bị hủy, không thể thao tác tiếp.', isSuccess: false);
+      return;
+    }
+    if (order.status == ShipperOrderStatus.completed) {
+      _showToast('Đơn hàng này đã hoàn tất thành công.', isSuccess: true);
       return;
     }
     if (order.type == OrderType.pickup &&
