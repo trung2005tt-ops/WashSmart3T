@@ -195,12 +195,12 @@
 
         <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between">
           <div>
-            <p class="text-xs text-secondary font-medium">Quỹ đền bù còn lại</p>
-            <p class="text-2xl font-bold text-primary mt-1" id="kpi-fund-amount">8,750,000 đ <span
-                class="text-xs font-normal text-secondary">/ 10M</span></p>
+            <p class="text-xs text-secondary font-medium">Tổng tiền đã bồi hoàn</p>
+            <p class="text-2xl font-bold text-primary mt-1" id="kpi-fund-amount">0 đ</p>
+            <p class="text-[10px] text-secondary mt-0.5">Trích giảm từ doanh thu đơn hàng & chi phí bảo hành</p>
           </div>
           <div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center">
-            <span class="material-symbols-outlined">account_balance_wallet</span>
+            <span class="material-symbols-outlined">payments</span>
           </div>
         </div>
       </div>
@@ -253,7 +253,6 @@
     let complaintsData = [];
     let currentTab = 'pending';
     let selectedTicketId = null;
-    let remainingFund = 8750000;
     let searchQuery = '';
 
     // Phân loại hướng giải quyết khách hàng mong muốn
@@ -261,29 +260,32 @@
       const note = (item.customerNote || '').toLowerCase();
       const desc = (item.itemDescription || '').toLowerCase();
       const reqRefund = Number(item.requestedRefund || 0);
+      const orderTotal = Number(item.orderTotal || 0);
 
-      if (note.includes('đền bù') || note.includes('bồi thường') || reqRefund >= 200000) {
+      if (note.includes('bồi thường') || note.includes('đền bù') || reqRefund >= 100000) {
+        const compAmt = reqRefund > 0 ? reqRefund : 50000;
         return {
           planKey: 'compensation',
           planTitle: 'Bồi thường giá trị sản phẩm',
-          amount: reqRefund > 0 ? reqRefund : 350000,
-          label: 'Khách yêu cầu bồi thường giá trị sản phẩm'
+          amount: compAmt,
+          label: `Khách yêu cầu bồi thường giá trị sản phẩm (${formatCurrency(compAmt)})`
         };
       }
-      if (note.includes('hoàn tiền') || note.includes('hoàn lại tiền') || (reqRefund > 0 && reqRefund < 200000)) {
+      if (note.includes('hoàn tiền') || note.includes('hoàn lại tiền') || (reqRefund > 0 && reqRefund < 100000)) {
+        const refundAmt = orderTotal > 0 ? orderTotal : (reqRefund > 0 ? reqRefund : 50000);
         return {
           planKey: 'refund',
           planTitle: 'Hoàn tiền dịch vụ giặt',
-          amount: reqRefund > 0 ? reqRefund : 50000,
-          label: 'Khách yêu cầu hoàn lại tiền dịch vụ giặt'
+          amount: refundAmt,
+          label: `Khách yêu cầu hoàn tiền dịch vụ giặt (${formatCurrency(refundAmt)})`
         };
       }
-      if (note.includes('voucher') || note.includes('mã giảm')) {
+      if (note.includes('voucher') || note.includes('mã giảm') || note.includes('xu')) {
         return {
           planKey: 'voucher',
-          planTitle: 'Tặng Voucher đền bù',
-          amount: 100000,
-          label: 'Khách mong muốn nhận Voucher ưu đãi'
+          planTitle: 'Tặng Voucher / Xu đền bù',
+          amount: 50000,
+          label: 'Khách mong muốn nhận Voucher / 3T Xu đền bù'
         };
       }
       // Mặc định: Giặt & phục hồi miễn phí
@@ -322,6 +324,7 @@
             ticketCode: item.ticketCode || `KN-${item.id}`,
             orderId: item.orderId,
             orderCode: item.orderCode || (item.orderId ? `#WS3T-${String(item.orderId).padStart(4, '0')}` : '#WS3T-CHUNG'),
+            orderTotal: Number(item.orderTotal || 0),
             customerName: item.customerName || 'Khách hàng',
             customerPhone: item.customerPhone || '0999222111',
             incidentType: item.incidentType || 'Sự cố đồ giặt',
@@ -421,7 +424,8 @@
       if (kpiCompleted) kpiCompleted.innerHTML = `${completedList.length} <span class="text-xs font-normal text-secondary">vụ việc</span>`;
       if (badgePending) badgePending.textContent = pendingList.length;
       if (badgeCompleted) badgeCompleted.textContent = completedList.length;
-      if (kpiFund) kpiFund.innerHTML = `${formatCurrency(remainingFund)} <span class="text-xs font-normal text-secondary">/ 10M</span>`;
+      const totalCompensated = completedList.reduce((sum, x) => sum + (Number(x.approvedAmount) || 0), 0);
+      if (kpiFund) kpiFund.innerHTML = formatCurrency(totalCompensated);
 
       // Render danh sách bên trái
       const listContainer = document.getElementById('complaints-list-container');
@@ -632,39 +636,39 @@
             <label class="p-3 rounded-xl bg-surface-container-low border-2 ${item.selectedPlan === 'refund' ? 'border-primary bg-primary/5' : 'border-surface-container'} ${isCompleted ? 'pointer-events-none opacity-80' : 'cursor-pointer hover:border-primary/50'} block space-y-1.5 transition-all">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                  <input type="radio" name="plan_radio" value="refund" ${item.selectedPlan === 'refund' ? 'checked' : ''} ${isCompleted ? 'disabled' : ''} onchange="updatePlan('${item.id}', 'refund', ${item.requestedRefund > 0 ? item.requestedRefund : 50000})" class="accent-primary">
+                  <input type="radio" name="plan_radio" value="refund" ${item.selectedPlan === 'refund' ? 'checked' : ''} ${isCompleted ? 'disabled' : ''} onchange="updatePlan('${item.id}', 'refund', ${item.orderTotal > 0 ? item.orderTotal : (item.requestedRefund > 0 ? item.requestedRefund : 50000)})" class="accent-primary">
                   <span class="font-bold text-xs text-on-surface">2. Hoàn tiền dịch vụ giặt</span>
                 </div>
                 <span class="material-symbols-outlined text-primary text-base">replay</span>
               </div>
-              <p class="text-[11px] text-secondary pl-5">Hoàn lại 100% cước phí giặt về STK khách hoặc cộng vào ví điểm thưởng.</p>
-              <div class="pl-5 pt-0.5 text-primary font-bold text-xs">Số tiền: ${formatCurrency(item.requestedRefund > 0 ? item.requestedRefund : 50000)}</div>
+              <p class="text-[11px] text-secondary pl-5">Hoàn 100% tiền hóa đơn của đơn #${item.orderCode} về phương thức thanh toán của khách.</p>
+              <div class="pl-5 pt-0.5 text-primary font-bold text-xs">Số tiền: ${formatCurrency(item.orderTotal > 0 ? item.orderTotal : (item.requestedRefund > 0 ? item.requestedRefund : 50000))} (100% hóa đơn)</div>
             </label>
 
             <!-- Phương án 3: Bồi thường giá trị sản phẩm -->
             <label class="p-3 rounded-xl bg-surface-container-low border-2 ${item.selectedPlan === 'compensation' ? 'border-primary bg-primary/5' : 'border-surface-container'} ${isCompleted ? 'pointer-events-none opacity-80' : 'cursor-pointer hover:border-primary/50'} block space-y-1.5 transition-all">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                  <input type="radio" name="plan_radio" value="compensation" ${item.selectedPlan === 'compensation' ? 'checked' : ''} ${isCompleted ? 'disabled' : ''} onchange="updatePlan('${item.id}', 'compensation', ${item.requestedRefund > 0 ? item.requestedRefund : 350000})" class="accent-primary">
+                  <input type="radio" name="plan_radio" value="compensation" ${item.selectedPlan === 'compensation' ? 'checked' : ''} ${isCompleted ? 'disabled' : ''} onchange="updatePlan('${item.id}', 'compensation', ${item.requestedRefund > 0 ? item.requestedRefund : 50000})" class="accent-primary">
                   <span class="font-bold text-xs text-on-surface">3. Bồi thường giá trị món đồ</span>
                 </div>
                 <span class="material-symbols-outlined text-primary text-base">payments</span>
               </div>
-              <p class="text-[11px] text-secondary pl-5">Chi trả đền bù thiệt hại sản phẩm theo bảo hiểm cam kết chất lượng 3T.</p>
-              <div class="pl-5 pt-0.5 text-primary font-bold text-xs">Mức đền bù: ${formatCurrency(item.requestedRefund > 0 ? item.requestedRefund : 350000)}</div>
+              <p class="text-[11px] text-secondary pl-5">Chi trả thiệt hại món đồ theo bảo hiểm cam kết chất lượng 3T Care.</p>
+              <div class="pl-5 pt-0.5 text-primary font-bold text-xs">Mức đền bù: ${formatCurrency(item.requestedRefund > 0 ? item.requestedRefund : 50000)} (Theo yêu cầu khách)</div>
             </label>
 
             <!-- Phương án 4: Tặng Voucher ưu đãi -->
             <label class="p-3 rounded-xl bg-surface-container-low border-2 ${item.selectedPlan === 'voucher' ? 'border-primary bg-primary/5' : 'border-surface-container'} ${isCompleted ? 'pointer-events-none opacity-80' : 'cursor-pointer hover:border-primary/50'} block space-y-1.5 transition-all">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
-                  <input type="radio" name="plan_radio" value="voucher" ${item.selectedPlan === 'voucher' ? 'checked' : ''} ${isCompleted ? 'disabled' : ''} onchange="updatePlan('${item.id}', 'voucher', 100000)" class="accent-primary">
-                  <span class="font-bold text-xs text-on-surface">4. Tặng Voucher đền bù</span>
+                  <input type="radio" name="plan_radio" value="voucher" ${item.selectedPlan === 'voucher' ? 'checked' : ''} ${isCompleted ? 'disabled' : ''} onchange="updatePlan('${item.id}', 'voucher', 50000)" class="accent-primary">
+                  <span class="font-bold text-xs text-on-surface">4. Tặng Voucher / Xu đền bù</span>
                 </div>
                 <span class="material-symbols-outlined text-primary text-base">redeem</span>
               </div>
-              <p class="text-[11px] text-secondary pl-5">Tặng Voucher giảm 100.000đ + Freeship cho các đơn giặt ủi tiếp theo.</p>
-              <div class="pl-5 pt-0.5 text-primary font-bold text-xs">Trị giá: 100.000 đ</div>
+              <p class="text-[11px] text-secondary pl-5">Quy đổi đền bù thành 5.000 điểm 3T Xu cộng vào ví hoặc tặng Voucher cho đơn sau.</p>
+              <div class="pl-5 pt-0.5 text-primary font-bold text-xs">Trị giá: 50.000 đ (Quy đổi 5.000 Xu)</div>
             </label>
 
           </div>
@@ -767,11 +771,6 @@
           staffNote: item.staffNote || 'Đã giải quyết thỏa đáng theo đúng yêu cầu khiếu nại.',
           resolvedBy: staffName
         });
-
-        // Cập nhật quỹ đền bù
-        if (approvedAmount > 0) {
-          remainingFund = Math.max(0, remainingFund - approvedAmount);
-        }
 
         showToast(`🎉 Đã giải quyết khiếu nại #${item.ticketCode} theo phương án: ${resolvedTitle}!`);
         await loadComplaints();

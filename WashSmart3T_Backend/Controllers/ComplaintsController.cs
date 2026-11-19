@@ -120,6 +120,7 @@ public class ComplaintsController : ControllerBase
                 sealStatus = c.SealStatus ?? "Intact",
                 drumInfo = c.DrumInfo ?? "Lồng giặt sấy thông minh LG Turbo #02",
                 shipperName = c.ShipperName ?? "Shipper giao nhận WashSmart 3T",
+                orderTotal = c.Order != null ? c.Order.TotalAmount : 0,
                 createdAt = c.CreatedAt.ToString("o")
             })
             .ToListAsync();
@@ -180,6 +181,7 @@ public class ComplaintsController : ControllerBase
             sealStatus = item.SealStatus,
             drumInfo = item.DrumInfo,
             shipperName = item.ShipperName,
+            orderTotal = item.Order?.TotalAmount ?? 0,
             createdAt = item.CreatedAt.ToString("o")
         });
     }

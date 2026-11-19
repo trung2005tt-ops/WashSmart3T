@@ -42,6 +42,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
   String _drumInfo = 'Lồng giặt sấy thông minh LG Turbo #02';
   String _shipperName = 'Lê Minh Hoàng (0922222222)';
   double _orderWeight = 2.5;
+  double _orderTotalAmount = 0;
 
   // Danh sách các món đồ thực tế của đơn hàng
   List<Map<String, dynamic>> _itemSelections = [];
@@ -124,6 +125,9 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
 
           if (order['weightKg'] is num) {
             _orderWeight = (order['weightKg'] as num).toDouble();
+          }
+          if (order['totalAmount'] is num) {
+            _orderTotalAmount = (order['totalAmount'] as num).toDouble();
           }
 
           if (_itemSelections.isEmpty) {
@@ -211,13 +215,13 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
     String solutionText = 'Giặt & phục hồi miễn phí';
     if (_selectedSolution == 2) {
       solutionText = 'Hoàn tiền dịch vụ giặt';
-      refundAmount = 80000;
+      refundAmount = _orderTotalAmount > 0 ? _orderTotalAmount : 115000;
     } else if (_selectedSolution == 3) {
       solutionText = 'Bồi thường giá trị sản phẩm';
-      refundAmount = double.tryParse(_refundAmountController.text.replaceAll('.', '').trim()) ?? 150000;
+      refundAmount = double.tryParse(_refundAmountController.text.replaceAll('.', '').trim()) ?? 50000;
     } else if (_selectedSolution == 4) {
       solutionText = 'Tặng Voucher đền bù / Cộng 3T Xu vào ví';
-      refundAmount = 100000;
+      refundAmount = 50000;
     }
 
     setState(() => _isSubmitting = true);
