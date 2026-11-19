@@ -461,10 +461,10 @@
                 <span class="font-bold text-primary flex items-center gap-1">
                   <span class="material-symbols-outlined text-sm">location_on</span> Vị trí GPS Shipper
                 </span>
-                <span class="text-secondary">Sai số: 8 mét</span>
+                <span class="text-secondary" id="inspectGpsAccuracy">Sai số: 8 mét</span>
               </div>
               <p class="font-bold text-on-surface" id="inspectAddress">Sảnh M1, Midtown The Signature</p>
-              <p class="text-[10px] text-secondary">Thời điểm chốt cân: Vừa cập nhật</p>
+              <p class="text-[10px] text-secondary" id="inspectTime">Thời điểm chốt cân: Vừa cập nhật</p>
             </div>
 
             <!-- Payment & OTP Signature Box -->
@@ -476,13 +476,13 @@
               <div
                 class="flex items-center justify-between text-[11px] text-secondary pt-1 border-t border-surface-container">
                 <span>Cổng thanh toán:</span>
-                <span class="font-mono font-bold text-on-surface">VietQR Napas247 / Tiền mặt</span>
+                <span class="font-mono font-bold text-on-surface" id="inspectPaymentMethod">VietQR Napas247 / Tiền mặt</span>
               </div>
             </div>
 
             <!-- Action Buttons -->
             <div class="space-y-2 pt-1">
-              <button onclick="alert('Đã duyệt chứng từ cân & chuyển mẻ giặt vào xưởng thành công!')"
+              <button onclick="approveProofForOrder()"
                 class="w-full py-2 rounded-lg bg-primary text-white hover:bg-primary-container font-semibold text-xs transition-colors shadow-sm flex items-center justify-center gap-1.5">
                 <span class="material-symbols-outlined text-base">check_circle</span>
                 <span>Duyệt & Chuyển Xưởng Giặt</span>
@@ -913,7 +913,7 @@
       const address = order.deliveryAddress || order.pickupAddress || '140 Lê Trọng Tấn, Tân Phú';
 
       return `
-        <tr class="hover:bg-surface-container-low transition-colors ${isHighlight ? 'bg-red-50' : ''}">
+        <tr onclick="selectAndInspectOrder(${order.id})" class="cursor-pointer hover:bg-surface-container-low transition-colors ${isHighlight ? 'bg-red-50 ring-1 ring-primary/30' : ''}">
           <td class="py-3 px-4 align-top">
             <div class="space-y-0.5">
               <div class="flex items-center gap-1.5">
@@ -1009,17 +1009,102 @@
       }
     }
 
+    function selectAndInspectOrder(orderId) {
+      selectedOrderId = orderId;
+      const tbody = document.getElementById('dispatchTableBody');
+      const list = allOrders.filter(isDispatchOrder);
+      list.sort((a, b) => (a.shipperId ? 1 : 0) - (b.shipperId ? 1 : 0));
+      tbody.innerHTML = list.map(buildRow).join('');
+      inspectOrder(orderId);
+    }
+
+    function inspectOrder(orderId) {
+      const order = allOrders.find(o => o.id === orderId);
+      if (!order) return;
+      selectedOrderId = order.id;
+
+      const code = typeof orderCode === 'function' ? orderCode(order.id) : order.id;
+      const codeElem = document.getElementById('inspectOrderCode');
+      if (codeElem) codeElem.textContent = `Đơn #${code}`;
+
+      // Khối lượng tính từ chi tiết mẻ giặt
+      let totalKg = 0;
+      if (Array.isArray(order.items)) {
+        totalKg = order.items.reduce((sum, it) => sum + (Number(it.quantity) || 0), 0);
+      }
+      const weightElem = document.getElementById('inspectWeight');
+      if (weightElem) {
+        weightElem.textContent = totalKg > 0 ? `${totalKg.toFixed(2)} kg` : (order.status === 'PickingUp' || order.status === 'Confirmed' ? 'Chờ cân' : '5.00 kg');
+      }
+
+      // Mã Seal Niêm Phong 3T Care
+      const sealElem = document.getElementById('inspectSeal');
+      if (sealElem) {
+        sealElem.textContent = order.sealCode || `#SEAL-3T-${String(order.id).padStart(4, '0')}`;
+      }
+
+      // Địa chỉ giao nhận
+      const addrElem = document.getElementById('inspectAddress');
+      if (addrElem) {
+        addrElem.textContent = order.deliveryAddress || order.pickupAddress || 'Tại cửa hàng WashSmart 3T';
+      }
+
+      // Tổng tiền thu
+      const totalElem = document.getElementById('inspectTotalAmount');
+      if (totalElem) {
+        totalElem.textContent = typeof formatMoney === 'function' ? formatMoney(order.totalAmount || 0) : (order.totalAmount || 0).toLocaleString('vi-VN') + ' đ';
+      }
+
+      // Cổng thanh toán
+      const payElem = document.getElementById('inspectPaymentMethod');
+      if (payElem) {
+        const isPaid = order.paymentStatus === 'Paid';
+        payElem.textContent = `${order.paymentMethod || 'COD'} • ${isPaid ? 'Đã thanh toán online' : 'Thu tiền khi giao'}`;
+      }
+
+      // GPS và Shipper
+      const gpsElem = document.getElementById('inspectGpsAccuracy');
+      if (gpsElem) {
+        const sp = shippers.find(s => s.id === order.shipperId);
+        gpsElem.textContent = sp ? `${sp.fullName} (GPS ±8m)` : 'Chưa gán tài xế';
+      }
+    }
+
+    async function approveProofForOrder() {
+      if (!selectedOrderId) {
+        alert('Vui lòng chọn đơn hàng cần duyệt trong danh sách.');
+        return;
+      }
+      const order = allOrders.find(o => o.id === selectedOrderId);
+      if (!order) return;
+      const code = typeof orderCode === 'function' ? orderCode(order.id) : order.id;
+      if (!confirm(`Xác nhận duyệt chứng từ đối soát cho đơn #${code} và chuyển sang xưởng giặt?`)) return;
+
+      try {
+        await Api.Orders.updateStatus(selectedOrderId, 'Washing', 'Đã duyệt đối soát chứng từ hiện trường IoT/Seal & chuyển vào xưởng giặt');
+        alert(`Đã duyệt chứng từ đơn #${code} & chuyển vào xưởng giặt thành công!`);
+        await loadDispatchData();
+      } catch (err) {
+        alert('Duyệt chứng từ thất bại: ' + err.message);
+      }
+    }
+
     function renderTable() {
       const tbody = document.getElementById('dispatchTableBody');
       const list = allOrders.filter(isDispatchOrder);
 
-      // Update KPIs
+      // Update KPIs với số liệu thực tế
       document.getElementById('statTotalOrders').innerHTML = `${list.length} <span class="text-xs font-normal text-secondary">đơn hàng</span>`;
       const completedCount = allOrders.filter(o => o.status === 'Completed').length;
       document.getElementById('statCompletedOrders').textContent = `✓ ${completedCount} đơn đã hoàn tất thu/giao`;
       
-      const qrTotal = list.reduce((sum, o) => sum + (o.paymentMethod === 'VietQR' ? o.totalAmount : 0), 0) || 1140000;
-      const codTotal = list.reduce((sum, o) => sum + (o.paymentMethod !== 'VietQR' ? o.totalAmount : 0), 0) || 850000;
+      const qrTotal = list
+        .filter(o => o.paymentMethod === 'VietQR' || (o.paymentMethod && o.paymentMethod.toLowerCase().includes('vietqr')))
+        .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+      const codTotal = list
+        .filter(o => o.paymentMethod !== 'VietQR' && !(o.paymentMethod && o.paymentMethod.toLowerCase().includes('vietqr')))
+        .reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+
       document.getElementById('statQrAmount').textContent = (typeof formatMoney === 'function' ? formatMoney(qrTotal) : qrTotal.toLocaleString('vi-VN') + ' đ');
       document.getElementById('statCodAmount').textContent = (typeof formatMoney === 'function' ? formatMoney(codTotal) : codTotal.toLocaleString('vi-VN') + ' đ');
       document.getElementById('statShippersCount').textContent = `${shippers.length}/${shippers.length}`;
@@ -1031,6 +1116,12 @@
 
       list.sort((a, b) => (a.shipperId ? 1 : 0) - (b.shipperId ? 1 : 0));
       tbody.innerHTML = list.map(buildRow).join('');
+
+      // Tự động đối soát đơn đang chọn hoặc đơn đầu tiên
+      const targetOrder = list.find(o => o.id === selectedOrderId) || list[0];
+      if (targetOrder) {
+        inspectOrder(targetOrder.id);
+      }
     }
 
     async function loadDispatchData() {

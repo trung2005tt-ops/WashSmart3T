@@ -67,6 +67,7 @@ public static class DbSeeder
         }
         else
         {
+            admin.FullName = "Nguyễn Kiều Như";
             admin.PasswordHash = passwordHash;
         }
 
@@ -97,35 +98,52 @@ public static class DbSeeder
             }
             else
             {
+                u.FullName = s.Name;
                 u.PasswordHash = passwordHash;
             }
         }
 
         // 3. Nhân viên giao nhận (Shipper)
-        var shipper = await context.Users.FirstOrDefaultAsync(x => x.Phone == "0922222222");
-        if (shipper == null)
+        var shipperList = new[]
         {
-            context.Users.Add(new User
+            new { Phone = "0922222222", Name = "Lê Minh Hoàng", Email = "hoang.le@washsmart.com" },
+            new { Phone = "0818605505", Name = "Nguyễn Thành Trung", Email = "tt@gmail.com" },
+            new { Phone = "0323232323", Name = "Phạm Quang Trung", Email = "trung.pham@washsmart.com" },
+            new { Phone = "0933333333", Name = "Trần Văn Giao", Email = "giao.tran@washsmart.com" },
+            new { Phone = "0999333444", Name = "Trần Anh Thái", Email = "thai.tran@washsmart.com" }
+        };
+
+        foreach (var sh in shipperList)
+        {
+            var u = await context.Users.FirstOrDefaultAsync(x => x.Phone == sh.Phone);
+            if (u == null)
             {
-                FullName = "Lê Minh Hoàng",
-                Phone = "0922222222",
-                Email = "hoang.le@washsmart.com",
-                PasswordHash = passwordHash,
-                RoleId = shipperRole.Id,
-                IsActive = true,
-                CreatedAt = DateTime.UtcNow
-            });
-        }
-        else
-        {
-            shipper.PasswordHash = passwordHash;
+                context.Users.Add(new User
+                {
+                    FullName = sh.Name,
+                    Phone = sh.Phone,
+                    Email = sh.Email,
+                    PasswordHash = passwordHash,
+                    RoleId = shipperRole.Id,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                u.FullName = sh.Name;
+                u.PasswordHash = passwordHash;
+            }
         }
 
         // 4. Khách hàng Demo (Customer)
         var customers = new[]
         {
             new { Phone = "0999222111", Name = "Như Nguyễn", Email = "nhu.nguyen@gmail.com" },
-            new { Phone = "0944444444", Name = "Hoàng Tuấn Kiên", Email = "kien.hoang@gmail.com" }
+            new { Phone = "0944444444", Name = "Hoàng Tuấn Kiên", Email = "kien.hoang@gmail.com" },
+            new { Phone = "0999222777", Name = "Đỗ Minh Đạt", Email = "dat.do@gmail.com" },
+            new { Phone = "0912306271", Name = "Nguyễn Bích Phương", Email = "phuong.nguyen@gmail.com" },
+            new { Phone = "0977889911", Name = "Võ Văn Nam", Email = "nam.vo@gmail.com" }
         };
 
         foreach (var c in customers)
@@ -149,6 +167,7 @@ public static class DbSeeder
             }
             else
             {
+                u.FullName = c.Name;
                 u.PasswordHash = passwordHash;
                 if (u.LoyaltyPoints == 0) u.LoyaltyPoints = c.Phone == "0999222111" ? 350 : 120;
                 if (u.MembershipTier == "Bronze") u.MembershipTier = c.Phone == "0999222111" ? "Gold" : "Silver";
