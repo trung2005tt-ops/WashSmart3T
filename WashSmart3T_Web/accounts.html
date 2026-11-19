@@ -875,7 +875,7 @@
           rawRole: u.roleName,
           branch: u.branch || 'CS1 - TP.HCM',
           status: u.isActive ? 'active' : 'inactive',
-          avatar: u.avatar || 'NV',
+          avatar: u.fullName ? u.fullName.trim().split(/\s+/).map(p => p[0]).slice(-2).join('').toUpperCase() : 'NV',
           plainPassword: u.plainPassword || '123456'
         }));
         renderTable();
