@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../services/api_service.dart';
+import 'submit_claim_screen.dart';
 
 class OrderTrackingScreen extends StatefulWidget {
   final int orderId;
@@ -207,6 +208,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         children: [
           _buildOrderSummary(order, status),
           const SizedBox(height: 16),
+          _buildInsuranceSupportCard(order),
+          const SizedBox(height: 16),
           _buildSectionTitle('Chi tiết dịch vụ'),
           const SizedBox(height: 10),
           _buildItemsCard(items),
@@ -303,6 +306,112 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
             Icons.payments_outlined,
             'Tổng thanh toán',
             _formatMoney(order['totalAmount'] ?? order['TotalAmount']),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInsuranceSupportCard(Map<String, dynamic> order) {
+    final id = order['id'] ?? order['Id'] ?? widget.orderId;
+    final orderCode = 'WS3T-${id.toString().padLeft(4, '0')}';
+    final sealCode = (order['sealCode'] ?? 'WS-SEAL-${id.toString().padLeft(4, '0')}').toString();
+    final weightKg = (order['weightKg'] is num) ? (order['weightKg'] as num).toDouble() : 2.5;
+    final items = order['items'] is List
+        ? (order['items'] as List)
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList()
+        : <Map<String, dynamic>>[];
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF0F2),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFFFD1D8)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: primary.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.shield, color: primary, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Bảo Hiểm 3T Care & Bồi Thường',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                    ),
+                    Text(
+                      'Mã Seal: $sealCode',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        color: secondaryText,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Cam kết hoàn tiền 100% hoặc bồi thường trang phục nếu xảy ra sự cố vải sợi, phai màu hoặc thất lạc.',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 12,
+              color: secondaryText,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => SubmitClaimScreen(
+                      orderId: (id is num) ? (id as num).toInt() : int.tryParse(id.toString()) ?? widget.orderId,
+                      orderCode: orderCode,
+                      orderWeight: weightKg,
+                      items: items,
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.report_problem_outlined, size: 16, color: primary),
+              label: Text(
+                'Gửi Khiếu Nại Đơn Hàng Này',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  color: primary,
+                ),
+              ),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: primary),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+            ),
           ),
         ],
       ),

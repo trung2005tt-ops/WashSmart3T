@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using WashSmart.API.Data;
 using WashSmart.API.Models;
+using WashSmart.API.Services;
 
 namespace WashSmart.API.Controllers;
 
@@ -353,6 +354,17 @@ public class ComplaintsController : ControllerBase
                 }
             }
             catch { }
+        }
+
+        // Nếu khách hàng chọn bồi hoàn qua Tích Điểm / 3T Xu hoặc Voucher:
+        if (item.Customer != null && amount > 0)
+        {
+            var resLower = (item.Resolution ?? "").ToLower();
+            if (resLower.Contains("voucher") || resLower.Contains("xu") || resLower.Contains("point"))
+            {
+                int bonusCoins = (int)(amount / 10m);
+                LoyaltyService.CompensatePoints(item.Customer, bonusCoins);
+            }
         }
 
         await _context.SaveChangesAsync();

@@ -694,6 +694,12 @@ public class OrdersController : ControllerBase
 
             order.SealCode ??= $"WS-SEAL-{order.Id:D4}";
             _context.Payments.Add(payment);
+
+            if (isPaidNow)
+            {
+                LoyaltyService.AwardLoyalty(customer, totalAmount);
+            }
+
             await _context.SaveChangesAsync();
             await tx.CommitAsync();
 
@@ -1020,12 +1026,14 @@ public class OrdersController : ControllerBase
 
         var orders = await _context.Orders
             .Where(x => x.CustomerId == customerId)
+            .Include(x => x.Shipper)
             .Include(x => x.OrderDetails)
                 .ThenInclude(x => x.Service)
             .OrderByDescending(x => x.CreatedAt)
             .Select(x => new
             {
                 x.Id,
+                orderCode = $"#WS3T-{x.Id:D4}",
                 status = x.Status.ToString(),
                 x.OrderType,
                 x.PickupAddress,
@@ -1036,12 +1044,17 @@ public class OrdersController : ControllerBase
                 x.TotalAmount,
                 x.PaymentMethod,
                 x.DeliveryProofPhotoUrl,
+                sealCode = !string.IsNullOrWhiteSpace(x.SealCode) ? x.SealCode : $"WS-SEAL-{x.Id:D4}",
+                sealStatus = !string.IsNullOrWhiteSpace(x.SealStatus) ? x.SealStatus : "Intact",
+                drumInfo = !string.IsNullOrWhiteSpace(x.DrumCode) ? x.DrumCode : "Lồng giặt sấy thông minh LG Turbo #02",
+                shipperName = x.Shipper != null ? x.Shipper.FullName : null,
+                shipperPhone = x.Shipper != null ? x.Shipper.Phone : null,
                 x.CreatedAt,
                 paymentStatus = _context.Payments.Where(p => p.OrderId == x.Id).Select(p => p.Status.ToString()).FirstOrDefault() ?? "Pending",
                 items = x.OrderDetails.Select(d => new
                 {
                     d.ServiceId,
-                    serviceName = d.Service!.Name,
+                    serviceName = d.Service != null ? d.Service.Name : "Dịch vụ giặt sấy 3T",
                     d.Quantity,
                     d.Unit,
                     d.UnitPrice,
@@ -1184,6 +1197,11 @@ public class OrdersController : ControllerBase
             order.TotalAmount,
             order.PaymentMethod,
             order.DeliveryProofPhotoUrl,
+            sealCode = !string.IsNullOrWhiteSpace(order.SealCode) ? order.SealCode : $"WS-SEAL-{order.Id:D4}",
+            sealStatus = !string.IsNullOrWhiteSpace(order.SealStatus) ? order.SealStatus : "Intact",
+            drumInfo = !string.IsNullOrWhiteSpace(order.DrumCode) ? order.DrumCode : "Lồng giặt sấy thông minh LG Turbo #02",
+            shipperPhone = order.Shipper?.Phone ?? "",
+            weightKg = order.OrderDetails.Where(d => d.Unit != null && d.Unit.ToLower().Contains("kg")).Sum(d => (double?)d.Quantity) ?? 2.5,
             order.CreatedAt,
             order.UpdatedAt,
             paymentStatus = payment?.Status.ToString() ?? "Pending",
@@ -1246,6 +1264,13 @@ public class OrdersController : ControllerBase
                     payment.Status = PaymentStatus.Paid;
                     payment.PaidAt = DateTime.UtcNow;
                     payment.PaymentNote = request.Note ?? "Shipper thu tiền mặt COD khi giao đồ thành công.";
+
+                    // Tự động tích điểm và nâng cấp thành viên
+                    var cust = await _context.Users.FirstOrDefaultAsync(u => u.Id == order.CustomerId);
+                    if (cust != null)
+                    {
+                        LoyaltyService.AwardLoyalty(cust, order.TotalAmount);
+                    }
                 }
             }
 
@@ -1383,6 +1408,13 @@ public class OrdersController : ControllerBase
                             });
                         }
                     }
+                }
+
+                // Tự động tích lũy điểm thưởng và nâng hạng thành viên
+                var cust = await _context.Users.FirstOrDefaultAsync(u => u.Id == order.CustomerId);
+                if (cust != null)
+                {
+                    LoyaltyService.AwardLoyalty(cust, order.TotalAmount);
                 }
             }
 

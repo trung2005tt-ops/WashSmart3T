@@ -38,6 +38,165 @@ public class PromotionsController : ControllerBase
     }
 
     // ============================================================
+    // GET: api/Promotions/my-vouchers
+    // Danh sách các ưu đãi & voucher theo cấp bậc thành viên thực tế
+    // ============================================================
+    [HttpGet("my-vouchers")]
+    [AllowAnonymous]
+    public async Task<IActionResult> GetMyVouchers()
+    {
+        var idStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        int? userId = int.TryParse(idStr, out var id) ? id : null;
+
+        string tier = "Gold"; // Mặc định Gold nếu demo chưa đăng nhập
+        int points = 1450;
+        string customerName = "Chị Kiều Như";
+
+        if (userId.HasValue)
+        {
+            var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId.Value);
+            if (user != null)
+            {
+                tier = string.IsNullOrWhiteSpace(user.MembershipTier) ? "Bronze" : user.MembershipTier;
+                points = user.LoyaltyPoints;
+                customerName = user.FullName;
+            }
+        }
+
+        var allVouchers = new List<object>
+        {
+            new {
+                code = "3TTINHTUOM",
+                title = "Giặt Sấy Tinh Tươm Lấy Ngay",
+                description = "Giảm ngay 20.000đ cho đơn dịch vụ Giặt sấy gấp thơm tho chỉ từ 120.000đ.",
+                discountTag = "GIẢM",
+                discountValue = "20k",
+                discountAmount = 20000,
+                minOrderAmount = 120000,
+                requiredTier = "Gold",
+                tierLabel = "Hạng Vàng",
+                badgeText = "3T CARE",
+                category = "Giặt Sấy & Ủi",
+                expiry = "30/10/2026",
+                isAvailable = tier == "Gold" || tier == "Diamond"
+            },
+            new {
+                code = "FREESHIP3T",
+                title = "Freeship Gom & Giao 2 Chiều",
+                description = "Miễn phí giao nhận tận sảnh chung cư hoặc nhà riêng (tối đa 30.000đ).",
+                discountTag = "SHIP",
+                discountValue = "0 Đ",
+                discountAmount = 30000,
+                minOrderAmount = 0,
+                requiredTier = "Gold",
+                tierLabel = "VIP Vàng",
+                badgeText = "VIP VÀNG",
+                category = "Freeship Gom & Giao",
+                expiry = "05/11/2026",
+                isAvailable = tier == "Gold" || tier == "Diamond"
+            },
+            new {
+                code = "SNEAKERNEW",
+                title = "Vệ Sinh Sneaker & Khử Trùng UV",
+                description = "Giặt hấp giày thể thao, phủ nano chống bám bẩn kèm khử khuẩn sâu. Đơn từ 150k.",
+                discountTag = "GIẢM",
+                discountValue = "30k",
+                discountAmount = 30000,
+                minOrderAmount = 150000,
+                requiredTier = "Gold",
+                tierLabel = "Hạng Vàng",
+                badgeText = "UV CARE",
+                category = "Giày & Đồ hiệu",
+                expiry = "15/11/2026",
+                isAvailable = tier == "Gold" || tier == "Diamond"
+            },
+            new {
+                code = "GIATKHOVIP",
+                title = "Giặt Khô Hấp Vest & Đầm Lụa",
+                description = "Công nghệ giặt hydrocacbon dịu nhẹ giữ form áo vest, suit và lụa tơ tằm.",
+                discountTag = "GIẢM",
+                discountValue = "15%",
+                discountAmount = 50000,
+                minOrderAmount = 150000,
+                requiredTier = "Gold",
+                tierLabel = "Hạng Vàng",
+                badgeText = "PREMIUM",
+                category = "Giày & Đồ hiệu",
+                expiry = "20/11/2026",
+                isAvailable = tier == "Gold" || tier == "Diamond"
+            },
+            new {
+                code = "DIAMOND-VIP",
+                title = "Đặc Quyền Thượng Hạng Diamond",
+                description = "Giảm trực tiếp 50.000đ trên tổng hóa đơn và ưu tiên xử lý trong lồng giặt VIP.",
+                discountTag = "GIẢM",
+                discountValue = "50k",
+                discountAmount = 50000,
+                minOrderAmount = 200000,
+                requiredTier = "Diamond",
+                tierLabel = "Kim Cương",
+                badgeText = "DIAMOND",
+                category = "Đặc quyền Đổi Xu",
+                expiry = "31/12/2026",
+                isAvailable = tier == "Diamond"
+            },
+            new {
+                code = "FREESHIPVIP",
+                title = "Freeship Không Giới Hạn Kim Cương",
+                description = "Miễn phí gom và giao tận cửa cho tất cả đơn hàng, không phụ thuộc khoảng cách.",
+                discountTag = "SHIP",
+                discountValue = "0 Đ",
+                discountAmount = 50000,
+                minOrderAmount = 0,
+                requiredTier = "Diamond",
+                tierLabel = "Kim Cương",
+                badgeText = "DIAMOND",
+                category = "Freeship Gom & Giao",
+                expiry = "31/12/2026",
+                isAvailable = tier == "Diamond"
+            },
+            new {
+                code = "3TBAC",
+                title = "Ưu Đãi Thành Viên Hạng Bạc",
+                description = "Giảm ngay 15.000đ cho đơn giặt sấy từ 100.000đ.",
+                discountTag = "GIẢM",
+                discountValue = "15k",
+                discountAmount = 15000,
+                minOrderAmount = 100000,
+                requiredTier = "Silver",
+                tierLabel = "Hạng Bạc",
+                badgeText = "SILVER",
+                category = "Giặt Sấy & Ủi",
+                expiry = "30/11/2026",
+                isAvailable = tier == "Silver" || tier == "Gold" || tier == "Diamond"
+            },
+            new {
+                code = "CHAOBANMOI",
+                title = "Chào Bạn Mới 3T",
+                description = "Giảm 20% (tối đa 50.000đ) cho khách hàng mới trải nghiệm dịch vụ.",
+                discountTag = "GIẢM",
+                discountValue = "20%",
+                discountAmount = 50000,
+                minOrderAmount = 50000,
+                requiredTier = "Bronze",
+                tierLabel = "Thành viên",
+                badgeText = "WELCOME",
+                category = "Giặt Sấy & Ủi",
+                expiry = "31/12/2026",
+                isAvailable = true
+            }
+        };
+
+        return Ok(new
+        {
+            customerName,
+            membershipTier = tier,
+            loyaltyPoints = points,
+            vouchers = allVouchers
+        });
+    }
+
+    // ============================================================
     // GET: api/Promotions
     // Danh sách các chương trình khuyến mãi & Voucher
     // ============================================================

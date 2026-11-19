@@ -201,6 +201,7 @@ public class PaymentsController : ControllerBase
 
         var payment = await _context.Payments
             .Include(x => x.Order)
+                .ThenInclude(o => o!.Customer)
             .FirstOrDefaultAsync(x => x.OrderId == orderId);
 
         if (payment == null)
@@ -226,6 +227,12 @@ public class PaymentsController : ControllerBase
         payment.Status = PaymentStatus.Paid;
         payment.PaidAt = DateTime.UtcNow;
         payment.PaymentNote = request.Note; // LƯU THỰC SỰ VÀO CSDL
+
+        // Tự động tích lũy điểm 3T Xu và nâng hạng thành viên
+        if (payment.Order?.Customer != null)
+        {
+            LoyaltyService.AwardLoyalty(payment.Order.Customer, payment.Amount);
+        }
 
         await _context.SaveChangesAsync();
 

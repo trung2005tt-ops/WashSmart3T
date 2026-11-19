@@ -325,11 +325,16 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
     final safeDeliveryAddress = widget.deliveryAddress.trim().isNotEmpty
         ? widget.deliveryAddress.trim()
         : safePickupAddress;
-    final safeItems = widget.items.isNotEmpty
-        ? widget.items
-        : [
-            {'serviceId': 7, 'quantity': 0}
-          ];
+    final safeItems = (widget.items.isNotEmpty
+            ? widget.items
+            : [
+                {'serviceId': 7, 'quantity': 0}
+              ])
+        .map((it) => {
+              'serviceId': (it['serviceId'] as num?)?.toInt() ?? 7,
+              'quantity': (it['quantity'] as num?)?.toDouble() ?? 0.0,
+            })
+        .toList();
 
     final token = await AuthService.getToken();
     if (token == null || token.isEmpty) {
@@ -357,7 +362,7 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
         Uri.parse('${ApiService.baseUrl}/Orders'),
         headers: {
           'Authorization': 'Bearer $token',
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json; charset=utf-8',
           'Accept': 'application/json',
         },
         body: jsonEncode({
@@ -383,12 +388,16 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
               message = decoded['message'].toString();
             } else if (decoded['errors'] is Map) {
               final errMap = decoded['errors'] as Map;
-              final firstVal = errMap.values.firstWhere(
-                (v) => v is List && v.isNotEmpty,
-                orElse: () => null,
-              );
-              if (firstVal != null && (firstVal as List).isNotEmpty) {
-                message = firstVal.first.toString();
+              final errorsList = <String>[];
+              for (var err in errMap.values) {
+                if (err is List) {
+                  errorsList.addAll(err.map((e) => e.toString()));
+                } else if (err != null) {
+                  errorsList.add(err.toString());
+                }
+              }
+              if (errorsList.isNotEmpty) {
+                message = errorsList.join(' | ');
               } else if (decoded['title'] != null) {
                 message = decoded['title'].toString();
               }

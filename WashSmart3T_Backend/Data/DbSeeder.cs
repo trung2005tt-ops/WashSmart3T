@@ -159,9 +159,9 @@ public static class DbSeeder
                     PasswordHash = passwordHash,
                     RoleId = customerRole.Id,
                     IsActive = true,
-                    LoyaltyPoints = c.Phone == "0999222111" ? 350 : 120,
+                    LoyaltyPoints = c.Phone == "0999222111" ? 1450 : 120,
                     MembershipTier = c.Phone == "0999222111" ? "Gold" : "Silver",
-                    TotalSpent = c.Phone == "0999222111" ? 1250000 : 480000,
+                    TotalSpent = c.Phone == "0999222111" ? 1450000 : 480000,
                     CreatedAt = DateTime.UtcNow
                 });
             }
@@ -169,9 +169,18 @@ public static class DbSeeder
             {
                 u.FullName = c.Name;
                 u.PasswordHash = passwordHash;
-                if (u.LoyaltyPoints == 0) u.LoyaltyPoints = c.Phone == "0999222111" ? 350 : 120;
-                if (u.MembershipTier == "Bronze") u.MembershipTier = c.Phone == "0999222111" ? "Gold" : "Silver";
-                if (u.TotalSpent == 0) u.TotalSpent = c.Phone == "0999222111" ? 1250000 : 480000;
+                if (c.Phone == "0999222111" && (u.LoyaltyPoints < 1450 || u.MembershipTier == "Bronze"))
+                {
+                    u.LoyaltyPoints = 1450;
+                    u.MembershipTier = "Gold";
+                    u.TotalSpent = 1450000;
+                }
+                else
+                {
+                    if (u.LoyaltyPoints == 0) u.LoyaltyPoints = 120;
+                    if (string.IsNullOrWhiteSpace(u.MembershipTier) || u.MembershipTier == "Bronze") u.MembershipTier = "Silver";
+                    if (u.TotalSpent == 0) u.TotalSpent = 480000;
+                }
             }
         }
 
@@ -214,55 +223,167 @@ public static class DbSeeder
         // =========================
         // SEED PROMOTIONS / VOUCHERS
         // =========================
-        if (!await context.Promotions.AnyAsync())
+        var tierPromotions = new[]
         {
-            context.Promotions.AddRange(
-                new Promotion
-                {
-                    Code = "CHAOBANMOI",
-                    Title = "Giảm 20% cho đơn hàng đầu tiên",
-                    Description = "Áp dụng cho khách hàng mới đặt giặt sấy qua ứng dụng",
-                    DiscountType = "Percentage",
-                    DiscountValue = 20,
-                    MinOrderAmount = 50000,
-                    MaxDiscountAmount = 50000,
-                    StartDate = DateTime.UtcNow.AddDays(-7),
-                    EndDate = DateTime.UtcNow.AddMonths(6),
-                    UsageLimit = 500,
-                    UsedCount = 42,
-                    IsActive = true
-                },
-                new Promotion
-                {
-                    Code = "FREESHIP50K",
-                    Title = "Miễn phí vận chuyển 2 chiều",
-                    Description = "Freeship tối đa 30k cho đơn hàng từ 200.000đ",
-                    DiscountType = "FixedAmount",
-                    DiscountValue = 20000,
-                    MinOrderAmount = 200000,
-                    MaxDiscountAmount = 20000,
-                    StartDate = DateTime.UtcNow.AddDays(-3),
-                    EndDate = DateTime.UtcNow.AddMonths(3),
-                    UsageLimit = 1000,
-                    UsedCount = 85,
-                    IsActive = true
-                },
-                new Promotion
-                {
-                    Code = "GIAT3T15",
-                    Title = "Ưu đãi khách hàng thân thiết 15K",
-                    Description = "Giảm trực tiếp 15.000đ cho đơn giặt sấy từ 100.000đ",
-                    DiscountType = "FixedAmount",
-                    DiscountValue = 15000,
-                    MinOrderAmount = 100000,
-                    MaxDiscountAmount = 15000,
-                    StartDate = DateTime.UtcNow.AddDays(-10),
-                    EndDate = DateTime.UtcNow.AddMonths(2),
-                    UsageLimit = 300,
-                    UsedCount = 18,
-                    IsActive = true
-                }
-            );
+            new Promotion
+            {
+                Code = "3TTINHTUOM",
+                Title = "Giặt Sấy Tinh Tươm Lấy Ngay (Hạng Vàng)",
+                Description = "Giảm ngay 20.000đ cho đơn dịch vụ Giặt sấy gấp thơm tho chỉ từ 120.000đ.",
+                DiscountType = "FixedAmount",
+                DiscountValue = 20000,
+                MinOrderAmount = 120000,
+                MaxDiscountAmount = 20000,
+                StartDate = DateTime.UtcNow.AddDays(-30),
+                EndDate = DateTime.UtcNow.AddMonths(12),
+                UsageLimit = 2000,
+                UsedCount = 38,
+                IsActive = true
+            },
+            new Promotion
+            {
+                Code = "FREESHIP3T",
+                Title = "Freeship Gom & Giao 2 Chiều (VIP Vàng)",
+                Description = "Miễn phí giao nhận tận sảnh chung cư hoặc nhà riêng (tối đa 30.000đ).",
+                DiscountType = "FixedAmount",
+                DiscountValue = 30000,
+                MinOrderAmount = 0,
+                MaxDiscountAmount = 30000,
+                StartDate = DateTime.UtcNow.AddDays(-30),
+                EndDate = DateTime.UtcNow.AddMonths(12),
+                UsageLimit = 2000,
+                UsedCount = 45,
+                IsActive = true
+            },
+            new Promotion
+            {
+                Code = "SNEAKERNEW",
+                Title = "Vệ Sinh Sneaker & Khử Trùng UV (Hạng Vàng)",
+                Description = "Giặt hấp giày thể thao, phủ nano chống bám bẩn kèm khử khuẩn sâu. Đơn từ 150k.",
+                DiscountType = "FixedAmount",
+                DiscountValue = 30000,
+                MinOrderAmount = 150000,
+                MaxDiscountAmount = 30000,
+                StartDate = DateTime.UtcNow.AddDays(-30),
+                EndDate = DateTime.UtcNow.AddMonths(12),
+                UsageLimit = 1500,
+                UsedCount = 20,
+                IsActive = true
+            },
+            new Promotion
+            {
+                Code = "GIATKHOVIP",
+                Title = "Giặt Khô Hấp Vest & Đầm Lụa (Hạng Vàng)",
+                Description = "Công nghệ giặt hydrocacbon dịu nhẹ giữ form áo vest, suit và lụa tơ tằm. Tối đa 50k.",
+                DiscountType = "Percentage",
+                DiscountValue = 15,
+                MinOrderAmount = 150000,
+                MaxDiscountAmount = 50000,
+                StartDate = DateTime.UtcNow.AddDays(-30),
+                EndDate = DateTime.UtcNow.AddMonths(12),
+                UsageLimit = 1000,
+                UsedCount = 12,
+                IsActive = true
+            },
+            new Promotion
+            {
+                Code = "DIAMOND-VIP",
+                Title = "Đặc Quyền Thượng Hạng Diamond",
+                Description = "Giảm trực tiếp 50.000đ trên tổng hóa đơn và ưu tiên xử lý trong lồng giặt VIP.",
+                DiscountType = "FixedAmount",
+                DiscountValue = 50000,
+                MinOrderAmount = 200000,
+                MaxDiscountAmount = 50000,
+                StartDate = DateTime.UtcNow.AddDays(-30),
+                EndDate = DateTime.UtcNow.AddMonths(12),
+                UsageLimit = 1000,
+                UsedCount = 9,
+                IsActive = true
+            },
+            new Promotion
+            {
+                Code = "FREESHIPVIP",
+                Title = "Freeship Không Giới Hạn Kim Cương",
+                Description = "Miễn phí gom và giao tận cửa cho tất cả đơn hàng, không phụ thuộc khoảng cách.",
+                DiscountType = "FixedAmount",
+                DiscountValue = 50000,
+                MinOrderAmount = 0,
+                MaxDiscountAmount = 50000,
+                StartDate = DateTime.UtcNow.AddDays(-30),
+                EndDate = DateTime.UtcNow.AddMonths(12),
+                UsageLimit = 1000,
+                UsedCount = 14,
+                IsActive = true
+            },
+            new Promotion
+            {
+                Code = "3TBAC",
+                Title = "Ưu Đãi Thành Viên Hạng Bạc",
+                Description = "Giảm ngay 15.000đ cho đơn giặt sấy từ 100.000đ.",
+                DiscountType = "FixedAmount",
+                DiscountValue = 15000,
+                MinOrderAmount = 100000,
+                MaxDiscountAmount = 15000,
+                StartDate = DateTime.UtcNow.AddDays(-30),
+                EndDate = DateTime.UtcNow.AddMonths(12),
+                UsageLimit = 1000,
+                UsedCount = 22,
+                IsActive = true
+            },
+            new Promotion
+            {
+                Code = "CHAOBANMOI",
+                Title = "Giảm 20% cho đơn hàng đầu tiên",
+                Description = "Áp dụng cho khách hàng mới đặt giặt sấy qua ứng dụng",
+                DiscountType = "Percentage",
+                DiscountValue = 20,
+                MinOrderAmount = 50000,
+                MaxDiscountAmount = 50000,
+                StartDate = DateTime.UtcNow.AddDays(-7),
+                EndDate = DateTime.UtcNow.AddMonths(6),
+                UsageLimit = 500,
+                UsedCount = 42,
+                IsActive = true
+            },
+            new Promotion
+            {
+                Code = "FREESHIP50K",
+                Title = "Miễn phí vận chuyển 2 chiều",
+                Description = "Freeship tối đa 30k cho đơn hàng từ 200.000đ",
+                DiscountType = "FixedAmount",
+                DiscountValue = 20000,
+                MinOrderAmount = 200000,
+                MaxDiscountAmount = 20000,
+                StartDate = DateTime.UtcNow.AddDays(-3),
+                EndDate = DateTime.UtcNow.AddMonths(3),
+                UsageLimit = 1000,
+                UsedCount = 85,
+                IsActive = true
+            },
+            new Promotion
+            {
+                Code = "GIAT3T15",
+                Title = "Ưu đãi khách hàng thân thiết 15K",
+                Description = "Giảm trực tiếp 15.000đ cho đơn giặt sấy từ 100.000đ",
+                DiscountType = "FixedAmount",
+                DiscountValue = 15000,
+                MinOrderAmount = 100000,
+                MaxDiscountAmount = 15000,
+                StartDate = DateTime.UtcNow.AddDays(-10),
+                EndDate = DateTime.UtcNow.AddMonths(2),
+                UsageLimit = 300,
+                UsedCount = 18,
+                IsActive = true
+            }
+        };
+
+        foreach (var p in tierPromotions)
+        {
+            var existing = await context.Promotions.FirstOrDefaultAsync(x => x.Code == p.Code);
+            if (existing == null)
+            {
+                context.Promotions.Add(p);
+            }
         }
 
         // =========================

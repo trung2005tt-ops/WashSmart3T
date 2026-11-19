@@ -149,7 +149,63 @@ class ApiService {
       throw Exception('Không tải được chi tiết đơn (${response.statusCode}).');
     }
 
-    return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map) {
+      return Map<String, dynamic>.from(decoded);
+    } else if (decoded is List && decoded.isNotEmpty && decoded.first is Map) {
+      return Map<String, dynamic>.from(decoded.first as Map);
+    }
+    return <String, dynamic>{};
+  }
+
+  static Future<Map<String, dynamic>> getMyVouchers() async {
+    final token = await AuthService.getToken();
+    final headers = <String, String>{
+      'Accept': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+
+    final response = await http.get(
+      Uri.parse('$baseUrl/Promotions/my-vouchers'),
+      headers: headers,
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception('Không tải được danh sách ưu đãi (${response.statusCode}).');
+    }
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map) {
+      return Map<String, dynamic>.from(decoded);
+    }
+    return <String, dynamic>{};
+  }
+
+  static Future<Map<String, dynamic>> verifyPromotion({
+    required String code,
+    required double orderAmount,
+  }) async {
+    final token = await AuthService.getToken();
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      if (token != null && token.isNotEmpty) 'Authorization': 'Bearer $token',
+    };
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/Promotions/verify'),
+      headers: headers,
+      body: jsonEncode({
+        'code': code.trim(),
+        'orderAmount': orderAmount,
+      }),
+    );
+
+    final decoded = jsonDecode(response.body);
+    if (decoded is Map) {
+      return Map<String, dynamic>.from(decoded);
+    }
+    return <String, dynamic>{'valid': false, 'message': 'Không thể xác thực mã'};
   }
 
   static Future<Map<String, dynamic>> getOrderHistory(int orderId) async {

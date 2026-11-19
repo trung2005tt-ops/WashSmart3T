@@ -383,6 +383,14 @@ public class AuthController : ControllerBase
         // Sinh JWT token bảo mật
         var token = GenerateJwtToken(user);
 
+        // Đồng bộ cấp bậc thành viên theo điểm và tổng chi tiêu
+        var calculatedTier = LoyaltyService.CalculateTier(user.TotalSpent, user.LoyaltyPoints);
+        if (user.MembershipTier != calculatedTier)
+        {
+            user.MembershipTier = calculatedTier;
+            await _context.SaveChangesAsync();
+        }
+
         return Ok(new
         {
             message = "Đăng nhập thành công.",
@@ -394,7 +402,10 @@ public class AuthController : ControllerBase
                 phone = user.Phone,
                 email = user.Email,
                 role = user.Role?.Name,
-                isActive = user.IsActive
+                isActive = user.IsActive,
+                loyaltyPoints = user.LoyaltyPoints,
+                membershipTier = user.MembershipTier,
+                totalSpent = user.TotalSpent
             }
         });
     }
@@ -428,6 +439,13 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = "Tài khoản đã bị quản trị viên khóa hoặc vô hiệu hóa." });
         }
 
+        var calculatedTier = LoyaltyService.CalculateTier(user.TotalSpent, user.LoyaltyPoints);
+        if (user.MembershipTier != calculatedTier)
+        {
+            user.MembershipTier = calculatedTier;
+            await _context.SaveChangesAsync();
+        }
+
         return Ok(new
         {
             id = user.Id,
@@ -435,7 +453,10 @@ public class AuthController : ControllerBase
             phone = user.Phone,
             email = user.Email,
             role = user.Role?.Name,
-            isActive = user.IsActive
+            isActive = user.IsActive,
+            loyaltyPoints = user.LoyaltyPoints,
+            membershipTier = user.MembershipTier,
+            totalSpent = user.TotalSpent
         });
     }
 

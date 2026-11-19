@@ -33,12 +33,20 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
   static const Color onSurface = Color(0xFF370C14);
   static const Color outlineColor = Color(0xFF8F6F71);
 
-  // States quản lý dữ liệu khiếu nại
-  bool _item1Selected = true;
-  bool _item2Selected = false;
+  // States quản lý dữ liệu đơn hàng thực tế
+  bool _isLoadingOrder = false;
+  String _orderCode = 'WS3T-8892';
+  String _customerName = 'Khách hàng 3T';
+  String _customerPhone = '';
+  String _sealCode = 'WS-SEAL-8892';
+  String _drumInfo = 'Lồng giặt sấy thông minh LG Turbo #02';
+  String _shipperName = 'Lê Minh Hoàng (0922222222)';
+  double _orderWeight = 2.5;
 
-  int _selectedCategoryIndex =
-      2; // 0: Lem màu, 1: Rách, 2: Vết bẩn chưa sạch, 3: Thất lạc, 4: Đồ ẩm
+  // Danh sách các món đồ thực tế của đơn hàng
+  List<Map<String, dynamic>> _itemSelections = [];
+
+  int _selectedCategoryIndex = 2; // 0: Lem màu, 1: Rách, 2: Vết bẩn chưa sạch, 3: Thất lạc, 4: Đồ ẩm
   final List<Map<String, dynamic>> _categories = [
     {'icon': Icons.palette_outlined, 'label': 'Lem màu / Phai màu'},
     {'icon': Icons.texture, 'label': 'Rách / Bung chỉ / Co rút'},
@@ -51,24 +59,111 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
     'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=200&auto=format&fit=crop',
     'https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?q=80&w=200&auto=format&fit=crop',
   ];
+
   late TextEditingController _descController;
-  int _selectedSolution =
-      1; // 1: Giặt & tẩy hấp, 2: Hoàn tiền, 3: Yêu cầu đền bù
+  late TextEditingController _refundAmountController;
+  int _selectedSolution = 1; // 1: Giặt lại miễn phí, 2: Hoàn tiền, 3: Bồi thường sản phẩm, 4: Tặng Voucher / Xu
   bool _isSubmitting = false;
 
   @override
   void initState() {
     super.initState();
+    _orderCode = widget.orderCode;
+    _orderWeight = widget.orderWeight;
     _descController = TextEditingController(
-      text:
-          'Cổ áo sơ mi vẫn còn vết ố sậm màu ở viền trong nẹp cổ và có nếp gấp bị nhăn.',
+      text: 'Món đồ có sự cố sau khi nhận từ shipper, nhờ xưởng kiểm tra hỗ trợ xử lý thỏa đáng.',
     );
+    _refundAmountController = TextEditingController(text: '150000');
+    _loadOrderData();
   }
 
   @override
   void dispose() {
     _descController.dispose();
+    _refundAmountController.dispose();
     super.dispose();
+  }
+
+  String _formatCurrency(dynamic amount) {
+    final num val = amount is num ? amount : (num.tryParse(amount?.toString() ?? '0') ?? 0);
+    return '${val.toStringAsFixed(0).replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')} đ';
+  }
+
+  Future<void> _loadOrderData() async {
+    // 1. Nếu có items truyền từ màn trước
+    if (widget.items != null && widget.items!.isNotEmpty) {
+      _itemSelections = widget.items!.map((it) {
+        final sName = (it['serviceName'] ?? it['name'] ?? 'Dịch vụ giặt sấy').toString();
+        final qty = it['quantity'] ?? 1;
+        final unit = (it['unit'] ?? 'món').toString();
+        final price = it['unitPrice'] ?? it['price'] ?? 0;
+        return {
+          'title': '$qty $unit $sName',
+          'subtitle': 'Đơn giá: ${_formatCurrency(price)} / $unit',
+          'tag': sName,
+          'isSelected': true,
+        };
+      }).toList();
+    }
+
+    // 2. Nếu có orderId, tải trực tiếp dữ liệu đơn hàng thật từ Backend
+    if (widget.orderId != null && widget.orderId! > 0) {
+      setState(() => _isLoadingOrder = true);
+      try {
+        final order = await ApiService.getOrderDetail(widget.orderId!);
+        if (!mounted) return;
+
+        setState(() {
+          _orderCode = 'WS3T-${widget.orderId.toString().padLeft(4, '0')}';
+          _customerName = (order['customerName'] ?? '').toString();
+          if (_customerName.isEmpty) _customerName = 'Khách hàng 3T';
+          _customerPhone = (order['customerPhone'] ?? order['contactPhone'] ?? '').toString();
+          _sealCode = (order['sealCode'] ?? 'WS-SEAL-${widget.orderId.toString().padLeft(4, '0')}').toString();
+          _drumInfo = (order['drumInfo'] ?? 'Lồng giặt sấy thông minh LG Turbo #02').toString();
+          _shipperName = (order['shipperName'] ?? 'Shipper giao nhận WashSmart 3T').toString();
+
+          if (order['weightKg'] is num) {
+            _orderWeight = (order['weightKg'] as num).toDouble();
+          }
+
+          if (_itemSelections.isEmpty) {
+            final rawItems = order['items'];
+            if (rawItems is List && rawItems.isNotEmpty) {
+              _itemSelections = rawItems.map((raw) {
+                final it = Map<String, dynamic>.from(raw as Map);
+                final sName = (it['serviceName'] ?? it['name'] ?? 'Dịch vụ giặt').toString();
+                final qty = it['quantity'] ?? 1;
+                final unit = (it['unit'] ?? 'món').toString();
+                final price = it['unitPrice'] ?? it['price'] ?? 0;
+                return {
+                  'title': '$qty $unit $sName',
+                  'subtitle': 'Đơn giá: ${_formatCurrency(price)} / $unit',
+                  'tag': sName,
+                  'isSelected': true,
+                };
+              }).toList();
+            }
+          }
+          _isLoadingOrder = false;
+        });
+      } catch (e) {
+        if (mounted) setState(() => _isLoadingOrder = false);
+      }
+    }
+
+    // Fallback nếu không có item nào
+    if (_itemSelections.isEmpty) {
+      setState(() {
+        _itemSelections = [
+          {
+            'title': 'Dịch vụ giặt sấy theo đơn #$_orderCode',
+            'subtitle': 'Khối lượng: ${_orderWeight.toStringAsFixed(1)} kg',
+            'tag': 'Tiêu chuẩn',
+            'isSelected': true,
+          }
+        ];
+      });
+    }
   }
 
   void _showToast(String message) {
@@ -81,10 +176,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
             Expanded(
               child: Text(
                 message,
-                style: GoogleFonts.plusJakartaSans(
-                  color: Colors.white,
-                  fontSize: 12,
-                ),
+                style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 12),
               ),
             ),
           ],
@@ -99,7 +191,8 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
   }
 
   Future<void> _handleSubmitClaim() async {
-    if (!_item1Selected && !_item2Selected) {
+    final selectedItems = _itemSelections.where((x) => x['isSelected'] == true).toList();
+    if (selectedItems.isEmpty) {
       _showToast('Vui lòng chọn ít nhất 1 món đồ bị sự cố!');
       return;
     }
@@ -111,17 +204,33 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
       return;
     }
 
+    final selectedNames = selectedItems.map((e) => e['title']).join('; ');
+    final fullItemDesc = '$selectedNames. $desc';
+
+    double refundAmount = 0;
+    String solutionText = 'Giặt & phục hồi miễn phí';
+    if (_selectedSolution == 2) {
+      solutionText = 'Hoàn tiền dịch vụ giặt';
+      refundAmount = 80000;
+    } else if (_selectedSolution == 3) {
+      solutionText = 'Bồi thường giá trị sản phẩm';
+      refundAmount = double.tryParse(_refundAmountController.text.replaceAll('.', '').trim()) ?? 150000;
+    } else if (_selectedSolution == 4) {
+      solutionText = 'Tặng Voucher đền bù / Cộng 3T Xu vào ví';
+      refundAmount = 100000;
+    }
+
     setState(() => _isSubmitting = true);
 
     try {
       final res = await ApiService.createComplaint(
         orderId: widget.orderId,
         incidentType: categoryLabel,
-        itemDescription: desc,
+        itemDescription: fullItemDesc,
         severity: _selectedCategoryIndex == 1 ? 'High' : 'Medium',
         photoUrl: _proofPhotos.isNotEmpty ? _proofPhotos.first : null,
-        customerNote: 'Phương án mong muốn: ${_selectedSolution == 1 ? "Giặt & tẩy hấp phục hồi" : (_selectedSolution == 2 ? "Hoàn tiền dịch vụ" : "Yêu cầu bồi thường theo bảo hiểm 3T Care")}',
-        requestedRefund: _selectedSolution == 3 ? 150000 : (_selectedSolution == 2 ? 80000 : 0),
+        customerNote: 'Phương án mong muốn: $solutionText. Ghi chú khách: $desc',
+        requestedRefund: refundAmount,
       );
 
       if (mounted) {
@@ -163,7 +272,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
               ),
             ),
             Text(
-              'Đơn hàng #${widget.orderCode}',
+              'Đơn hàng #$_orderCode',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 11,
                 color: secondaryColor,
@@ -174,13 +283,8 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
         ),
         actions: [
           IconButton(
-            icon: const Icon(
-              Icons.support_agent,
-              color: outlineColor,
-              size: 22,
-            ),
-            onPressed: () =>
-                _showToast('Đang kết nối tới bộ phận Bảo hiểm 3T Care...'),
+            icon: const Icon(Icons.support_agent, color: outlineColor, size: 22),
+            onPressed: () => _showToast('Đang kết nối tới bộ phận Bảo hiểm 3T Care...'),
           ),
           Padding(
             padding: const EdgeInsets.only(right: 16, left: 4),
@@ -192,43 +296,30 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 0. BẢO HIỂM 3T CARE HEADER CARD
-            _buildInsuranceHeaderCard(),
-            const SizedBox(height: 16),
-
-            // 1. CHỌN MÓN ĐỒ BỊ SỰ CỐ
-            _buildItemSelectionSection(),
-            const SizedBox(height: 20),
-
-            // 2. PHÂN LOẠI SỰ CỐ
-            _buildCategoryChipsSection(),
-            const SizedBox(height: 20),
-
-            // 3. HÌNH ẢNH / VIDEO BẰNG CHỨNG
-            _buildEvidenceMediaSection(),
-            const SizedBox(height: 20),
-
-            // 4. MÔ TẢ CHI TIẾT VẤN ĐỀ
-            _buildProblemDescriptionSection(),
-            const SizedBox(height: 20),
-
-            // 5. PHƯƠNG ÁN GIẢI QUYẾT MONG MUỐN
-            _buildSolutionOptionsSection(),
-            const SizedBox(height: 16),
-
-            // HOTLINE HỖ TRỢ GẤP
-            _buildUrgentSupportBox(),
-            const SizedBox(height: 80), // Khoảng trống cho nút Fixed Bottom
-          ],
-        ),
-      ),
-
-      // FIXED BOTTOM CTA BUTTON
+      body: _isLoadingOrder
+          ? const Center(child: CircularProgressIndicator(color: primaryColor))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildInsuranceHeaderCard(),
+                  const SizedBox(height: 16),
+                  _buildItemSelectionSection(),
+                  const SizedBox(height: 20),
+                  _buildCategoryChipsSection(),
+                  const SizedBox(height: 20),
+                  _buildEvidenceMediaSection(),
+                  const SizedBox(height: 20),
+                  _buildProblemDescriptionSection(),
+                  const SizedBox(height: 20),
+                  _buildSolutionOptionsSection(),
+                  const SizedBox(height: 16),
+                  _buildUrgentSupportBox(),
+                  const SizedBox(height: 80),
+                ],
+              ),
+            ),
       bottomSheet: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
@@ -249,19 +340,14 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
               onPressed: _isSubmitting ? null : _handleSubmitClaim,
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(25),
-                ),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
                 elevation: 4,
               ),
               icon: _isSubmitting
                   ? const SizedBox(
                       width: 18,
                       height: 18,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                     )
                   : const Icon(Icons.shield, color: Colors.white, size: 20),
               label: Text(
@@ -294,21 +380,14 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 3,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                 decoration: BoxDecoration(
                   color: cardBg,
                   borderRadius: BorderRadius.circular(20),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
-                      Icons.verified_user,
-                      color: primaryColor,
-                      size: 14,
-                    ),
+                    const Icon(Icons.verified_user, color: primaryColor, size: 14),
                     const SizedBox(width: 4),
                     Text(
                       'BẢO HIỂM 3T CARE',
@@ -322,11 +401,8 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                 ),
               ),
               Text(
-                '16:30 Hôm nay',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 11,
-                  color: outlineColor,
-                ),
+                'Thời gian: Hôm nay',
+                style: GoogleFonts.plusJakartaSans(fontSize: 11, color: outlineColor),
               ),
             ],
           ),
@@ -340,7 +416,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Đơn hàng #${widget.orderCode}',
+                    'Đơn hàng #$_orderCode',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 15,
                       fontWeight: FontWeight.bold,
@@ -348,11 +424,8 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                     ),
                   ),
                   Text(
-                    'Khách hàng: Chị Kiều Như',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      color: outlineColor,
-                    ),
+                    'Khách hàng: $_customerName',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 12, color: outlineColor),
                   ),
                 ],
               ),
@@ -363,7 +436,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  '#SEAL-3T-8892',
+                  '#$_sealCode',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 10,
                     fontWeight: FontWeight.bold,
@@ -387,10 +460,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                 Expanded(
                   child: RichText(
                     text: TextSpan(
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        color: outlineColor,
-                      ),
+                      style: GoogleFonts.plusJakartaSans(fontSize: 11, color: outlineColor),
                       children: [
                         TextSpan(
                           text: 'Cam kết bảo hiểm: ',
@@ -400,8 +470,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                           ),
                         ),
                         const TextSpan(
-                          text:
-                              'Đền bù lên đến 100% giá trị trang phục hoặc giặt sấy lại miễn phí trong 24h.',
+                          text: 'Đền bù lên đến 100% giá trị trang phục hoặc giặt sấy lại miễn phí trong 24h.',
                         ),
                       ],
                     ),
@@ -446,148 +515,110 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
             ),
             Text(
               'Chọn ít nhất 1 món',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 11,
-                color: outlineColor,
-              ),
+              style: GoogleFonts.plusJakartaSans(fontSize: 11, color: outlineColor),
             ),
           ],
         ),
         const SizedBox(height: 10),
-
-        // Item 1
-        _buildSelectableItemCard(
-          title: '01 Áo sơ mi công sở cao cấp',
-          subtitle: 'Vải lụa cát • Treo móc chống nhăn',
-          tag: 'Ủi hơi nước',
-          imageUrl:
-              'https://images.unsplash.com/photo-1602810318383-e386cc2a3ccf?q=80&w=200&auto=format&fit=crop',
-          isSelected: _item1Selected,
-          onTap: () => setState(() => _item1Selected = !_item1Selected),
-        ),
-        const SizedBox(height: 8),
-
-        // Item 2
-        _buildSelectableItemCard(
-          title: 'Giặt sấy thông thường (${widget.orderWeight.toStringAsFixed(1)} kg)',
-          subtitle: 'Quần áo thường ngày • Hương hoa hồng dịu nhẹ',
-          tag: 'Tiêu chuẩn',
-          imageUrl:
-              'https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?q=80&w=200&auto=format&fit=crop',
-          isSelected: _item2Selected,
-          onTap: () => setState(() => _item2Selected = !_item2Selected),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSelectableItemCard({
-    required String title,
-    required String subtitle,
-    required String tag,
-    required String imageUrl,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: isSelected ? cardBg : surfaceLow.withOpacity(0.6),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected ? primaryColor : Colors.transparent,
-            width: 1.5,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.04),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+        ..._itemSelections.asMap().entries.map((entry) {
+          final idx = entry.key;
+          final item = entry.value;
+          final isSelected = item['isSelected'] == true;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  item['isSelected'] = !isSelected;
+                });
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isSelected ? cardBg : surfaceLow.withOpacity(0.6),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isSelected ? primaryColor : Colors.transparent,
+                    width: 1.5,
                   ),
-                ]
-              : [],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                color: isSelected ? primaryColor : surfaceHigh,
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: isSelected
-                  ? const Icon(Icons.check, size: 16, color: Colors.white)
-                  : null,
-            ),
-            const SizedBox(width: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Image.network(
-                imageUrl,
-                width: 44,
-                height: 44,
-                fit: BoxFit.cover,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          title,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: onSurface,
+                  boxShadow: isSelected
+                      ? [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.04),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
                           ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        ]
+                      : [],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 22,
+                      height: 22,
+                      decoration: BoxDecoration(
+                        color: isSelected ? primaryColor : surfaceHigh,
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: surfaceLow,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          tag,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            color: primaryColor,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      color: outlineColor,
+                      child: isSelected
+                          ? const Icon(Icons.check, size: 16, color: Colors.white)
+                          : null,
                     ),
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  item['title'].toString(),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: onSurface,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: surfaceLow,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  item['tag'].toString(),
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    color: primaryColor,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            item['subtitle'].toString(),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: outlineColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ],
-        ),
-      ),
+          );
+        }),
+      ],
     );
   }
 
@@ -622,10 +653,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
             ),
             Text(
               'Chọn loại lỗi',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 11,
-                color: outlineColor,
-              ),
+              style: GoogleFonts.plusJakartaSans(fontSize: 11, color: outlineColor),
             ),
           ],
         ),
@@ -650,9 +678,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                     cat['label'] as String,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 11,
-                      fontWeight: isSelected
-                          ? FontWeight.bold
-                          : FontWeight.w500,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                       color: isSelected ? Colors.white : onSurface,
                     ),
                   ),
@@ -663,9 +689,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
               backgroundColor: cardBg,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
-                side: BorderSide(
-                  color: isSelected ? primaryColor : Colors.transparent,
-                ),
+                side: BorderSide(color: isSelected ? primaryColor : Colors.transparent),
               ),
               showCheckmark: false,
               onSelected: (bool selected) {
@@ -719,7 +743,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
         ),
         const SizedBox(height: 4),
         Text(
-          'Chụp rõ nét vết bẩn kèm tem seal niêm phong để hệ thống AI thẩm định tự động trong 15 phút.',
+          'Chụp rõ nét vết bẩn kèm tem seal niêm phong để đối soát minh bạch với xưởng giặt.',
           style: GoogleFonts.plusJakartaSans(fontSize: 11, color: outlineColor),
         ),
         const SizedBox(height: 10),
@@ -736,8 +760,8 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                         borderRadius: BorderRadius.circular(12),
                         child: Image.network(
                           _proofPhotos[idx],
-                          width: 90,
-                          height: 90,
+                          width: 85,
+                          height: 85,
                           fit: BoxFit.cover,
                         ),
                       ),
@@ -745,20 +769,14 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                         bottom: 4,
                         left: 4,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 1,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                           decoration: BoxDecoration(
                             color: Colors.black.withOpacity(0.7),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
                             'Ảnh ${idx + 1}',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 8,
-                              color: Colors.white,
-                            ),
+                            style: GoogleFonts.plusJakartaSans(fontSize: 8, color: Colors.white),
                           ),
                         ),
                       ),
@@ -778,8 +796,6 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                   ),
                 );
               }),
-
-              // Button Thêm ảnh (tối đa 5 ảnh)
               if (_proofPhotos.length < 5)
                 Padding(
                   padding: const EdgeInsets.only(right: 10.0),
@@ -796,8 +812,8 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                     },
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
-                      width: 90,
-                      height: 90,
+                      width: 85,
+                      height: 85,
                       decoration: BoxDecoration(
                         color: cardBg,
                         borderRadius: BorderRadius.circular(12),
@@ -808,15 +824,8 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                         children: [
                           Container(
                             padding: const EdgeInsets.all(6),
-                            decoration: const BoxDecoration(
-                              color: surfaceLow,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.photo_camera_outlined,
-                              color: primaryColor,
-                              size: 20,
-                            ),
+                            decoration: const BoxDecoration(color: surfaceLow, shape: BoxShape.circle),
+                            child: const Icon(Icons.photo_camera_outlined, color: primaryColor, size: 20),
                           ),
                           const SizedBox(height: 4),
                           Text(
@@ -832,46 +841,6 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                     ),
                   ),
                 ),
-
-              // Button Thêm video
-              InkWell(
-                onTap: () =>
-                    _showToast('Tính năng quay video bằng chứng đang được mở'),
-                borderRadius: BorderRadius.circular(12),
-                child: Container(
-                  width: 90,
-                  height: 90,
-                  decoration: BoxDecoration(
-                    color: surfaceLow,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: surfaceHigh,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(
-                          Icons.videocam_outlined,
-                          color: outlineColor,
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Thêm video',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
-                          color: outlineColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
             ],
           ),
         ),
@@ -910,75 +879,28 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
             ),
             Text(
               '${_descController.text.length}/300 ký tự',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 11,
-                color: outlineColor,
-              ),
+              style: GoogleFonts.plusJakartaSans(fontSize: 11, color: outlineColor),
             ),
           ],
         ),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: cardBg,
-            borderRadius: BorderRadius.circular(14),
-          ),
+          decoration: BoxDecoration(color: cardBg, borderRadius: BorderRadius.circular(14)),
           child: Column(
             children: [
               TextField(
                 controller: _descController,
                 maxLength: 300,
                 maxLines: 3,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  color: onSurface,
-                ),
+                style: GoogleFonts.plusJakartaSans(fontSize: 12, color: onSurface),
                 decoration: InputDecoration(
-                  hintText:
-                      'Vui lòng mô tả cụ thể vị trí vết bẩn, dấu hiệu hư tổn...',
-                  hintStyle: GoogleFonts.plusJakartaSans(
-                    fontSize: 12,
-                    color: outlineColor,
-                  ),
+                  hintText: 'Vui lòng mô tả cụ thể vị trí vết bẩn, dấu hiệu hư tổn...',
+                  hintStyle: GoogleFonts.plusJakartaSans(fontSize: 12, color: outlineColor),
                   border: InputBorder.none,
                   counterText: '',
                 ),
                 onChanged: (text) => setState(() {}),
-              ),
-              const Divider(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      const Icon(
-                        Icons.tips_and_updates_outlined,
-                        color: tertiaryColor,
-                        size: 14,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Gợi ý: Chỉ rõ vị trí trái/phải, loại vết bẩn',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
-                          color: tertiaryColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                  InkWell(
-                    onTap: () {
-                      _descController.clear();
-                      setState(() {});
-                    },
-                    child: const Icon(
-                      Icons.clear,
-                      color: outlineColor,
-                      size: 16,
-                    ),
-                  ),
-                ],
               ),
             ],
           ),
@@ -1015,31 +937,67 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
         ),
         const SizedBox(height: 10),
 
-        // Option 1
+        // Option 1: Giặt lại
         _buildSolutionRadioCard(
           value: 1,
           title: 'Giặt & tẩy hấp phục hồi miễn phí',
           badge: 'Khuyên dùng',
-          subtitle:
-              'Giao nhận tận nơi lại ngay trong vòng 24h. Được xử lý bởi chuyên viên bậc cao 3T.',
+          subtitle: 'Giao nhận tận nơi lại ngay trong vòng 24h. Được xử lý bởi chuyên viên bậc cao 3T.',
         ),
         const SizedBox(height: 8),
 
-        // Option 2
+        // Option 2: Hoàn tiền dịch vụ
         _buildSolutionRadioCard(
           value: 2,
-          title: 'Hoàn tiền dịch vụ giặt ủi',
-          subtitle:
-              'Cộng tiền ngay vào Ví WashSmart 3T hoặc chuyển khoản ngân hàng trong 2h.',
+          title: 'Hoàn tiền cước dịch vụ giặt',
+          subtitle: 'Hoàn lại 100% tiền dịch vụ về tài khoản ngân hàng hoặc ví điểm thưởng.',
         ),
         const SizedBox(height: 8),
 
-        // Option 3
+        // Option 3: Bồi thường sản phẩm
         _buildSolutionRadioCard(
           value: 3,
-          title: 'Yêu cầu đền bù thiệt hại bảo hiểm',
-          subtitle:
-              'Áp dụng nếu trang phục bị hỏng cấu trúc vải, mất phụ kiện không thể phục hồi.',
+          title: 'Yêu cầu bồi thường giá trị sản phẩm',
+          subtitle: 'Áp dụng theo cam kết bảo hiểm chất lượng 3T Care khi đồ bị hỏng sợi, co rút.',
+        ),
+        if (_selectedSolution == 3) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: surfaceLow,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: primaryColor.withOpacity(0.3)),
+            ),
+            child: Row(
+              children: [
+                Text(
+                  'Số tiền mong muốn:',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.bold, color: onSurface),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: TextField(
+                    controller: _refundAmountController,
+                    keyboardType: TextInputType.number,
+                    style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.bold, color: primaryColor),
+                    decoration: const InputDecoration(
+                      border: InputBorder.none,
+                      suffixText: 'VNĐ',
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        const SizedBox(height: 8),
+
+        // Option 4: Tặng Voucher / Xu đền bù
+        _buildSolutionRadioCard(
+          value: 4,
+          title: 'Tặng Voucher đền bù / Cộng 3T Xu vào ví',
+          subtitle: 'Nhận ngay Voucher 100.000đ hoặc 10.000 Xu để sử dụng cho các lần giặt tới.',
         ),
       ],
     );
@@ -1054,15 +1012,25 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
     final bool isSelected = _selectedSolution == value;
     return GestureDetector(
       onTap: () => setState(() => _selectedSolution = value),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: isSelected ? cardBg : surfaceLow,
+          color: isSelected ? cardBg : surfaceLow.withOpacity(0.5),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isSelected ? primaryColor : Colors.transparent,
             width: 1.5,
           ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.04),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : [],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1071,31 +1039,32 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
               value: value,
               groupValue: _selectedSolution,
               activeColor: primaryColor,
-              onChanged: (val) => setState(() => _selectedSolution = val!),
+              onChanged: (val) {
+                if (val != null) setState(() => _selectedSolution = val);
+              },
             ),
+            const SizedBox(width: 4),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Text(
-                        title,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          color: onSurface,
+                      Expanded(
+                        child: Text(
+                          title,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: onSurface,
+                          ),
                         ),
                       ),
-                      if (badge != null) ...[
-                        const SizedBox(width: 6),
+                      if (badge != null)
                         Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 1,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                           decoration: BoxDecoration(
-                            color: surfaceHigh,
+                            color: const Color(0xFFFFD9E4),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
@@ -1103,20 +1072,16 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 9,
                               fontWeight: FontWeight.bold,
-                              color: secondaryColor,
+                              color: primaryColor,
                             ),
                           ),
                         ),
-                      ],
                     ],
                   ),
                   const SizedBox(height: 2),
                   Text(
                     subtitle,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      color: outlineColor,
-                    ),
+                    style: GoogleFonts.plusJakartaSans(fontSize: 11, color: outlineColor),
                   ),
                 ],
               ),
@@ -1133,60 +1098,30 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: surfaceLow,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFFD1D8)),
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.contact_support_outlined,
-                color: secondaryColor,
-                size: 22,
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Cần trợ giúp gấp 24/7?',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: onSurface,
-                    ),
+          const Icon(Icons.phone_in_talk, color: primaryColor, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Hotline Bảo Hiểm 3T Care: 1900 6868',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: onSurface,
                   ),
-                  Text(
-                    'Hotline ưu tiên tiếp nhận bảo hiểm',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      color: outlineColor,
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          ElevatedButton.icon(
-            onPressed: () =>
-                _showToast('Đang gọi Hotline ưu tiên Bảo hiểm: 1900 3388'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: cardBg,
-              foregroundColor: primaryColor,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            ),
-            icon: const Icon(Icons.call, size: 14),
-            label: Text(
-              '1900 3388',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-              ),
+                ),
+                Text(
+                  'Hỗ trợ thẩm định và đối soát IoT trực tiếp 24/7',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 10, color: outlineColor),
+                ),
+              ],
             ),
           ),
         ],
