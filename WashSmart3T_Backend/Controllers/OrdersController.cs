@@ -1220,10 +1220,10 @@ public class OrdersController : ControllerBase
 
     // ============================================================
     // POST: api/Orders/{id}/cancel
-    // Khách hủy đơn khi còn ở trạng thái Pending
+    // Khách hủy đơn khi chưa xác nhận và chưa phân công shipper
     // ============================================================
     [HttpPost("{id}/cancel")]
-    public async Task<IActionResult> CancelOrder(int id)
+    public async Task<IActionResult> CancelOrder(int id, [FromBody] CancelOrderRequest? request = null)
     {
         var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         if (userIdClaim == null || !int.TryParse(userIdClaim, out int customerId))
@@ -1240,19 +1240,34 @@ public class OrdersController : ControllerBase
             return Forbid();
         }
 
-        if (order.Status != OrderStatus.Pending && order.Status != OrderStatus.Confirmed)
+        // Khách hàng chỉ có thể hủy đơn nếu đơn hàng chưa được xác nhận và chưa phân công shipper
+        if (role == "Customer" || (role != "Admin" && role != "Staff"))
         {
-            return BadRequest(new { message = "Chỉ có thể hủy đơn khi đơn chưa bắt đầu lấy hoặc đang xử lý." });
+            if (order.Status != OrderStatus.Pending || order.ShipperId != null)
+            {
+                return BadRequest(new { message = "Khách hàng chỉ có thể hủy đơn khi đơn hàng chưa được xác nhận và chưa được phân công shipper." });
+            }
+        }
+        else
+        {
+            if (order.Status != OrderStatus.Pending && order.Status != OrderStatus.Confirmed)
+            {
+                return BadRequest(new { message = "Chỉ có thể hủy đơn khi đơn chưa bắt đầu lấy hoặc đang xử lý." });
+            }
         }
 
         order.Status = OrderStatus.Cancelled;
         order.UpdatedAt = DateTime.UtcNow;
 
+        var cancelNote = !string.IsNullOrWhiteSpace(request?.Reason)
+            ? $"Đơn hàng đã được hủy ({request.Reason.Trim()})"
+            : "Đơn hàng đã được hủy";
+
         _context.OrderStatusHistories.Add(new OrderStatusHistory
         {
             OrderId = order.Id,
             Status = OrderStatus.Cancelled,
-            Note = "Đơn hàng đã được hủy",
+            Note = cancelNote,
             ChangedByUserId = customerId,
             ChangedAt = DateTime.UtcNow
         });

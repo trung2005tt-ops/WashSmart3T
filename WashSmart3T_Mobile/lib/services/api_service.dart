@@ -158,6 +158,38 @@ class ApiService {
     return <String, dynamic>{};
   }
 
+  static Future<Map<String, dynamic>> cancelOrder(int orderId, {String? reason}) async {
+    final token = await AuthService.getToken();
+
+    if (token == null || token.isEmpty) {
+      throw Exception('Vui lòng đăng nhập lại.');
+    }
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/Orders/$orderId/cancel'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({
+        if (reason != null && reason.trim().isNotEmpty) 'reason': reason.trim(),
+      }),
+    );
+
+    final decoded = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      return {'message': 'Hủy đơn hàng thành công.'};
+    }
+
+    String errorMsg = 'Không thể hủy đơn hàng (${response.statusCode}).';
+    if (decoded is Map && decoded['message'] != null) {
+      errorMsg = decoded['message'].toString();
+    }
+    throw Exception(errorMsg);
+  }
+
   static Future<Map<String, dynamic>> getMyVouchers() async {
     final token = await AuthService.getToken();
     final headers = <String, String>{

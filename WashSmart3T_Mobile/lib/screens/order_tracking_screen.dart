@@ -115,6 +115,140 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     return '${value.toStringAsFixed(0)} đ';
   }
 
+  void _showCancelDialog() {
+    String selectedReason = 'Đổi ý, không còn nhu cầu';
+    final customReasonController = TextEditingController();
+    final reasons = [
+      'Đổi ý, không còn nhu cầu',
+      'Muốn thay đổi thời gian hoặc địa chỉ lấy đồ',
+      'Muốn chọn gói dịch vụ khác',
+      'Lý do khác',
+    ];
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: Row(
+                children: [
+                  const Icon(Icons.warning_amber_rounded, color: Colors.red, size: 24),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Xác nhận hủy đơn hàng',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
+                  ),
+                ],
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Bạn có chắc chắn muốn hủy đơn hàng này? Sau khi hủy, lịch hẹn lấy đồ sẽ bị hủy và không thể hoàn tác.',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 12, color: secondaryText),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Lý do hủy đơn:',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    ...reasons.map((r) => RadioListTile<String>(
+                          value: r,
+                          groupValue: selectedReason,
+                          activeColor: primary,
+                          contentPadding: EdgeInsets.zero,
+                          dense: true,
+                          title: Text(r, style: GoogleFonts.plusJakartaSans(fontSize: 12)),
+                          onChanged: (val) {
+                            if (val != null) {
+                              setDialogState(() => selectedReason = val);
+                            }
+                          },
+                        )),
+                    if (selectedReason == 'Lý do khác') ...[
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: customReasonController,
+                        style: GoogleFonts.plusJakartaSans(fontSize: 12),
+                        decoration: InputDecoration(
+                          hintText: 'Nhập lý do cụ thể...',
+                          isDense: true,
+                          filled: true,
+                          fillColor: const Color(0xFFFFF0F0),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: Text('Đóng', style: GoogleFonts.plusJakartaSans(color: secondaryText, fontWeight: FontWeight.bold)),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.pop(dialogCtx);
+                    final finalReason = selectedReason == 'Lý do khác' && customReasonController.text.trim().isNotEmpty
+                        ? customReasonController.text.trim()
+                        : selectedReason;
+                    await _handleCancelOrder(finalReason);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade700,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: Text('Xác nhận hủy', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _handleCancelOrder(String reason) async {
+    setState(() => _loading = true);
+    try {
+      await ApiService.cancelOrder(widget.orderId, reason: reason);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Đã hủy đơn hàng thành công.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      await _loadData();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Colors.red.shade700,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -307,6 +441,34 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
             'Tổng thanh toán',
             _formatMoney(order['totalAmount'] ?? order['TotalAmount']),
           ),
+          if (status.toLowerCase() == 'pending' &&
+              (order['shipperId'] == null || order['shipperId'] == 0) &&
+              (order['shipperName'] == null || order['shipperName'].toString().trim().isEmpty)) ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _showCancelDialog,
+                icon: const Icon(Icons.cancel_outlined, size: 16, color: Colors.red),
+                label: Text(
+                  'Hủy Đơn Hàng Này',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red.shade700,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: BorderSide(color: Colors.red.shade300),
+                  backgroundColor: const Color(0xFFFFF0F0),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -323,6 +485,11 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
             .map((e) => Map<String, dynamic>.from(e))
             .toList()
         : <Map<String, dynamic>>[];
+
+    final status = (order['status'] ?? '').toString().toLowerCase();
+    final paymentStatus = (order['paymentStatus'] ?? '').toString().toLowerCase();
+    // 🚀 Chỉ khi đơn hàng hoàn thành hoặc thanh toán thành công mới được gửi khiếu nại
+    final bool isPaidOrCompleted = status == 'completed' || paymentStatus == 'paid';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -379,40 +546,68 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => SubmitClaimScreen(
-                      orderId: (id is num) ? (id as num).toInt() : int.tryParse(id.toString()) ?? widget.orderId,
-                      orderCode: orderCode,
-                      orderWeight: weightKg,
-                      items: items,
+          if (isPaidOrCompleted)
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => SubmitClaimScreen(
+                        orderId: (id is num) ? (id as num).toInt() : int.tryParse(id.toString()) ?? widget.orderId,
+                        orderCode: orderCode,
+                        orderWeight: weightKg,
+                        items: items,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.report_problem_outlined, size: 16, color: primary),
+                label: Text(
+                  'Gửi Khiếu Nại Đơn Hàng Này',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: primary,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: primary),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFFFD1D8)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.lock_clock, size: 18, color: primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      status == 'cancelled'
+                          ? 'Đơn hàng đã hủy, không thể gửi khiếu nại dịch vụ.'
+                          : 'Khiếu nại & bồi thường chỉ khả dụng sau khi đơn hàng được giao và thanh toán thành công.',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        color: secondaryText,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ),
-                );
-              },
-              icon: const Icon(Icons.report_problem_outlined, size: 16, color: primary),
-              label: Text(
-                'Gửi Khiếu Nại Đơn Hàng Này',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: primary,
-                ),
-              ),
-              style: OutlinedButton.styleFrom(
-                side: const BorderSide(color: primary),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 10),
+                ],
               ),
             ),
-          ),
         ],
       ),
     );

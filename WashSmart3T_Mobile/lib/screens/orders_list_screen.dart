@@ -1485,6 +1485,37 @@ class _OrdersListScreenState extends State<OrdersListScreen>
                     ),
                   ],
                 ),
+                if (status.toLowerCase() == 'pending' &&
+                    (order['shipperId'] == null || order['shipperId'] == 0) &&
+                    (order['shipperName'] == null || order['shipperName'].toString().trim().isEmpty)) ...[
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      OutlinedButton.icon(
+                        onPressed: () => _openOrderDetails(order),
+                        icon: const Icon(Icons.cancel_outlined, size: 14, color: Colors.red),
+                        label: Text(
+                          'Hủy đơn hàng',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red.shade700,
+                          ),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: Colors.red.shade200),
+                          backgroundColor: const Color(0xFFFFF0F0),
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
