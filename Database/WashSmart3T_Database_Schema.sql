@@ -817,6 +817,33 @@ BEGIN
 END;
 GO
 
+IF NOT EXISTS (
+    SELECT * FROM INFORMATION_SCHEMA.TABLES
+    WHERE TABLE_NAME = 'ShiftHandovers'
+)
+BEGIN
+    CREATE TABLE [ShiftHandovers] (
+        [Id] int NOT NULL IDENTITY,
+        [ShipperId] int NOT NULL,
+        [TotalOrders] int NOT NULL,
+        [CashOrdersCount] int NOT NULL,
+        [OnlineOrdersCount] int NOT NULL,
+        [CashAmount] decimal(18,2) NOT NULL,
+        [OnlineAmount] decimal(18,2) NOT NULL,
+        [Status] nvarchar(50) NOT NULL DEFAULT 'Pending',
+        [Note] nvarchar(max) NULL,
+        [ManagerNote] nvarchar(max) NULL,
+        [ConfirmedByUserId] int NULL,
+        [CreatedAt] datetime2 NOT NULL DEFAULT GETUTCDATE(),
+        [ConfirmedAt] datetime2 NULL,
+        [OrderIdsJson] nvarchar(max) NULL,
+        CONSTRAINT [PK_ShiftHandovers] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_ShiftHandovers_Users_ShipperId] FOREIGN KEY ([ShipperId]) REFERENCES [Users] ([Id]) ON DELETE NO ACTION,
+        CONSTRAINT [FK_ShiftHandovers_Users_ConfirmedByUserId] FOREIGN KEY ([ConfirmedByUserId]) REFERENCES [Users] ([Id]) ON DELETE NO ACTION
+    );
+END;
+GO
+
 COMMIT;
 GO
 

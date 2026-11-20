@@ -343,6 +343,30 @@ const Api = {
       return Api.post('/Promotions/verify', { code, orderAmount });
     },
   },
+
+  // Bàn giao tiền ca Shipper & Đối soát tài chính
+  ShiftHandover: {
+    async currentShift(shipperId) {
+      const qs = shipperId ? `?shipperId=${encodeURIComponent(shipperId)}` : '';
+      return Api.get(`/ShiftHandover/current-shift${qs}`);
+    },
+    async submit(payload) {
+      return Api.post('/ShiftHandover/submit', payload || {});
+    },
+    async pendingList() {
+      return Api.get('/ShiftHandover/pending-list');
+    },
+    async history(shipperId) {
+      const qs = shipperId ? `?shipperId=${encodeURIComponent(shipperId)}` : '';
+      return Api.get(`/ShiftHandover/history${qs}`);
+    },
+    async confirm(id, payload) {
+      return Api.post(`/ShiftHandover/${id}/confirm`, payload || {});
+    },
+    async reject(id, payload) {
+      return Api.post(`/ShiftHandover/${id}/reject`, payload || {});
+    },
+  },
 };
 
 // Sinh mã đơn hiển thị WS3T-XXXX từ ID đơn

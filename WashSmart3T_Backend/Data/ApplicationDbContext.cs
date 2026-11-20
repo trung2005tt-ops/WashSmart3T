@@ -209,6 +209,23 @@ public class ApplicationDbContext : DbContext
         {
             entity.Property(x => x.Price).HasColumnType("decimal(18,2)");
         });
+
+        // ============================
+        // SHIFT HANDOVER (BÀN GIAO TIỀN CA SHIPPER)
+        // ============================
+        modelBuilder.Entity<ShiftHandover>(entity =>
+        {
+            entity.Property(x => x.CashAmount).HasColumnType("decimal(18,2)");
+            entity.Property(x => x.OnlineAmount).HasColumnType("decimal(18,2)");
+            entity.HasOne(x => x.Shipper)
+                  .WithMany()
+                  .HasForeignKey(x => x.ShipperId)
+                  .OnDelete(DeleteBehavior.Restrict);
+            entity.HasOne(x => x.ConfirmedByUser)
+                  .WithMany()
+                  .HasForeignKey(x => x.ConfirmedByUserId)
+                  .OnDelete(DeleteBehavior.Restrict);
+        });
     }
 
     public DbSet<User> Users => Set<User>();
@@ -224,4 +241,5 @@ public class ApplicationDbContext : DbContext
     public DbSet<StoreConfig> StoreConfigs => Set<StoreConfig>();
     public DbSet<Promotion> Promotions => Set<Promotion>();
     public DbSet<CareOption> CareOptions => Set<CareOption>();
+    public DbSet<ShiftHandover> ShiftHandovers => Set<ShiftHandover>();
 }

@@ -138,9 +138,6 @@ class _ShipperScreenState extends State<ShipperScreen>
   late TabController _tabController;
 
   // Shipper Stats
-  static const double _kpiPerOrder = 30000;
-  static const double _baseSalary = 10000000;
-  final double _violationFee = 50000;
   int _todayCompletedCount = 0;
 
   bool _isSameDay(DateTime? d1, DateTime d2) {
@@ -195,8 +192,8 @@ class _ShipperScreenState extends State<ShipperScreen>
     return list;
   }
 
-  double get kpiEarnings => _todayCompletedCount * _kpiPerOrder;
-  double get totalIncome => kpiEarnings + _baseSalary - _violationFee;
+  // Thống kê ca chạy & Đối soát tiền mặt cuối ca
+  Map<String, dynamic>? _currentShiftData;
 
   // Dữ liệu đơn từ API (không còn mock)
   List<ShipperOrderModel> _orders = [];
@@ -240,6 +237,7 @@ class _ShipperScreenState extends State<ShipperScreen>
 
       // Lấy tên tài khoản hiện tại từ API hồ sơ; không dùng tên mẫu hard-code.
       await _loadShipperProfile(token);
+      await _loadCurrentShiftSummary();
 
       final previousActiveIds = _orders
           .where(
@@ -447,6 +445,31 @@ class _ShipperScreenState extends State<ShipperScreen>
                   : 'Shipper $name',
             );
           }
+        }
+      }
+    } catch (_) {}
+  }
+
+  /// Tải thông tin đối soát sổ ca và các khoản tiền cần bàn giao từ API
+  Future<void> _loadCurrentShiftSummary() async {
+    try {
+      final token = await AuthService.getToken();
+      if (token == null || token.isEmpty) return;
+
+      final res = await http.get(
+        Uri.parse('$_baseUrl/ShiftHandover/current-shift'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      if (res.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(res.bodyBytes)) as Map<String, dynamic>;
+        if (mounted) {
+          setState(() {
+            _currentShiftData = data;
+          });
         }
       }
     } catch (_) {}
@@ -1191,9 +1214,27 @@ class _ShipperScreenState extends State<ShipperScreen>
             ),
           ),
           IconButton(
-            onPressed: _showShipperWalletDialog,
-            icon: const Icon(Icons.account_balance_wallet, color: Colors.white),
-            tooltip: 'Ví Shipper',
+            onPressed: _showShiftHandoverDialog,
+            icon: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Icon(Icons.point_of_sale_rounded, color: Colors.white),
+                if (((_currentShiftData?['cashAmount'] as num?)?.toDouble() ?? 0) > 0)
+                  Positioned(
+                    top: -2,
+                    right: -2,
+                    child: Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFBBF24),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            tooltip: 'Sổ ca & Bàn giao tiền mặt',
           ),
           IconButton(
             onPressed: () => _handleLogout(context),
@@ -1206,35 +1247,55 @@ class _ShipperScreenState extends State<ShipperScreen>
   }
 
   Widget _buildDashboardStats() {
+    final cashAmount = (_currentShiftData?['cashAmount'] as num?)?.toDouble() ?? todayCodCollected;
+    final onlineAmount = (_currentShiftData?['onlineAmount'] as num?)?.toDouble() ?? 0.0;
+    final totalShiftOrders = (_currentShiftData?['totalOrders'] as num?)?.toInt() ?? _todayCompletedCount;
+    final hasPending = _currentShiftData?['hasPendingHandover'] == true;
+
     return Row(
       children: [
         Expanded(
-          child: _buildStatCard(
-            title: 'Thu nhập KPI',
-            value: '${(kpiEarnings / 1000).toStringAsFixed(0)}k đ',
-            icon: Icons.monetization_on,
-            iconBg: const Color(0xFFE0F2FE),
-            iconColor: const Color(0xFF0284C7),
+          child: InkWell(
+            onTap: _showShiftHandoverDialog,
+            borderRadius: BorderRadius.circular(16),
+            child: _buildStatCard(
+              title: 'Tiền mặt COD',
+              value: _formatVnd(cashAmount),
+              subtitle: hasPending ? 'Chờ duyệt' : 'Cần nộp lại',
+              icon: Icons.payments_rounded,
+              iconBg: const Color(0xFFFEE2E2),
+              iconColor: const Color(0xFFDC2626),
+            ),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
         Expanded(
-          child: _buildStatCard(
-            title: 'Lương cứng',
-            value: '${(_baseSalary / 1000).toStringAsFixed(0)}k đ',
-            icon: Icons.payments,
-            iconBg: const Color(0xFFFEF3C7),
-            iconColor: const Color(0xFFD97706),
+          child: InkWell(
+            onTap: _showShiftHandoverDialog,
+            borderRadius: BorderRadius.circular(16),
+            child: _buildStatCard(
+              title: 'Chuyển khoản',
+              value: _formatVnd(onlineAmount),
+              subtitle: 'Đã vào tiệm',
+              icon: Icons.qr_code_2_rounded,
+              iconBg: const Color(0xFFE0F2FE),
+              iconColor: const Color(0xFF0284C7),
+            ),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
         Expanded(
-          child: _buildStatCard(
-            title: 'Đã xong',
-            value: '$_todayCompletedCount đơn',
-            icon: Icons.task_alt,
-            iconBg: const Color(0xFFD1FAE5),
-            iconColor: const Color(0xFF059669),
+          child: InkWell(
+            onTap: _showShiftHandoverDialog,
+            borderRadius: BorderRadius.circular(16),
+            child: _buildStatCard(
+              title: 'Đã xong',
+              value: '$totalShiftOrders đơn',
+              subtitle: 'Trong ca',
+              icon: Icons.task_alt_rounded,
+              iconBg: const Color(0xFFD1FAE5),
+              iconColor: const Color(0xFF059669),
+            ),
           ),
         ),
       ],
@@ -1244,12 +1305,13 @@ class _ShipperScreenState extends State<ShipperScreen>
   Widget _buildStatCard({
     required String title,
     required String value,
+    String? subtitle,
     required IconData icon,
     required Color iconBg,
     required Color iconColor,
   }) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(16),
@@ -1260,23 +1322,46 @@ class _ShipperScreenState extends State<ShipperScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: iconBg,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: iconColor, size: 18),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: iconColor, size: 17),
+              ),
+              if (subtitle != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                  decoration: BoxDecoration(
+                    color: iconBg,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    subtitle,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 8.5,
+                      fontWeight: FontWeight.bold,
+                      color: iconColor,
+                    ),
+                  ),
+                ),
+            ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 8),
           Text(
             value,
             style: GoogleFonts.plusJakartaSans(
-              fontSize: 15,
+              fontSize: 13.5,
               fontWeight: FontWeight.bold,
               color: onSurface,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
           const SizedBox(height: 2),
           Text(
@@ -1567,7 +1652,7 @@ class _ShipperScreenState extends State<ShipperScreen>
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Thưởng KPI',
+                        'Chuyển khoản',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 10,
                           color: outlineColor,
@@ -1576,7 +1661,7 @@ class _ShipperScreenState extends State<ShipperScreen>
                       const SizedBox(height: 2),
                       Text(
                         _formatVnd(
-                          todayCompletedOrders.length * _kpiPerOrder,
+                          (_currentShiftData?['onlineAmount'] as num?)?.toDouble() ?? 0.0,
                         ),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 13,
@@ -5366,85 +5451,485 @@ class _ShipperScreenState extends State<ShipperScreen>
     );
   }
 
-  void _showShipperWalletDialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            const Icon(Icons.account_balance_wallet, color: primaryColor),
-            const SizedBox(width: 10),
-            Text(
-              'Ví Shipper 3T',
-              style: GoogleFonts.plusJakartaSans(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildWalletRow(
-              'Thu nhập KPI:',
-              '${kpiEarnings.toStringAsFixed(0)} đ',
-            ),
-            const SizedBox(height: 8),
-            _buildWalletRow(
-              'Lương cứng:',
-              '${_baseSalary.toStringAsFixed(0)} đ',
-            ),
-            const SizedBox(height: 8),
-            _buildWalletRow('Số đơn đã xong:', '$_todayCompletedCount đơn'),
-            const SizedBox(height: 8),
-            _buildWalletRow(
-              'Phí vi phạm:',
-              '- ${_violationFee.toStringAsFixed(0)} đ',
-            ),
-            const Divider(height: 20),
-            _buildWalletRow(
-              'Tổng thu nhập:',
-              '${totalIncome.toStringAsFixed(0)} đ',
-            ),
-            const SizedBox(height: 8),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Đóng',
-              style: GoogleFonts.plusJakartaSans(
-                color: primaryColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  void _showShiftHandoverDialog() async {
+    await _loadCurrentShiftSummary();
+    if (!mounted) return;
 
-  Widget _buildWalletRow(String label, String value) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.plusJakartaSans(fontSize: 13, color: outlineColor),
-        ),
-        Text(
-          value,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: onSurface,
-          ),
-        ),
-      ],
+    final noteController = TextEditingController();
+    bool isSubmitting = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => StatefulBuilder(
+        builder: (ctx, setSheetState) {
+          final data = _currentShiftData;
+          final cashAmount = (data?['cashAmount'] as num?)?.toDouble() ?? todayCodCollected;
+          final onlineAmount = (data?['onlineAmount'] as num?)?.toDouble() ?? 0.0;
+          final totalOrders = (data?['totalOrders'] as num?)?.toInt() ?? _todayCompletedCount;
+          final cashCount = (data?['cashOrdersCount'] as num?)?.toInt() ?? 0;
+          final onlineCount = (data?['onlineOrdersCount'] as num?)?.toInt() ?? 0;
+          final hasPending = data?['hasPendingHandover'] == true;
+          final pendingInfo = data?['pendingHandover'] as Map<String, dynamic>?;
+          final orders = (data?['orders'] as List<dynamic>?) ?? [];
+
+          return Container(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(sheetCtx).size.height * 0.9,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 10, bottom: 8),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: primaryColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.point_of_sale_rounded, color: primaryColor, size: 22),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Sổ Ca & Bàn Giao Tiền Mặt 3T',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: onSurface,
+                              ),
+                            ),
+                            Text(
+                              'Đối soát dòng tiền ca chạy giữa Shipper & Quản lý',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11,
+                                color: outlineColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(sheetCtx),
+                        icon: const Icon(Icons.close, size: 20, color: outlineColor),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Expanded(
+                  child: ListView(
+                    padding: const EdgeInsets.all(20),
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFFEF2F2),
+                                border: Border.all(color: const Color(0xFFFCA5A5)),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.payments_rounded, color: Color(0xFFDC2626), size: 16),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Tiền mặt COD',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFFDC2626),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _formatVnd(cashAmount),
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      color: const Color(0xFF991B1B),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '$cashCount đơn • Cần nộp lại',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFFB91C1C),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEFF6FF),
+                                border: Border.all(color: const Color(0xFF93C5FD)),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.qr_code_2_rounded, color: Color(0xFF2563EB), size: 16),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        'Chuyển khoản',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 11.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: const Color(0xFF2563EB),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _formatVnd(onlineAmount),
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                      color: const Color(0xFF1E40AF),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    '$onlineCount đơn • Đã vào tiệm',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: const Color(0xFF1D4ED8),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFFBEB),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFFDE68A)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.info_outline, color: Color(0xFFD97706), size: 18),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Shipper thu tiền mặt COD từ khách có trách nhiệm nộp đầy đủ số tiền trên cho Quản lý / Thu ngân quầy khi kết thúc ca làm việc để chốt sổ đối soát.',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  color: const Color(0xFF92400E),
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Chi tiết đơn trong ca ($totalOrders đơn)',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: onSurface,
+                            ),
+                          ),
+                          Text(
+                            'Tổng thu: ${_formatVnd(cashAmount + onlineAmount)}',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: primaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      if (orders.isEmpty)
+                        Container(
+                          padding: const EdgeInsets.symmetric(vertical: 24),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'Ca làm việc hiện tại chưa có đơn hoàn thành.',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              color: outlineColor,
+                            ),
+                          ),
+                        )
+                      else
+                        ...orders.map((o) {
+                          final isCash = o['isCash'] == true;
+                          final amount = (o['totalAmount'] as num?)?.toDouble() ?? 0.0;
+                          final code = o['orderCode'] ?? 'WS3T-${o['id']}';
+                          final cust = o['customerName'] ?? 'Khách hàng';
+
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF9FAFB),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: isCash ? const Color(0xFFFEE2E2) : const Color(0xFFE0F2FE),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Icon(
+                                    isCash ? Icons.payments_rounded : Icons.qr_code_2_rounded,
+                                    size: 16,
+                                    color: isCash ? const Color(0xFFDC2626) : const Color(0xFF0284C7),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '$code • $cust',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: onSurface,
+                                        ),
+                                      ),
+                                      Text(
+                                        isCash ? 'Khách trả Tiền mặt (COD)' : 'Khách quét Chuyển khoản (VietQR)',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 10.5,
+                                          color: isCash ? const Color(0xFFDC2626) : const Color(0xFF0284C7),
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Text(
+                                  '+ ${_formatVnd(amount)}',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: onSurface,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Builder(
+                    builder: (actionCtx) {
+                      if (hasPending) {
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF3C7),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: const Color(0xFFF59E0B)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.hourglass_top_rounded, color: Color(0xFFB45309)),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Đang chờ Quản lý duyệt nhận tiền ca',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFF92400E),
+                                      ),
+                                    ),
+                                    Text(
+                                      'Mã bàn giao: #SH-${pendingInfo?['id'] ?? '...'} • Số tiền nộp: ${_formatVnd((pendingInfo?['cashAmount'] as num?)?.toDouble() ?? cashAmount)}',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11,
+                                        color: const Color(0xFFB45309),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }
+
+                      if (totalOrders == 0) {
+                        return Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade100,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Text(
+                            'Chưa có đơn hoàn thành để bàn giao',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: outlineColor,
+                            ),
+                          ),
+                        );
+                      }
+
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          TextField(
+                            controller: noteController,
+                            decoration: InputDecoration(
+                              hintText: 'Ghi chú nộp tiền ca (không bắt buộc)...',
+                              hintStyle: GoogleFonts.plusJakartaSans(fontSize: 12, color: outlineColor),
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: BorderSide(color: Colors.grey.shade300),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 10),
+                          SizedBox(
+                            height: 48,
+                            child: ElevatedButton.icon(
+                              onPressed: isSubmitting
+                                  ? null
+                                  : () async {
+                                      setSheetState(() => isSubmitting = true);
+                                      try {
+                                        final token = await AuthService.getToken();
+                                        if (token == null) return;
+
+                                        final res = await http.post(
+                                          Uri.parse('$_baseUrl/ShiftHandover/submit'),
+                                          headers: {
+                                            'Content-Type': 'application/json',
+                                            'Authorization': 'Bearer $token',
+                                          },
+                                          body: jsonEncode({'note': noteController.text.trim()}),
+                                        );
+
+                                        if (res.statusCode == 200) {
+                                          await _loadCurrentShiftSummary();
+                                          _showToast(
+                                            'Gửi biên bản bàn giao thành công! Vui lòng nộp ${_formatVnd(cashAmount)} cho Quản lý.',
+                                            isSuccess: true,
+                                          );
+                                          if (sheetCtx.mounted) {
+                                            Navigator.pop(sheetCtx);
+                                          }
+                                        } else {
+                                          final body = jsonDecode(res.body);
+                                          _showToast(
+                                            body['message'] ?? 'Gửi bàn giao thất bại!',
+                                            isSuccess: false,
+                                          );
+                                        }
+                                      } catch (err) {
+                                        _showToast('Lỗi kết nối: $err', isSuccess: false);
+                                      } finally {
+                                        if (sheetCtx.mounted) {
+                                          setSheetState(() => isSubmitting = false);
+                                        }
+                                      }
+                                    },
+                              icon: isSubmitting
+                                  ? const SizedBox(
+                                      width: 16,
+                                      height: 16,
+                                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                                    )
+                                  : const Icon(Icons.check_circle_outline, color: Colors.white),
+                              label: Text(
+                                isSubmitting
+                                    ? 'Đang gửi biên bản...'
+                                    : 'Bàn Giao Tiền Ca Cho Quản Lý (${_formatVnd(cashAmount)})',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: primaryColor,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 }
