@@ -166,6 +166,35 @@ class _ShipperScreenState extends State<ShipperScreen>
     );
   }
 
+  // Danh sách các đơn đang cần đi (tuyến ghép hôm nay)
+  List<ShipperOrderModel> get activePendingOrders {
+    final list = _orders
+        .where(
+          (o) =>
+              o.status != ShipperOrderStatus.completed &&
+              o.status != ShipperOrderStatus.cancelled,
+        )
+        .toList();
+    list.sort((a, b) {
+      int score(ShipperOrderModel m) {
+        if (m.status == ShipperOrderStatus.pickingUp) return 0;
+        if (m.type == OrderType.pickup &&
+            m.status == ShipperOrderStatus.available) {
+          return 1;
+        }
+        if (m.status == ShipperOrderStatus.delivering) return 2;
+        if (m.type == OrderType.delivery &&
+            m.status == ShipperOrderStatus.available) {
+          return 3;
+        }
+        return 4;
+      }
+
+      return score(a).compareTo(score(b));
+    });
+    return list;
+  }
+
   double get kpiEarnings => _todayCompletedCount * _kpiPerOrder;
   double get totalIncome => kpiEarnings + _baseSalary - _violationFee;
 
@@ -1813,6 +1842,30 @@ class _ShipperScreenState extends State<ShipperScreen>
                           color: onSurface,
                         ),
                       ),
+                      if (activePendingOrders.length >= 2) ...[
+                        Builder(
+                          builder: (context) {
+                            final stationIdx = activePendingOrders.indexWhere((p) => p.id == order.id);
+                            if (stationIdx == -1) return const SizedBox.shrink();
+                            return Container(
+                              margin: const EdgeInsets.only(left: 6),
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF006577).withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'Trạm ${stationIdx + 1}/${activePendingOrders.length}',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF006577),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ],
                     ],
                   ),
                   Container(
@@ -4503,6 +4556,38 @@ class _ShipperScreenState extends State<ShipperScreen>
                 ),
               ),
             ),
+            if (activePendingOrders.length >= 2) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _showTodayRouteModal();
+                  },
+                  icon: const Icon(
+                    Icons.alt_route_rounded,
+                    color: tertiaryColor,
+                    size: 18,
+                  ),
+                  label: Text(
+                    'Xem tuyến đường ghép cả ${activePendingOrders.length} đơn',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: tertiaryColor,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: tertiaryColor, width: 1.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -4510,32 +4595,7 @@ class _ShipperScreenState extends State<ShipperScreen>
   }
 
   void _showTodayRouteModal() {
-    final pendingOrders = _orders
-        .where(
-          (o) =>
-              o.status != ShipperOrderStatus.completed &&
-              o.status != ShipperOrderStatus.cancelled,
-        )
-        .toList();
-
-    pendingOrders.sort((a, b) {
-      int score(ShipperOrderModel m) {
-        if (m.status == ShipperOrderStatus.pickingUp) return 0;
-        if (m.type == OrderType.pickup &&
-            m.status == ShipperOrderStatus.available) {
-          return 1;
-        }
-        if (m.status == ShipperOrderStatus.delivering) return 2;
-        if (m.type == OrderType.delivery &&
-            m.status == ShipperOrderStatus.available) {
-          return 3;
-        }
-        return 4;
-      }
-
-      return score(a).compareTo(score(b));
-    });
-
+    final pendingOrders = activePendingOrders;
     final doneOrders = todayCompletedOrders;
 
     showModalBottomSheet(
