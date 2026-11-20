@@ -8,6 +8,8 @@ import 'booking_step3_screen.dart'; // 🚀 Giữ nguyên luồng chuyển sang 
 
 class BookingStep2Screen extends StatefulWidget {
   final List<Map<String, dynamic>> items;
+  final List<Map<String, dynamic>> selectedCareOptions;
+  final double estimatedWeight;
   final String pickupAddress;
   final String contactPhone;
   final String initialNote;
@@ -16,6 +18,8 @@ class BookingStep2Screen extends StatefulWidget {
   const BookingStep2Screen({
     super.key,
     this.items = const [],
+    this.selectedCareOptions = const [],
+    this.estimatedWeight = 3.0,
     this.pickupAddress =
         'Căn hộ Heritage Manor, Căn 302, 128 Hai Bà Trưng, P. Bến Nghé, Quận 1, TP. Hồ Chí Minh',
     this.contactPhone = '0908123456',
@@ -59,6 +63,13 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
 
   String userPhone = '0908123456';
   String userName = 'Kiều Như';
+
+  String _formatCurrency(num amount) {
+    return amount.toInt().toString().replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+      (Match m) => '${m[1]}.',
+    );
+  }
 
   // 🚀 Logic kiểm tra khung giờ hết hạn theo thời gian thực (Lead Time Buffer)
   bool _isSlotExpired(int slotIndex, int dateIndex) {
@@ -445,8 +456,37 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
     );
   }
 
-  // --- WIDGET 2: STEP 1 QUICK SUMMARY CARD ---
+  // --- WIDGET 2: STEP 1 QUICK SUMMARY CARD (ĐỒNG BỘ ĐỘNG THEO DỮ LIỆU BƯỚC 1) ---
   Widget _buildStep1SummaryCard() {
+    final firstItemName = widget.items.isNotEmpty
+        ? (widget.items.first['name']?.toString() ?? 'Giặt sấy 3T')
+        : 'Giặt sấy tiêu chuẩn 3T';
+    final extraCount = widget.items.length > 1 ? ' +${widget.items.length - 1} dịch vụ' : '';
+    final displayName = '$firstItemName$extraCount';
+
+    final totalPieces = widget.items
+        .where((it) => it['isByItem'] == true)
+        .fold<int>(0, (prev, it) => prev + ((it['quantity'] as num?)?.toInt() ?? 0));
+    final hasKg = widget.items.any((it) => it['isByItem'] != true);
+
+    String quantityBadge = '';
+    if (hasKg && widget.estimatedWeight > 0) {
+      quantityBadge = '${widget.estimatedWeight.toStringAsFixed(1)} kg';
+    }
+    if (totalPieces > 0) {
+      quantityBadge = quantityBadge.isNotEmpty
+          ? '$quantityBadge • $totalPieces món'
+          : '$totalPieces món';
+    }
+    if (quantityBadge.isEmpty) {
+      quantityBadge = 'Đã chọn';
+    }
+
+    final int estimatedWashTotal = widget.items.fold<int>(
+      0,
+      (prev, it) => prev + ((it['totalPrice'] as num?)?.toInt() ?? 0),
+    );
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -463,73 +503,84 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: const BoxDecoration(
-                  color: secondaryFixed,
-                  shape: BoxShape.circle,
+          Expanded(
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: const BoxDecoration(
+                    color: secondaryFixed,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.local_laundry_service,
+                    size: 20,
+                    color: secondaryColor,
+                  ),
                 ),
-                child: const Icon(
-                  Icons.local_laundry_service,
-                  size: 20,
-                  color: secondaryColor,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Gói Giặt Sấy Tinh Tươm',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: onSurface,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: secondaryFixed,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          'Chờ cân/đếm thực tế',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 9,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF3E0022),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              displayName,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: onSurface,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: secondaryFixed,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              quantityBadge,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: const Color(0xFF3E0022),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        widget.selectedCareOptions.isNotEmpty
+                            ? '+${widget.selectedCareOptions.length} tiện ích nâng cao đã chọn'
+                            : 'Shipper sẽ cân chốt thực tế khi nhận đồ',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          color: onSurfaceVariant,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Giá giặt sẽ được xác nhận khi shipper nhận đồ',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      color: onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
+          const SizedBox(width: 8),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                'Chưa chốt giá',
+                estimatedWashTotal > 0 ? '~${_formatCurrency(estimatedWashTotal)} đ' : 'Chờ cân đồ',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 13,
                   fontWeight: FontWeight.bold,
@@ -537,7 +588,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                 ),
               ),
               Text(
-                'Chờ shipper xác nhận',
+                'Tạm tính giặt',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 10,
                   color: tertiaryColor,
@@ -1823,6 +1874,8 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                             'Dự kiến giao trả: $deliveryTimeFull',
                           ].where((value) => value.trim().isNotEmpty).join(' | '),
                           items: widget.items,
+                          selectedCareOptions: widget.selectedCareOptions,
+                          estimatedWeight: widget.estimatedWeight,
                           pickupTime: pickupTimeFull,
                           deliveryTime: deliveryTimeFull,
                           expressFee: expressFee,
