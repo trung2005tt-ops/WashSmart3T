@@ -1032,19 +1032,14 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        '10:00 - 12:00',
+                        widget.deliveryTime,
                         style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
+                          fontSize: 11,
                           fontWeight: FontWeight.bold,
                           color: onSurface,
                         ),
-                      ),
-                      Text(
-                        'Ngày mai (25/10)',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
-                          color: onSurfaceVariant,
-                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),

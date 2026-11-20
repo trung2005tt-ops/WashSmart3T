@@ -44,27 +44,73 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
   static const Color surfaceVariant = Color(0xFFFFD9DC);
   static const Color onSurface = Color(0xFF370C14);
   static const Color onSurfaceVariant = Color(0xFF5B4041);
-  static const Color outlineVariant = Color(0xFFE3BDBF);
 
   // --- STATE QUẢN LÝ ---
   int shippingFee = 30000; // Phí vận chuyển 2 chiều
   int selectedDateIndex = 0; // 0: hôm nay, 1: ngày mai, 2: ngày kia
-  int selectedTimeSlot = DateTime.now().hour < 14
-      ? 1
-      : DateTime.now().hour < 17
-      ? 2
-      : DateTime.now().hour < 19
-      ? 3
-      : 0; // Tự chọn khung giờ chưa qua
+  int selectedTimeSlot = 0; // Sẽ được tự động tính toán trong initState
   bool isSameDeliveryAddress = true; // Giao trả về cùng địa chỉ lấy
 
   late final TextEditingController _pickupNoteController;
   String userPhone = '0908123456';
   String userName = 'Kiều Như';
 
+  // 🚀 Logic kiểm tra khung giờ hết hạn theo thời gian thực (Lead Time Buffer)
+  bool _isSlotExpired(int slotIndex, int dateIndex) {
+    if (dateIndex > 0) return false;
+    final now = DateTime.now();
+    // Ca 0: Hỏa tốc trong 30-45 phút. Đóng sau 20:00 tối
+    if (slotIndex == 0) {
+      return now.hour >= 20;
+    }
+    // Ca 1: 08:00 – 10:00. Đóng lúc 09:30
+    if (slotIndex == 1) {
+      return now.hour > 9 || (now.hour == 9 && now.minute >= 30);
+    }
+    // Ca 2: 10:00 – 12:00. Đóng lúc 11:30
+    if (slotIndex == 2) {
+      return now.hour > 11 || (now.hour == 11 && now.minute >= 30);
+    }
+    // Ca 3: 14:00 – 16:00. Đóng lúc 15:30
+    if (slotIndex == 3) {
+      return now.hour > 15 || (now.hour == 15 && now.minute >= 30);
+    }
+    // Ca 4: 17:00 – 19:00. Đóng lúc 18:30
+    if (slotIndex == 4) {
+      return now.hour > 18 || (now.hour == 18 && now.minute >= 30);
+    }
+    // Ca 5: 19:30 – 21:00. Đóng lúc 20:30
+    if (slotIndex == 5) {
+      return now.hour > 20 || (now.hour == 20 && now.minute >= 30);
+    }
+    return false;
+  }
+
+  bool _areAllSlotsExpiredToday() {
+    for (int i = 0; i < 6; i++) {
+      if (!_isSlotExpired(i, 0)) return false;
+    }
+    return true;
+  }
+
   @override
   void initState() {
     super.initState();
+    // Tự động kiểm tra thời gian thực để chọn ngày và ca hợp lệ
+    if (_areAllSlotsExpiredToday()) {
+      selectedDateIndex = 1; // Tự động sang Ngày mai nếu hôm nay đã hết ca (sau 20:30)
+      selectedTimeSlot = 1; // 08:00 - 10:00 sáng mai
+    } else {
+      selectedDateIndex = 0;
+      selectedTimeSlot = 0;
+      for (int i = 0; i < 6; i++) {
+        if (!_isSlotExpired(i, 0)) {
+          selectedTimeSlot = i;
+          break;
+        }
+      }
+    }
+
     final defaultNote = 'Bấm chuông căn 302 lầu 3 hoặc gửi lễ tân sảnh A';
     _pickupNoteController = TextEditingController(
       text: [
@@ -708,7 +754,9 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
     String dateLabel(DateTime date, int index) {
       final day =
           '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}';
-      if (index == 0) return 'Hôm nay ($day)';
+      if (index == 0) {
+        return _areAllSlotsExpiredToday() ? 'Hôm nay ($day) • Hết ca' : 'Hôm nay ($day)';
+      }
       if (index == 1) return 'Ngày mai ($day)';
       return '${weekdays[date.weekday - 1]} ($day)';
     }
@@ -720,51 +768,91 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
 
     final timeSlots = [
       {
-        'title': 'Lấy gấp (trong 30–45 phút)',
-        'sub': 'Giao hỏa tốc sau 3.5 – 4 giờ (Chỉ áp dụng bán kính ≤ 5km)',
-        'badge': 'Giao gấp 4h (≤5km)',
+        'title': 'Lấy gấp hỏa tốc (trong 30–45 phút)',
+        'timeRange': 'Gấp trong 30–45 phút',
+        'period': 'Hỏa tốc',
+        'sub': 'Shipper điều phối ngay • Giao sau 3.5 – 4 giờ (bán kính ≤ 5km)',
+        'badge': 'Hỏa tốc 4h',
         'badgeBg': const Color(0xFFFFDAD6),
         'badgeText': const Color(0xFF93000A),
         'price': '+25.000 đ',
         'isPricePrimary': true,
+        'extraFee': 25000,
       },
       {
         'title': '08:00 – 10:00',
+        'timeRange': '08:00 – 10:00',
+        'period': 'Sáng',
         'sub': 'Khung giờ buổi sáng • Shipper ca sớm',
         'badge': 'Buổi sáng',
         'badgeBg': secondaryFixed,
         'badgeText': const Color(0xFF3E0022),
         'price': 'Miễn phí',
         'isPricePrimary': false,
+        'extraFee': 0,
       },
       {
         'title': '10:00 – 12:00',
+        'timeRange': '10:00 – 12:00',
+        'period': 'Trưa',
         'sub': 'Khung giờ trưa • Tiếp nhận trước ca giặt trưa',
+        'badge': 'Buổi trưa',
+        'badgeBg': surfaceContainer,
+        'badgeText': onSurfaceVariant,
         'price': 'Miễn phí',
         'isPricePrimary': false,
+        'extraFee': 0,
       },
       {
         'title': '14:00 – 16:00',
+        'timeRange': '14:00 – 16:00',
+        'period': 'Chiều',
         'sub': 'Shipper khu vực Bến Nghé đang sẵn sàng',
         'badge': 'Tối ưu nhất',
         'badgeBg': tertiaryFixed,
         'badgeText': const Color(0xFF001F26),
         'price': 'Miễn phí',
         'isPricePrimary': false,
+        'extraFee': 0,
       },
       {
         'title': '17:00 – 19:00',
-        'sub': 'Lấy đồ sau giờ tan tầm',
+        'timeRange': '17:00 – 19:00',
+        'period': 'Chiều tối',
+        'sub': 'Khung giờ tan tầm • Shipper lấy sau giờ làm',
+        'badge': 'Tan tầm',
+        'badgeBg': surfaceVariant,
+        'badgeText': onSurface,
         'price': 'Miễn phí',
         'isPricePrimary': false,
+        'extraFee': 0,
       },
       {
         'title': '19:30 – 21:00',
-        'sub': 'Thích hợp khi về nhà trễ',
+        'timeRange': '19:30 – 21:00',
+        'period': 'Tối',
+        'sub': 'Khung giờ tối • Thích hợp khi về nhà trễ',
+        'badge': 'Ca tối',
+        'badgeBg': surfaceContainer,
+        'badgeText': onSurfaceVariant,
         'price': 'Miễn phí',
         'isPricePrimary': false,
+        'extraFee': 0,
       },
     ];
+
+    String getSlotTitle(int index) {
+      if (index == 0) return timeSlots[0]['title'] as String;
+      final base = timeSlots[index]['title'] as String;
+      final period = timeSlots[index]['period'] as String;
+      if (selectedDateIndex == 0) {
+        return '$base ($period nay)';
+      } else if (selectedDateIndex == 1) {
+        return '$base ($period mai)';
+      } else {
+        return '$base ($period)';
+      }
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -816,7 +904,20 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                 return Padding(
                   padding: const EdgeInsets.only(right: 8.0),
                   child: InkWell(
-                    onTap: () => setState(() => selectedDateIndex = index),
+                    onTap: () {
+                      setState(() {
+                        selectedDateIndex = index;
+                        // Nếu ca hiện tại bị hết hạn ở ngày mới, chuyển sang ca mở đầu tiên
+                        if (_isSlotExpired(selectedTimeSlot, selectedDateIndex)) {
+                          for (int i = 0; i < timeSlots.length; i++) {
+                            if (!_isSlotExpired(i, selectedDateIndex)) {
+                              selectedTimeSlot = i;
+                              break;
+                            }
+                          }
+                        }
+                      });
+                    },
                     borderRadius: BorderRadius.circular(20),
                     child: Container(
                       padding: const EdgeInsets.symmetric(
@@ -861,38 +962,63 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
           ),
           const SizedBox(height: 12),
 
+          // Banner thông báo nếu hôm nay đã kết thúc ca làm việc
+          if (selectedDateIndex == 0 && _areAllSlotsExpiredToday())
+            Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF3CD),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFFFEEBA)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline, color: Color(0xFF856404), size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Hôm nay xưởng 3T đã hết ca làm việc (sau 20:30). Vui lòng chuyển sang tab Ngày mai để đặt lịch sớm nhất!',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        color: const Color(0xFF856404),
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
           // Time slot list
           Column(
             children: List.generate(timeSlots.length, (index) {
               final slot = timeSlots[index];
               final isSelected = selectedTimeSlot == index;
-              final now = DateTime.now();
-              final isPastTodaySlot =
-                  selectedDateIndex == 0 &&
-                  ((index == 1 && now.hour >= 16) ||
-                      (index == 2 && now.hour >= 19) ||
-                      (index == 3 &&
-                          (now.hour > 21 ||
-                              (now.hour == 21 && now.minute > 0))));
+              final isSlotDisabled = _isSlotExpired(index, selectedDateIndex);
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: 8.0),
                 child: InkWell(
-                  onTap: isPastTodaySlot
-                      ? null
+                  onTap: isSlotDisabled
+                      ? () => _showToast('Ca giặt này đã hết hạn nhận đồ. Vui lòng chọn ca tiếp theo hoặc ngày mai.')
                       : () => setState(() => selectedTimeSlot = index),
                   borderRadius: BorderRadius.circular(12),
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: isPastTodaySlot
+                      color: isSlotDisabled
                           ? Colors.grey.shade100
                           : isSelected
                           ? primaryFixed.withOpacity(0.4)
                           : surfaceLow,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected ? primaryColor : Colors.transparent,
+                        color: isSlotDisabled
+                            ? Colors.transparent
+                            : isSelected
+                            ? primaryColor
+                            : Colors.transparent,
                         width: isSelected ? 1.5 : 0,
                       ),
                     ),
@@ -905,10 +1031,13 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                               value: index,
                               groupValue: selectedTimeSlot,
                               activeColor: primaryColor,
-                              onChanged: (val) {
-                                if (val != null)
-                                  setState(() => selectedTimeSlot = val);
-                              },
+                              onChanged: isSlotDisabled
+                                  ? null
+                                  : (val) {
+                                      if (val != null) {
+                                        setState(() => selectedTimeSlot = val);
+                                      }
+                                    },
                             ),
                             const SizedBox(width: 4),
                             Column(
@@ -917,25 +1046,36 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                                 Row(
                                   children: [
                                     Text(
-                                      '${slot['title']}${selectedDateIndex == 0
-                                          ? (index == 0
-                                                ? ' (trong 30–45 phút)'
-                                                : index == 1
-                                                ? ' (chiều nay)'
-                                                : index == 2
-                                                ? ' (tối nay)'
-                                                : ' (tối muộn)')
-                                          : selectedDateIndex == 1
-                                          ? ' (ngày mai)'
-                                          : ' (${dateOptions[selectedDateIndex]})'}',
+                                      getSlotTitle(index),
                                       style: GoogleFonts.plusJakartaSans(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
-                                        color: onSurface,
+                                        color: isSlotDisabled
+                                            ? Colors.grey.shade400
+                                            : onSurface,
                                       ),
                                     ),
-                                    if (slot['badge'] != null) ...[
-                                      const SizedBox(width: 6),
+                                    const SizedBox(width: 6),
+                                    if (isSlotDisabled)
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 1,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.shade200,
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                        child: Text(
+                                          'Đã hết ca',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.grey.shade600,
+                                          ),
+                                        ),
+                                      )
+                                    else if (slot['badge'] != null)
                                       Container(
                                         padding: const EdgeInsets.symmetric(
                                           horizontal: 6,
@@ -943,9 +1083,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                                         ),
                                         decoration: BoxDecoration(
                                           color: slot['badgeBg'] as Color,
-                                          borderRadius: BorderRadius.circular(
-                                            10,
-                                          ),
+                                          borderRadius: BorderRadius.circular(10),
                                         ),
                                         child: Text(
                                           slot['badge'] as String,
@@ -956,7 +1094,6 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                                           ),
                                         ),
                                       ),
-                                    ],
                                   ],
                                 ),
                                 const SizedBox(height: 2),
@@ -964,7 +1101,9 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                                   slot['sub'] as String,
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize: 10,
-                                    color: onSurfaceVariant,
+                                    color: isSlotDisabled
+                                        ? Colors.grey.shade400
+                                        : onSurfaceVariant,
                                   ),
                                 ),
                               ],
@@ -972,11 +1111,15 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                           ],
                         ),
                         Text(
-                          slot['price'] as String,
+                          isSlotDisabled
+                              ? 'Đã đóng'
+                              : (slot['price'] as String),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
-                            color: (slot['isPricePrimary'] == true)
+                            color: isSlotDisabled
+                                ? Colors.grey.shade400
+                                : (slot['isPricePrimary'] == true)
                                 ? primaryColor
                                 : tertiaryColor,
                           ),
@@ -1035,6 +1178,59 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
 
   // --- WIDGET 5: DELIVERY METHOD & EXPECTED RETURN TIME ---
   Widget _buildDeliveryMethodSection() {
+    final today = DateTime.now();
+    final dates = List<DateTime>.generate(
+      3,
+      (index) => DateTime(today.year, today.month, today.day + index),
+    );
+    final pickupDate = dates[selectedDateIndex];
+
+    // Kiểm tra xem đơn hàng có đồ cần chăm sóc chuyên sâu (Vest, dạ hội, giày, rèm...) không
+    final bool hasSpecialItems = widget.items.any((item) {
+      final name = (item['serviceName'] ?? item['name'] ?? '').toString().toLowerCase();
+      return name.contains('vest') ||
+          name.contains('comple') ||
+          name.contains('dạ hội') ||
+          name.contains('áo dài') ||
+          name.contains('giày') ||
+          name.contains('sneaker') ||
+          name.contains('rèm') ||
+          name.contains('màn');
+    });
+
+    const slotRanges = [
+      'Gấp sau 3.5 – 4 giờ',
+      '08:00 – 10:00',
+      '10:00 – 12:00',
+      '14:00 – 16:00',
+      '17:00 – 19:00',
+      '19:30 – 21:00',
+    ];
+    final currentSlotRange = slotRanges[selectedTimeSlot.clamp(0, slotRanges.length - 1)];
+
+    String returnTitle;
+    String returnSub;
+
+    if (selectedTimeSlot == 0) {
+      final dateStr = selectedDateIndex == 0
+          ? 'Hôm nay'
+          : selectedDateIndex == 1
+              ? 'Ngày mai'
+              : '${pickupDate.day}/${pickupDate.month}';
+      returnTitle = 'Giao hỏa tốc sau 3.5 – 4 giờ ($dateStr)';
+      returnSub = 'Xưởng ưu tiên xử lý cấp tốc • Bán kính giao ≤ 5km';
+    } else if (hasSpecialItems) {
+      final returnDate = pickupDate.add(const Duration(days: 2));
+      final returnDateStr = '${returnDate.day.toString().padLeft(2, '0')}/${returnDate.month.toString().padLeft(2, '0')}';
+      returnTitle = '$currentSlotRange Ngày $returnDateStr (Quy trình 48h)';
+      returnSub = 'Đơn có trang phục cao cấp (Vest/Dạ hội/Giày/Rèm) cần hấp sấy dưỡng chất 48h';
+    } else {
+      final returnDate = pickupDate.add(const Duration(days: 1));
+      final returnDateStr = '${returnDate.day.toString().padLeft(2, '0')}/${returnDate.month.toString().padLeft(2, '0')}';
+      returnTitle = '$currentSlotRange Ngày $returnDateStr (Chuẩn 24h)';
+      returnSub = 'Chuẩn quy trình 24h: Giặt sạch • Sấy diệt khuẩn • Ủi nếp tinh tươm';
+    }
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1042,7 +1238,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -1092,7 +1288,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                   width: 40,
                   height: 40,
                   decoration: BoxDecoration(
-                    color: secondaryFixed.withOpacity(0.5),
+                    color: secondaryFixed.withValues(alpha: 0.5),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -1102,31 +1298,29 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      selectedTimeSlot == 0
-                          ? 'Giao gấp sau 3.5 – 4 giờ (Hôm nay)'
-                          : '10:00 – 12:00 Ngày mai (Chuẩn 24h)',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.bold,
-                        color: onSurface,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        returnTitle,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: onSurface,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      selectedTimeSlot == 0
-                          ? 'Xưởng ưu tiên xử lý cấp tốc • Bán kính giao ≤ 5km'
-                          : 'Chuẩn quy trình 24h giặt sấy & ủi tinh tươm',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w500,
-                        color: tertiaryColor,
+                      const SizedBox(height: 2),
+                      Text(
+                        returnSub,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: tertiaryColor,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -1313,21 +1507,21 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                 height: 48,
                 child: ElevatedButton(
                   onPressed: () {
-                    final current = DateTime.now();
-                    final selectedSlotExpired =
-                        selectedDateIndex == 0 &&
-                        ((selectedTimeSlot == 1 && current.hour >= 16) ||
-                            (selectedTimeSlot == 2 && current.hour >= 19) ||
-                            (selectedTimeSlot == 3 &&
-                                (current.hour > 21 ||
-                                    (current.hour == 21 &&
-                                        current.minute > 0))));
-                    if (selectedSlotExpired) {
+                    if (_isSlotExpired(selectedTimeSlot, selectedDateIndex)) {
                       _showToast(
-                        'Khung giờ này đã qua. Vui lòng chọn khung giờ khác.',
+                        'Khung giờ này đã hết ca nhận đồ. Vui lòng chọn khung giờ khác hoặc ngày mai.',
                       );
                       return;
                     }
+
+                    if (!isSameDeliveryAddress) {
+                      _showToast(
+                        'Chức năng nhập địa chỉ giao trả khác sẽ được bổ sung. Hiện hãy chọn giao trả cùng địa chỉ lấy đồ.',
+                      );
+                      return;
+                    }
+
+                    final current = DateTime.now();
                     final pickupDate = DateTime(
                       current.year,
                       current.month,
@@ -1349,23 +1543,47 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                         : selectedDateIndex == 1
                         ? 'Ngày mai ($formattedDate)'
                         : '${weekdays[pickupDate.weekday - 1]} ($formattedDate)';
-                    const pickupTimeTitles = <String>[
+
+                    const slotRanges = [
                       'Gấp trong 30–45 phút',
+                      '08:00 – 10:00',
+                      '10:00 – 12:00',
                       '14:00 – 16:00',
                       '17:00 – 19:00',
                       '19:30 – 21:00',
                     ];
-                    final pickupTimeTitle =
-                        pickupTimeTitles[selectedTimeSlot.clamp(
-                          0,
-                          pickupTimeTitles.length - 1,
-                        )];
-                    if (!isSameDeliveryAddress) {
-                      _showToast(
-                        'Chức năng nhập địa chỉ giao trả khác sẽ được bổ sung. Hiện hãy chọn giao trả cùng địa chỉ lấy đồ.',
-                      );
-                      return;
+                    final currentSlotRange = slotRanges[selectedTimeSlot.clamp(0, slotRanges.length - 1)];
+                    final pickupTimeFull = selectedTimeSlot == 0
+                        ? 'Gấp trong 30–45 phút ($pickupDateLabel)'
+                        : '$currentSlotRange ($pickupDateLabel)';
+
+                    // Kiểm tra xem đơn hàng có đồ cần chăm sóc chuyên sâu không
+                    final bool hasSpecialItems = widget.items.any((item) {
+                      final name = (item['serviceName'] ?? item['name'] ?? '').toString().toLowerCase();
+                      return name.contains('vest') ||
+                          name.contains('comple') ||
+                          name.contains('dạ hội') ||
+                          name.contains('áo dài') ||
+                          name.contains('giày') ||
+                          name.contains('sneaker') ||
+                          name.contains('rèm') ||
+                          name.contains('màn');
+                    });
+
+                    // Tính deliveryTime dự kiến chuẩn xác
+                    String deliveryTimeFull;
+                    if (selectedTimeSlot == 0) {
+                      deliveryTimeFull = 'Giao sau 3.5 – 4 giờ ($pickupDateLabel)';
+                    } else if (hasSpecialItems) {
+                      final returnDate = pickupDate.add(const Duration(days: 2));
+                      final rDateStr = '${returnDate.day.toString().padLeft(2, '0')}/${returnDate.month.toString().padLeft(2, '0')}';
+                      deliveryTimeFull = '$currentSlotRange Ngày $rDateStr (Chuẩn 48h)';
+                    } else {
+                      final returnDate = pickupDate.add(const Duration(days: 1));
+                      final rDateStr = '${returnDate.day.toString().padLeft(2, '0')}/${returnDate.month.toString().padLeft(2, '0')}';
+                      deliveryTimeFull = '$currentSlotRange Ngày $rDateStr (Chuẩn 24h)';
                     }
+
                     Navigator.push(
                       context,
                       MaterialPageRoute(
@@ -1375,9 +1593,13 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                           contactPhone: userPhone,
                           note: [
                             _pickupNoteController.text.trim(),
-                            'Lịch lấy đồ dự kiến: $pickupDateLabel, $pickupTimeTitle',
+                            'Lịch lấy đồ: $pickupTimeFull',
+                            'Dự kiến giao trả: $deliveryTimeFull',
                           ].where((value) => value.trim().isNotEmpty).join(' | '),
                           items: widget.items,
+                          pickupTime: pickupTimeFull,
+                          deliveryTime: deliveryTimeFull,
+                          expressFee: expressFee,
                           addonFee: widget.addonFee,
                         ),
                       ),
