@@ -201,9 +201,16 @@ public class OrdersController : ControllerBase
         public int ShipperId { get; set; }
     }
 
+    public class BatchAssignShipperRequest
+    {
+        public List<int> OrderIds { get; set; } = new();
+        public int ShipperId { get; set; }
+    }
+
     // ============================================================
     // POST: api/Orders/{id}/assign-shipper
     // Admin/Staff phân công shipper (cho phép ghép tối đa 5 đơn cùng tuyến)
+    // Tự động chuyển đơn Pending -> Confirmed khi điều phối
     // ============================================================
     [HttpPost("{id}/assign-shipper")]
     [Authorize(Roles = "Admin,Staff")]
@@ -223,12 +230,18 @@ public class OrdersController : ControllerBase
                 return NotFound(new { message = "Không tìm thấy đơn hàng." });
             }
 
-            if (order.Status != OrderStatus.Confirmed && order.Status != OrderStatus.Ready)
+            if (order.Status != OrderStatus.Confirmed && order.Status != OrderStatus.Ready && order.Status != OrderStatus.Pending)
             {
                 return BadRequest(new
                 {
-                    message = $"Chỉ phân công đơn ở trạng thái Confirmed hoặc Ready. Trạng thái hiện tại: {order.Status}."
+                    message = $"Chỉ phân công đơn ở trạng thái Chờ duyệt (Pending), Đã duyệt (Confirmed) hoặc Sẵn sàng giao (Ready). Trạng thái hiện tại: {order.Status}."
                 });
+            }
+
+            // Tự động xác nhận đơn nếu đang ở trạng thái Pending
+            if (order.Status == OrderStatus.Pending)
+            {
+                order.Status = OrderStatus.Confirmed;
             }
 
             var shipper = await _context.Users
@@ -297,6 +310,121 @@ public class OrdersController : ControllerBase
             _logger.LogError(ex, "Lỗi phân công shipper cho đơn {OrderId}.", id);
             return StatusCode(500, new { message = "Lỗi khi phân công shipper." });
         }
+    }
+
+    // ============================================================
+    // POST: api/Orders/{id}/unassign-shipper
+    // Admin/Staff gỡ shipper khỏi đơn hàng
+    // ============================================================
+    [HttpPost("{id}/unassign-shipper")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> UnassignShipper(int id)
+    {
+        var order = await _context.Orders.Include(o => o.Shipper).FirstOrDefaultAsync(o => o.Id == id);
+        if (order == null)
+        {
+            return NotFound(new { message = "Không tìm thấy đơn hàng." });
+        }
+
+        var oldShipperName = order.Shipper?.FullName ?? "Shipper cũ";
+        order.ShipperId = null;
+        order.UpdatedAt = DateTime.UtcNow;
+
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        int? changedByUserId = int.TryParse(userIdClaim, out var uId) ? uId : null;
+
+        _context.OrderStatusHistories.Add(new OrderStatusHistory
+        {
+            OrderId = order.Id,
+            Status = order.Status,
+            Note = $"Đã gỡ shipper ({oldShipperName}) khỏi đơn hàng để điều phối lại.",
+            ChangedByUserId = changedByUserId,
+            ChangedAt = DateTime.UtcNow
+        });
+
+        await _context.SaveChangesAsync();
+
+        try
+        {
+            await _hubContext.Clients.All.SendAsync("OrderStatusUpdated", new { orderId = order.Id, status = order.Status.ToString(), shipperId = (int?)null });
+            await _hubContext.Clients.All.SendAsync("DashboardStatsUpdated");
+        }
+        catch { }
+
+        return Ok(new
+        {
+            message = "Đã gỡ shipper khỏi đơn hàng thành công.",
+            orderId = order.Id
+        });
+    }
+
+    // ============================================================
+    // POST: api/Orders/batch-assign-shipper
+    // Admin/Staff ghép mẻ & phân công nhiều đơn cho shipper (Tự động gom cụm OSRM / AI)
+    // ============================================================
+    [HttpPost("batch-assign-shipper")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> BatchAssignShipper([FromBody] BatchAssignShipperRequest request)
+    {
+        if (request.ShipperId <= 0 || request.OrderIds == null || request.OrderIds.Count == 0)
+        {
+            return BadRequest(new { message = "Dữ liệu ghép đơn không hợp lệ." });
+        }
+
+        var shipper = await _context.Users
+            .Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.Id == request.ShipperId && u.IsActive && u.Role != null && u.Role.Name == "Shipper");
+
+        if (shipper == null)
+        {
+            return BadRequest(new { message = "Shipper không tồn tại hoặc đã bị khóa." });
+        }
+
+        var orders = await _context.Orders
+            .Where(o => request.OrderIds.Contains(o.Id))
+            .ToListAsync();
+
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        int? changedByUserId = int.TryParse(userIdClaim, out var uId) ? uId : null;
+
+        int updatedCount = 0;
+        foreach (var order in orders)
+        {
+            if (order.Status == OrderStatus.Pending)
+            {
+                order.Status = OrderStatus.Confirmed;
+            }
+
+            order.ShipperId = shipper.Id;
+            order.UpdatedAt = DateTime.UtcNow;
+
+            _context.OrderStatusHistories.Add(new OrderStatusHistory
+            {
+                OrderId = order.Id,
+                Status = order.Status,
+                Note = $"Ghép đơn và phân công shipper: {shipper.FullName} (Thuật toán định tuyến OSRM / Gom cụm AI)",
+                ChangedByUserId = changedByUserId,
+                ChangedAt = DateTime.UtcNow
+            });
+
+            updatedCount++;
+        }
+
+        await _context.SaveChangesAsync();
+
+        try
+        {
+            await _hubContext.Clients.All.SendAsync("DashboardStatsUpdated");
+        }
+        catch { }
+
+        return Ok(new
+        {
+            message = $"Đã ghép và phân công {updatedCount} đơn hàng cho shipper {shipper.FullName} thành công.",
+            shipperId = shipper.Id,
+            shipperName = shipper.FullName,
+            assignedCount = updatedCount
+        });
     }
 
     // ============================================================

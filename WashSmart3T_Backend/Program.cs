@@ -148,4 +148,36 @@ app.UseMiddleware<SecurityValidationMiddleware>();
 app.MapControllers();
 app.MapHub<WashSmart.API.Hubs.OrderNotificationHub>("/hubs/orders");
 
+// Endpoint trang chủ: Chuyển hướng thân thiện sang Web Portal 5500 để tránh lỗi HTTP 404
+app.MapGet("/", () => Results.Content(
+    @"<!DOCTYPE html>
+<html lang=""vi"">
+<head>
+    <meta charset=""utf-8"">
+    <title>WashSmart 3T - Máy Chủ API</title>
+    <meta http-equiv=""refresh"" content=""1;url=http://localhost:5500/"">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #fafafa; color: #333; }
+        .card { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; max-width: 520px; }
+        h1 { color: #881337; margin-top: 0; font-size: 24px; }
+        p { color: #555; font-size: 15px; line-height: 1.6; }
+        .btn { display: inline-block; margin-top: 15px; padding: 12px 24px; background: #881337; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; transition: background 0.2s; }
+        .btn:hover { background: #9f1239; }
+        .badge { display: inline-block; background: #dcfce7; color: #166534; padding: 4px 14px; border-radius: 999px; font-size: 13px; font-weight: 600; margin-bottom: 12px; }
+    </style>
+</head>
+<body>
+    <div class=""card"">
+        <span class=""badge"">● Backend API Đang Hoạt Động (Port 5085)</span>
+        <h1>WashSmart 3T - Máy Chủ Dịch Vụ API</h1>
+        <p>Cổng 5085 là máy chủ API (.NET Core Backend). Đang tự động chuyển hướng bạn đến <strong>Cổng Quản Lý Web Portal (Port 5500)</strong> trong giây lát...</p>
+        <a class=""btn"" href=""http://localhost:5500/"">Mở Web Quản Lý (Port 5500)</a>
+        <br><br>
+        <small style=""color: #888;"">Tài liệu API Swagger: <a href=""/swagger"" style=""color: #881337; font-weight: 600;"">/swagger</a></small>
+    </div>
+</body>
+</html>",
+    "text/html"
+));
+
 app.Run();
