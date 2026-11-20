@@ -199,6 +199,28 @@ const Api = {
       if (!res.ok) throw new Error(data.message || `Lỗi ${res.status}`);
       return data;
     },
+
+  // Gói chăm sóc nâng cao & đóng gói
+  CareOptions: {
+    async all(includeInactive = false) {
+      return Api.get(/CareOptions);
+    },
+    async get(id) {
+      return Api.get(/CareOptions/);
+    },
+    async create(payload) {
+      return Api.post('/CareOptions', payload);
+    },
+    async update(id, payload) {
+      return Api.put(/CareOptions/, payload);
+    },
+    async delete(id) {
+      return Api.delete(/CareOptions/);
+    },
+    async toggle(id) {
+      return Api.post(/CareOptions//toggle, {});
+    },
+  },
   },
 
   // Cấu hình Cửa hàng & Bảng cước vận chuyển

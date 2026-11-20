@@ -201,6 +201,14 @@ public class ApplicationDbContext : DbContext
             entity.Property(x => x.MinOrderAmount).HasColumnType("decimal(18,2)");
             entity.Property(x => x.MaxDiscountAmount).HasColumnType("decimal(18,2)");
         });
+
+        // ============================
+        // CARE OPTIONS (GÓI CHĂM SÓC NÂNG CAO)
+        // ============================
+        modelBuilder.Entity<CareOption>(entity =>
+        {
+            entity.Property(x => x.Price).HasColumnType("decimal(18,2)");
+        });
     }
 
     public DbSet<User> Users => Set<User>();
@@ -215,4 +223,5 @@ public class ApplicationDbContext : DbContext
     public DbSet<Complaint> Complaints => Set<Complaint>();
     public DbSet<StoreConfig> StoreConfigs => Set<StoreConfig>();
     public DbSet<Promotion> Promotions => Set<Promotion>();
+    public DbSet<CareOption> CareOptions => Set<CareOption>();
 }

@@ -29,17 +29,20 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
   static const Color onSurfaceVariant = Color(0xFF5B4041);
   static const Color outlineVariant = Color(0xFFE3BDBF);
 
-  // Khách chọn dịch vụ và nhóm đồ; số lượng thực tế do shipper ghi nhận.
+  // Khách chọn dịch vụ bằng combobox; có giá theo kg và theo cái; đồ theo cái là số nguyên
   final List<Map<String, dynamic>> availableServices = [];
+  int? selectedComboboxServiceId;
   final Set<int> selectedServiceIds = {};
+  final Map<int, int> selectedItemQuantities = {}; // Số lượng nguyên cho đồ theo cái
   final Set<String> selectedGarmentTypes = {};
   bool isLoadingServices = false;
   String? serviceLoadError;
 
-  // Dịch vụ bổ sung
-  bool isIronChecked = true;
-  bool isFragranceChecked = true;
-  bool isSealChecked = true;
+  // Gói Chăm Sóc Nâng Cao & Đóng Gói (Đồng bộ từ Backend API, KHÔNG tự động tích sẵn)
+  final List<Map<String, dynamic>> availableCareOptions = [];
+  final Set<int> selectedCareOptionIds = {}; // Mặc định rỗng, người dùng chủ động chọn
+  bool isLoadingCareOptions = false;
+  String? careOptionsLoadError;
 
   final TextEditingController _notesController = TextEditingController(
     text:
@@ -50,6 +53,35 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
   void initState() {
     super.initState();
     _loadAvailableServices();
+    _loadCareOptions();
+  }
+
+  String _formatCurrency(num value) {
+    final s = value.toInt().toString();
+    final buffer = StringBuffer();
+    int count = 0;
+    for (int i = s.length - 1; i >= 0; i--) {
+      buffer.write(s[i]);
+      count++;
+      if (count % 3 == 0 && i != 0) {
+        buffer.write('.');
+      }
+    }
+    return buffer.toString().split('').reversed.join('');
+  }
+
+  bool _isServiceByItem(Map<String, dynamic> svc) {
+    final unit = (svc['price']?['unit'] ?? svc['unit'] ?? 'kg').toString().toLowerCase().trim();
+    return !unit.contains('kg') && !unit.contains('ký');
+  }
+
+  String _getServiceUnit(Map<String, dynamic> svc) {
+    return (svc['price']?['unit'] ?? svc['unit'] ?? 'kg').toString();
+  }
+
+  int _getServicePrice(Map<String, dynamic> svc) {
+    final p = svc['price']?['price'] ?? svc['pricePerUnit'] ?? svc['unitPrice'] ?? 0;
+    return (p as num).toInt();
   }
 
   Future<void> _loadAvailableServices() async {
@@ -75,7 +107,8 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
         availableServices
           ..clear()
           ..addAll(services);
-        // Tự động chọn dịch vụ đầu tiên hoặc dịch vụ ID 7 (Giặt sấy tiêu chuẩn)
+
+        // Mặc định chọn dịch vụ đầu tiên hoặc dịch vụ ID 7 (Giặt sấy tiêu chuẩn)
         if (selectedServiceIds.isEmpty && availableServices.isNotEmpty) {
           final defaultSvc = availableServices.firstWhere(
             (s) => s['id'] == 7,
@@ -83,7 +116,11 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
           );
           final defaultId = (defaultSvc['id'] as num?)?.toInt();
           if (defaultId != null) {
+            selectedComboboxServiceId = defaultId;
             selectedServiceIds.add(defaultId);
+            if (_isServiceByItem(defaultSvc)) {
+              selectedItemQuantities[defaultId] = 1;
+            }
           }
         }
       });
@@ -94,45 +131,84 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
             'Không tải được danh sách dịch vụ. Kiểm tra Backend/API rồi thử tải lại.';
       });
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           isLoadingServices = false;
         });
+      }
+    }
+  }
+
+  Future<void> _loadCareOptions() async {
+    setState(() {
+      isLoadingCareOptions = true;
+      careOptionsLoadError = null;
+    });
+    try {
+      final response = await http.get(
+        Uri.parse('http://localhost:5085/api/CareOptions'),
+      );
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        final decoded = jsonDecode(response.body);
+        if (decoded is List) {
+          if (!mounted) return;
+          setState(() {
+            availableCareOptions
+              ..clear()
+              ..addAll(decoded.map((e) => Map<String, dynamic>.from(e)));
+            // KHÔNG tự động tích sẵn: selectedCareOptionIds giữ rỗng
+          });
+        }
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        careOptionsLoadError = 'Không tải được gói chăm sóc từ máy chủ.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          isLoadingCareOptions = false;
+        });
+      }
     }
   }
 
   List<Map<String, dynamic>> _buildOrderItems() {
-    var items = availableServices
-        .where(
-          (service) =>
-              selectedServiceIds.contains((service['id'] as num?)?.toInt()),
-        )
-        .map(
-          (service) => <String, dynamic>{
-            'serviceId': (service['id'] as num).toInt(),
-            'quantity': 0,
-          },
-        )
-        .toList();
+    var items = selectedServiceIds.map((id) {
+      final svc = availableServices.firstWhere((s) => s['id'] == id, orElse: () => {});
+      final isByItem = svc.isNotEmpty ? _isServiceByItem(svc) : false;
+      final qty = isByItem ? (selectedItemQuantities[id] ?? 1) : 0;
+      return <String, dynamic>{
+        'serviceId': id,
+        'quantity': qty,
+      };
+    }).toList();
 
-    // Fallback an toàn: Nếu chưa có dịch vụ nào, chọn dịch vụ đầu tiên khả dụng
     if (items.isEmpty && availableServices.isNotEmpty) {
       final defaultSvc = availableServices.firstWhere(
         (s) => s['id'] == 7,
         orElse: () => availableServices.first,
       );
       final defaultId = (defaultSvc['id'] as num?)?.toInt() ?? 7;
+      final isByItem = _isServiceByItem(defaultSvc);
       items.add({
         'serviceId': defaultId,
-        'quantity': 0,
-      });
-    } else if (items.isEmpty) {
-      items.add({
-        'serviceId': 7,
-        'quantity': 0,
+        'quantity': isByItem ? 1 : 0,
       });
     }
     return items;
+  }
+
+  int _calculateAddonFee() {
+    int sum = 0;
+    for (final id in selectedCareOptionIds) {
+      final opt = availableCareOptions.firstWhere((c) => c['id'] == id, orElse: () => {});
+      if (opt.isNotEmpty) {
+        sum += (opt['price'] as num? ?? 0).toInt();
+      }
+    }
+    return sum;
   }
 
   String _buildBookingNote() {
@@ -140,11 +216,17 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
     if (selectedGarmentTypes.isNotEmpty) {
       parts.add('Loại đồ: ${selectedGarmentTypes.join(', ')}');
     }
-    if (isIronChecked) parts.add('Dịch vụ bổ sung: ủi hơi nước');
-    if (isFragranceChecked) parts.add('Dịch vụ bổ sung: hương thơm');
-    if (isSealChecked) parts.add('Dịch vụ bổ sung: túi niêm phong');
-    if (_notesController.text.trim().isNotEmpty)
+    for (final id in selectedCareOptionIds) {
+      final opt = availableCareOptions.firstWhere((c) => c['id'] == id, orElse: () => {});
+      if (opt.isNotEmpty) {
+        final name = opt['name'] ?? 'Tiện ích';
+        final price = (opt['price'] as num? ?? 0).toInt();
+        parts.add('Tiện ích: $name (${price > 0 ? '+${_formatCurrency(price)}đ' : 'Miễn phí'})');
+      }
+    }
+    if (_notesController.text.trim().isNotEmpty) {
       parts.add(_notesController.text.trim());
+    }
     return parts.join(' | ');
   }
 
@@ -731,6 +813,13 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -742,10 +831,10 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
                 color: primaryColor,
                 size: 20,
               ),
-              const SizedBox(width: 6),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Chọn dịch vụ',
+                  'Chọn Dịch Vụ Giặt Ủi',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -753,25 +842,42 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
                   ),
                 ),
               ),
+              if (selectedServiceIds.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: surfaceHigh,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'Đã chọn ${selectedServiceIds.length}',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: primaryColor,
+                    ),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
-            'Danh sách được tải từ hệ thống. Giá giặt sẽ chốt sau khi shipper cân/đếm.',
+            'Chọn dịch vụ bằng combobox bên dưới. Giá hiển thị rõ ràng theo kg hoặc theo cái.',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 11,
               color: onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
+
           if (isLoadingServices)
             const Center(
               child: Padding(
-                padding: EdgeInsets.all(12),
+                padding: EdgeInsets.all(16),
                 child: CircularProgressIndicator(),
               ),
-            ),
-          if (serviceLoadError != null) ...[
+            )
+          else if (serviceLoadError != null) ...[
             Text(
               serviceLoadError!,
               style: GoogleFonts.plusJakartaSans(
@@ -787,59 +893,289 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
                 label: const Text('Tải lại'),
               ),
             ),
-          ],
-          if (!isLoadingServices &&
-              serviceLoadError == null &&
-              availableServices.isEmpty)
+          ]
+          else if (availableServices.isNotEmpty) ...[
+            // COMBOBOX DROPDOWN CHỌN DỊCH VỤ
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+              decoration: BoxDecoration(
+                color: surfaceLow,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: outlineVariant.withOpacity(0.5)),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<int>(
+                  isExpanded: true,
+                  value: availableServices.any((s) => s['id'] == selectedComboboxServiceId)
+                      ? selectedComboboxServiceId
+                      : availableServices.first['id'],
+                  icon: const Icon(Icons.arrow_drop_down, color: primaryColor, size: 24),
+                  style: GoogleFonts.plusJakartaSans(fontSize: 13, color: onSurface),
+                  dropdownColor: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  onChanged: (int? newId) {
+                    if (newId != null) {
+                      setState(() {
+                        selectedComboboxServiceId = newId;
+                        selectedServiceIds.add(newId);
+                        if (!selectedItemQuantities.containsKey(newId)) {
+                          selectedItemQuantities[newId] = 1;
+                        }
+                      });
+                    }
+                  },
+                  items: availableServices.map((svc) {
+                    final id = (svc['id'] as num).toInt();
+                    final name = svc['name']?.toString() ?? 'Dịch vụ $id';
+                    final unit = _getServiceUnit(svc);
+                    final price = _getServicePrice(svc);
+                    final isByItem = _isServiceByItem(svc);
+
+                    return DropdownMenuItem<int>(
+                      value: id,
+                      child: Row(
+                        children: [
+                          Icon(
+                            isByItem ? Icons.checkroom : Icons.local_laundry_service,
+                            size: 18,
+                            color: isByItem ? secondaryColor : primaryColor,
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              name,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: onSurface,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: isByItem ? const Color(0xFFFFF0F5) : const Color(0xFFE8F7F9),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(
+                                color: isByItem ? secondaryColor.withOpacity(0.3) : tertiaryColor.withOpacity(0.3),
+                              ),
+                            ),
+                            child: Text(
+                              isByItem ? 'Theo $unit' : 'Theo kg',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: isByItem ? secondaryColor : tertiaryColor,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            '${_formatCurrency(price)} đ/$unit',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: primaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+
+            // DANH SÁCH DỊCH VỤ ĐÃ CHỌN
             Text(
-              'Hiện chưa có dịch vụ khả dụng.',
+              'Dịch vụ đã chọn trong đơn:',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 12,
+                fontWeight: FontWeight.bold,
                 color: onSurfaceVariant,
               ),
             ),
-          ...availableServices.map((service) {
-            final id = (service['id'] as num?)?.toInt();
-            if (id == null) return const SizedBox.shrink();
-            final name = service['name']?.toString() ?? 'Dịch vụ $id';
-            final description = service['description']?.toString() ?? '';
-            final selected = selectedServiceIds.contains(id);
-            return CheckboxListTile(
-              contentPadding: EdgeInsets.zero,
-              dense: true,
-              controlAffinity: ListTileControlAffinity.leading,
-              activeColor: primaryColor,
-              value: selected,
-              onChanged: (value) => setState(() {
-                if (value == true) {
-                  selectedServiceIds.add(id);
-                } else {
-                  selectedServiceIds.remove(id);
-                }
-              }),
-              title: Text(
-                name,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                  color: onSurface,
+            const SizedBox(height: 8),
+
+            ...selectedServiceIds.map((id) {
+              final svc = availableServices.firstWhere((s) => s['id'] == id, orElse: () => {});
+              if (svc.isEmpty) return const SizedBox.shrink();
+              final name = svc['name']?.toString() ?? 'Dịch vụ $id';
+              final unit = _getServiceUnit(svc);
+              final price = _getServicePrice(svc);
+              final isByItem = _isServiceByItem(svc);
+              final qty = selectedItemQuantities[id] ?? 1;
+
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: surfaceLow,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: isByItem ? secondaryColor.withOpacity(0.25) : primaryColor.withOpacity(0.25),
+                  ),
                 ),
-              ),
-              subtitle: description.isNotEmpty
-                  ? Text(
-                      description,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        color: onSurfaceVariant,
+                child: Row(
+                  children: [
+                    Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: cardBg,
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                    )
-                  : null,
-              secondary: const Icon(
-                Icons.local_laundry_service,
-                color: primaryColor,
-              ),
-            );
-          }),
+                      child: Icon(
+                        isByItem ? Icons.dry_cleaning : Icons.local_laundry_service,
+                        color: isByItem ? secondaryColor : primaryColor,
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  name,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: onSurface,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              if (selectedServiceIds.length > 1)
+                                InkWell(
+                                  onTap: () {
+                                    setState(() {
+                                      selectedServiceIds.remove(id);
+                                      if (selectedComboboxServiceId == id && selectedServiceIds.isNotEmpty) {
+                                        selectedComboboxServiceId = selectedServiceIds.first;
+                                      }
+                                    });
+                                  },
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(2.0),
+                                    child: Icon(Icons.close, size: 16, color: Colors.grey),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                decoration: BoxDecoration(
+                                  color: isByItem ? const Color(0xFFFFE4EC) : const Color(0xFFE0F4F7),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  isByItem ? 'Theo $unit (Số lượng nguyên)' : 'Theo kg',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: isByItem ? secondaryColor : tertiaryColor,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                '${_formatCurrency(price)} đ/$unit',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: primaryColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (!isByItem) ...[
+                            const SizedBox(height: 4),
+                            Text(
+                              'Khối lượng: Shipper cân bằng cân điện tử IoT khi nhận đồ',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                color: onSurfaceVariant,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    if (isByItem) ...[
+                      const SizedBox(width: 10),
+                      // BỘ ĐẾM SỐ NGUYÊN (1, 2, 3...) BẮT BUỘC SỐ NGUYÊN
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: cardBg,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: outlineVariant.withOpacity(0.5)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            InkWell(
+                              onTap: () {
+                                if (qty > 1) {
+                                  setState(() {
+                                    selectedItemQuantities[id] = qty - 1;
+                                  });
+                                }
+                              },
+                              borderRadius: BorderRadius.circular(14),
+                              child: Padding(
+                                padding: const EdgeInsets.all(4.0),
+                                child: Icon(
+                                  Icons.remove,
+                                  size: 16,
+                                  color: qty > 1 ? onSurface : Colors.grey.shade400,
+                                ),
+                              ),
+                            ),
+                            Container(
+                              constraints: const BoxConstraints(minWidth: 26),
+                              alignment: Alignment.center,
+                              child: Text(
+                                '$qty',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  color: onSurface,
+                                ),
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () {
+                                setState(() {
+                                  selectedItemQuantities[id] = qty + 1;
+                                });
+                              },
+                              borderRadius: BorderRadius.circular(14),
+                              child: const Padding(
+                                padding: const EdgeInsets.all(4.0),
+                                child: Icon(Icons.add, size: 16, color: primaryColor),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              );
+            }),
+          ],
         ],
       ),
     );
@@ -964,49 +1300,94 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
           Row(
             children: [
               const Icon(Icons.auto_awesome, color: primaryColor, size: 20),
-              const SizedBox(width: 6),
-              Text(
-                'Chăm Sóc Nâng Cao & Đóng Gói',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: onSurface,
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Chăm Sóc Nâng Cao & Đóng Gói',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: onSurface,
+                  ),
                 ),
               ),
+              if (selectedCareOptionIds.isNotEmpty)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: surfaceHigh,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '+${_formatCurrency(_calculateAddonFee())} đ',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: primaryColor,
+                    ),
+                  ),
+                ),
             ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Tùy chọn tiện ích đi kèm (không bắt buộc). Giá được đồng bộ trực tiếp từ cửa hàng.',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              color: onSurfaceVariant,
+            ),
           ),
           const SizedBox(height: 12),
 
-          _buildAddonCheckboxRow(
-            title: 'Ủi hơi nước chống nhăn form',
-            desc: 'Ủi đứng áp suất nhiệt, giữ phom áo sơ mi & quần âu',
-            priceText: '+20.000 đ',
-            isPricePrimary: true,
-            value: isIronChecked,
-            onChanged: (val) => setState(() => isIronChecked = val ?? false),
-          ),
-          const SizedBox(height: 8),
+          if (isLoadingCareOptions)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: CircularProgressIndicator(),
+              ),
+            )
+          else if (availableCareOptions.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8.0),
+              child: Text(
+                'Hiện tại không có gói chăm sóc nâng cao nào khả dụng.',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  color: onSurfaceVariant,
+                ),
+              ),
+            )
+          else
+            ...availableCareOptions.map((opt) {
+              final id = (opt['id'] as num).toInt();
+              final name = opt['name']?.toString() ?? 'Tiện ích $id';
+              final desc = opt['description']?.toString() ?? '';
+              final price = (opt['price'] as num? ?? 0).toInt();
+              final badge = opt['badgeText']?.toString();
+              final isChecked = selectedCareOptionIds.contains(id);
 
-          _buildAddonCheckboxRow(
-            title: 'Hương Hoa Ban Mai 3T',
-            badgeText: '72 Giờ',
-            desc: 'Chiết xuất tinh dầu thảo mộc dịu nhẹ, an toàn da nhạy cảm',
-            priceText: 'Miễn phí (0 đ)',
-            value: isFragranceChecked,
-            onChanged: (val) =>
-                setState(() => isFragranceChecked = val ?? false),
-          ),
-          const SizedBox(height: 8),
-
-          _buildAddonCheckboxRow(
-            title: 'Túi vải niêm phong chống nước',
-            badgeText: '#SEAL-3T',
-            badgeBgColor: tertiaryColor,
-            desc: 'Khóa seal an toàn chống ẩm bụi, mở seal tại nhà khách',
-            priceText: 'Miễn phí (0 đ)',
-            value: isSealChecked,
-            onChanged: (val) => setState(() => isSealChecked = val ?? false),
-          ),
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: _buildAddonCheckboxRow(
+                  title: name,
+                  desc: desc,
+                  badgeText: badge,
+                  badgeBgColor: badge != null && badge.contains('#SEAL') ? tertiaryColor : secondaryColor,
+                  priceText: price == 0 ? 'Miễn phí (0 đ)' : '+${_formatCurrency(price)} đ',
+                  isPricePrimary: price > 0,
+                  value: isChecked,
+                  onChanged: (val) {
+                    setState(() {
+                      if (val == true) {
+                        selectedCareOptionIds.add(id);
+                      } else {
+                        selectedCareOptionIds.remove(id);
+                      }
+                    });
+                  },
+                ),
+              );
+            }),
         ],
       ),
     );
@@ -1222,7 +1603,7 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
                       Row(
                         children: [
                           Text(
-                            'Giá sẽ chốt sau khi cân:',
+                            'Giá sẽ chốt sau khi cân/đếm:',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 11,
                               color: onSurfaceVariant,
@@ -1241,16 +1622,20 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
                         textBaseline: TextBaseline.alphabetic,
                         children: [
                           Text(
-                            'Chưa chốt',
+                            selectedCareOptionIds.isNotEmpty
+                                ? '+${_formatCurrency(_calculateAddonFee())}đ'
+                                : 'Theo thực tế',
                             style: GoogleFonts.plusJakartaSans(
-                              fontSize: 20,
+                              fontSize: 18,
                               fontWeight: FontWeight.bold,
                               color: primaryColor,
                             ),
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            '(theo khối lượng thực tế)',
+                            selectedCareOptionIds.isNotEmpty
+                                ? '(tiện ích + giặt thực tế)'
+                                : '(chờ shipper kiểm đếm)',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 11,
                               color: onSurfaceVariant,
@@ -1314,7 +1699,7 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
                       _showToast('Vui lòng chọn ít nhất một dịch vụ.');
                       return;
                     }
-                    final int addonFee = isIronChecked ? 20000 : 0;
+                    final int addonFee = _calculateAddonFee();
                     final String step1Note = _buildBookingNote();
                     Navigator.push(
                       context,

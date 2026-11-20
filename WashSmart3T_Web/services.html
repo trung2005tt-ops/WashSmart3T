@@ -51,7 +51,7 @@
 
 <body class="bg-surface text-on-surface antialiased text-sm">
 
-  <!-- Sidebar Navigation (Đầy đủ 8 mục hệ thống) -->
+  <!-- Sidebar Navigation -->
   <aside class="fixed left-0 top-0 h-full w-64 bg-primary text-white z-50 flex flex-col justify-between shadow-lg">
     <div class="flex flex-col">
       <!-- Logo -->
@@ -109,7 +109,6 @@
 
     <!-- Status & Logout -->
     <div class="p-4 space-y-3 border-t border-white/10">
-
       <button onclick="handleLogout(event)" class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-black/20 hover:bg-black/40 text-white font-medium transition-colors text-xs">
         <span class="material-symbols-outlined text-base">logout</span>
         <span>Đăng xuất</span>
@@ -129,7 +128,7 @@
         </div>
         <div class="relative flex-1">
           <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-secondary text-lg">search</span>
-          <input id="service-search-input" type="text" placeholder="Tìm tên dịch vụ, đơn vị tính, giá..." class="w-full pl-9 pr-4 py-1.5 rounded-full bg-surface-container-low text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+          <input id="service-search-input" type="text" placeholder="Tìm kiếm dịch vụ hoặc gói chăm sóc..." class="w-full pl-9 pr-4 py-1.5 rounded-full bg-surface-container-low text-xs focus:outline-none focus:ring-1 focus:ring-primary">
         </div>
       </div>
 
@@ -143,58 +142,73 @@
     </header>
 
     <!-- Main Container -->
-    <main class="p-6 space-y-6">
+    <main class="p-6 space-y-5">
 
-      <!-- Page Title & Actions -->
+      <!-- Page Title & Navigation Tabs -->
       <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 class="text-2xl font-bold tracking-tight text-on-surface">Bảng Giá & Danh Mục Dịch Vụ</h1>
-          <p class="text-secondary text-xs mt-1">Quản lý giá cước giặt sấy, dịch vụ cao cấp và cấu hình đơn giá cho chi nhánh.</p>
+          <p class="text-secondary text-xs mt-1">Quản lý giá cước giặt sấy, dịch vụ cao cấp và các gói tiện ích chăm sóc nâng cao.</p>
         </div>
 
         <div class="flex items-center gap-2">
           <button id="open-add-service-modal" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary-container transition-colors text-xs font-semibold shadow-sm">
             <span class="material-symbols-outlined text-base">add_circle</span>
-            <span>Thêm Dịch Vụ Mới</span>
+            <span id="btn-add-label">Thêm Dịch Vụ Mới</span>
           </button>
         </div>
       </div>
 
-      <!-- KPI Summary Cards -->
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between">
-          <div>
-            <p class="text-xs text-secondary font-medium">Tổng số dịch vụ</p>
-            <p class="text-2xl font-bold text-on-surface mt-1" id="kpi-total-services">6 <span class="text-xs font-normal text-secondary">dịch vụ</span></p>
-          </div>
-          <div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center">
-            <span class="material-symbols-outlined">sell</span>
-          </div>
-        </div>
-
-        <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between">
-          <div>
-            <p class="text-xs text-secondary font-medium">Dịch vụ giặt ký (Theo kg)</p>
-            <p class="text-2xl font-bold text-primary mt-1" id="kpi-kg-services">3 <span class="text-xs font-normal text-secondary">mục</span></p>
-          </div>
-          <div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center">
-            <span class="material-symbols-outlined">scale</span>
-          </div>
-        </div>
-
-        <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between">
-          <div>
-            <p class="text-xs text-secondary font-medium">Trạng thái kết nối Server</p>
-            <p id="service-connection-status" class="text-2xl font-bold text-secondary mt-1">Đang kiểm tra... <span class="text-xs font-normal text-secondary">(Database C#)</span></p>
-          </div>
-          <div class="w-10 h-10 rounded-lg bg-green-50 text-green-700 flex items-center justify-center">
-            <span class="material-symbols-outlined">database</span>
-          </div>
-        </div>
+      <!-- Main Navigation Tabs: Dịch Vụ Giặt Ủi vs Gói Chăm Sóc Nâng Cao -->
+      <div class="flex border-b border-surface-container gap-4">
+        <button id="tab-btn-services" onclick="switchMainTab('services')" class="pb-3 text-xs font-bold border-b-2 border-primary text-primary flex items-center gap-2 transition-all">
+          <span class="material-symbols-outlined text-lg">sell</span>
+          <span>Dịch Vụ Giặt Ủi & Giá Cước</span>
+          <span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold" id="badge-services-count">0</span>
+        </button>
+        <button id="tab-btn-care" onclick="switchMainTab('care')" class="pb-3 text-xs font-semibold border-b-2 border-transparent text-secondary hover:text-on-surface flex items-center gap-2 transition-all">
+          <span class="material-symbols-outlined text-lg">auto_awesome</span>
+          <span>Gói Chăm Sóc Nâng Cao & Đóng Gói</span>
+          <span class="px-2 py-0.5 rounded-full bg-secondary/10 text-secondary text-[10px] font-bold" id="badge-care-count">0</span>
+        </button>
       </div>
 
-      <!-- Main Layout -->
-      <div class="space-y-4">
+      <!-- ======================================================== -->
+      <!-- TAB 1: DỊCH VỤ GIẶT ỦI CHÍNH (THEO KG & THEO CÁI/MÓN)     -->
+      <!-- ======================================================== -->
+      <div id="section-services" class="space-y-4">
+        <!-- KPI Summary Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between shadow-xs">
+            <div>
+              <p class="text-xs text-secondary font-medium">Tổng số dịch vụ</p>
+              <p class="text-2xl font-bold text-on-surface mt-1" id="kpi-total-services">0 <span class="text-xs font-normal text-secondary">dịch vụ</span></p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center">
+              <span class="material-symbols-outlined">sell</span>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between shadow-xs">
+            <div>
+              <p class="text-xs text-secondary font-medium">Dịch vụ giặt ký (Theo kg)</p>
+              <p class="text-2xl font-bold text-primary mt-1" id="kpi-kg-services">0 <span class="text-xs font-normal text-secondary">mục</span></p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center">
+              <span class="material-symbols-outlined">scale</span>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between shadow-xs">
+            <div>
+              <p class="text-xs text-secondary font-medium">Dịch vụ giặt món (Theo cái/bộ/đôi)</p>
+              <p class="text-2xl font-bold text-amber-700 mt-1" id="kpi-item-services">0 <span class="text-xs font-normal text-secondary">mục</span></p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-amber-50 text-amber-700 flex items-center justify-center">
+              <span class="material-symbols-outlined">checkroom</span>
+            </div>
+          </div>
+        </div>
 
         <!-- Category Filters -->
         <div class="p-2 rounded-xl bg-surface-card border border-surface-container flex items-center gap-2 overflow-x-auto" id="category-filters">
@@ -205,12 +219,12 @@
             Giặt ký (Theo kg)
           </button>
           <button class="cat-btn px-3.5 py-1.5 rounded-lg text-secondary hover:bg-surface-container transition-colors text-xs font-semibold whitespace-nowrap" data-cat="item">
-            Giặt hấp (Theo món)
+            Giặt món (Theo cái / bộ / đôi)
           </button>
         </div>
 
         <!-- Services Table -->
-        <div class="bg-surface-card rounded-xl border border-surface-container overflow-hidden">
+        <div class="bg-surface-card rounded-xl border border-surface-container overflow-hidden shadow-xs">
           <table class="w-full text-left border-collapse">
             <thead>
               <tr class="bg-surface-container-low text-secondary text-[11px] uppercase tracking-wider border-b border-surface-container">
@@ -218,20 +232,91 @@
                 <th class="py-3 px-3 font-semibold">Loại dịch vụ</th>
                 <th class="py-3 px-3 font-semibold">Đơn vị tính</th>
                 <th class="py-3 px-3 font-semibold text-right">Đơn giá niêm yết</th>
+                <th class="py-3 px-3 font-semibold text-center">Quy chuẩn số lượng</th>
                 <th class="py-3 px-3 font-semibold text-center">Trạng thái</th>
                 <th class="py-3 px-4 font-semibold text-center">Thao tác</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-surface-container text-xs" id="services-table-body"><tr><td colspan="6" class="py-8 text-center text-secondary">Đang tải dịch vụ từ máy chủ...</td></tr></tbody>
+            <tbody class="divide-y divide-surface-container text-xs" id="services-table-body">
+              <tr><td colspan="7" class="py-8 text-center text-secondary">Đang tải dịch vụ từ máy chủ...</td></tr>
+            </tbody>
           </table>
         </div>
+      </div>
 
+      <!-- ======================================================== -->
+      <!-- TAB 2: GÓI CHĂM SÓC NÂNG CAO & ĐÓNG GÓI (CARE OPTIONS)     -->
+      <!-- ======================================================== -->
+      <div id="section-care-options" class="space-y-4 hidden">
+        <!-- KPI Care Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between shadow-xs">
+            <div>
+              <p class="text-xs text-secondary font-medium">Tổng gói chăm sóc</p>
+              <p class="text-2xl font-bold text-on-surface mt-1" id="kpi-total-care">0 <span class="text-xs font-normal text-secondary">gói</span></p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center">
+              <span class="material-symbols-outlined">auto_awesome</span>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between shadow-xs">
+            <div>
+              <p class="text-xs text-secondary font-medium">Gói tính phí (+VNĐ)</p>
+              <p class="text-2xl font-bold text-primary mt-1" id="kpi-paid-care">0 <span class="text-xs font-normal text-secondary">gói</span></p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+              <span class="material-symbols-outlined">payments</span>
+            </div>
+          </div>
+
+          <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between shadow-xs">
+            <div>
+              <p class="text-xs text-secondary font-medium">Tiện ích miễn phí (0 đ)</p>
+              <p class="text-2xl font-bold text-green-700 mt-1" id="kpi-free-care">0 <span class="text-xs font-normal text-secondary">tiện ích</span></p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-green-50 text-green-700 flex items-center justify-center">
+              <span class="material-symbols-outlined">card_giftcard</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Banner Info -->
+        <div class="p-3.5 rounded-xl bg-gradient-to-r from-rose-50 to-pink-50 border border-primary/20 flex items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-lg bg-primary text-white flex items-center justify-center shrink-0 font-bold shadow-xs">
+              <span class="material-symbols-outlined text-xl">verified</span>
+            </div>
+            <div>
+              <h3 class="font-bold text-xs text-on-surface">Quy định Gói Chăm Sóc Nâng Cao & Đóng Gói</h3>
+              <p class="text-secondary text-[11px] mt-0.5">Các gói này sẽ xuất hiện trên App đặt hàng. Khách hàng chủ động tick chọn (không bắt buộc). Bạn có thể thêm, sửa, chỉnh giá hoặc bật/tắt trực tiếp.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Care Options Table -->
+        <div class="bg-surface-card rounded-xl border border-surface-container overflow-hidden shadow-xs">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-surface-container-low text-secondary text-[11px] uppercase tracking-wider border-b border-surface-container">
+                <th class="py-3 px-4 font-semibold">Tên gói chăm sóc & Mô tả</th>
+                <th class="py-3 px-3 font-semibold text-center">Huy hiệu / Tag</th>
+                <th class="py-3 px-3 font-semibold text-right">Đơn giá cộng thêm</th>
+                <th class="py-3 px-3 font-semibold text-center">Trạng thái</th>
+                <th class="py-3 px-4 font-semibold text-center">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-surface-container text-xs" id="care-options-table-body">
+              <tr><td colspan="5" class="py-8 text-center text-secondary">Đang tải gói chăm sóc từ máy chủ...</td></tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
     </main>
   </div>
 
-  <!-- Modal: Thêm / Sửa Dịch Vụ -->
+  <!-- Modal: Thêm / Sửa Dịch Vụ Chính -->
   <div id="service-modal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm hidden items-center justify-center p-4">
     <div class="bg-surface-card rounded-xl max-w-md w-full p-5 border border-surface-container shadow-xl space-y-4">
       <div class="flex items-center justify-between">
@@ -244,20 +329,20 @@
       <div class="space-y-3 text-xs">
         <div>
           <label class="block font-semibold text-secondary mb-1">Tên dịch vụ</label>
-          <input id="input-service-name" type="text" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Ví dụ: Giặt Chăn Dày Extra">
+          <input id="input-service-name" type="text" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary font-medium" placeholder="Ví dụ: Giặt Chăn Dày Extra">
         </div>
 
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block font-semibold text-secondary mb-1">Loại dịch vụ</label>
-            <select id="input-service-type" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+            <select id="input-service-type" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary font-medium">
               <option value="kg">Giặt ký (kg)</option>
-              <option value="item">Giặt hấp (món)</option>
+              <option value="item">Giặt món (cái/bộ/đôi)</option>
             </select>
           </div>
           <div>
             <label class="block font-semibold text-secondary mb-1">Đơn vị tính</label>
-            <input id="input-service-unit" type="text" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary" value="kg">
+            <input id="input-service-unit" type="text" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary font-medium" value="kg" placeholder="kg, cái, bộ, đôi...">
           </div>
         </div>
 
@@ -270,6 +355,53 @@
       <div class="flex items-center justify-end gap-2 pt-2">
         <button id="cancel-service-modal" class="px-4 py-2 rounded-lg bg-surface-container text-xs font-medium text-on-surface hover:bg-surface-container-high">Hủy</button>
         <button id="confirm-save-service" class="px-4 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary-container">Lưu dịch vụ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Thêm / Sửa Gói Chăm Sóc Nâng Cao -->
+  <div id="care-option-modal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-surface-card rounded-xl max-w-md w-full p-5 border border-surface-container shadow-xl space-y-4">
+      <div class="flex items-center justify-between">
+        <h3 class="font-bold text-sm text-on-surface" id="modal-care-title">Thêm Gói Chăm Sóc Nâng Cao</h3>
+        <button id="close-care-modal" onclick="hideCareModal()" class="text-secondary hover:text-on-surface">
+          <span class="material-symbols-outlined text-lg">close</span>
+        </button>
+      </div>
+
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-secondary mb-1">Tên gói chăm sóc / Tiện ích</label>
+          <input id="input-care-name" type="text" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary font-medium" placeholder="Ví dụ: Khử khuẩn tia UV chuyên sâu">
+        </div>
+
+        <div>
+          <label class="block font-semibold text-secondary mb-1">Mô tả chi tiết</label>
+          <textarea id="input-care-desc" rows="2" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary font-medium" placeholder="Ví dụ: Diệt 99.9% vi khuẩn, giữ phom áo tinh tươm..."></textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block font-semibold text-secondary mb-1">Đơn giá cộng thêm (VNĐ)</label>
+            <input id="input-care-price" type="number" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-sm font-bold text-primary focus:outline-none" value="0" placeholder="0 nếu miễn phí">
+            <p class="text-[10px] text-secondary mt-0.5">Nhập 0đ nếu miễn phí</p>
+          </div>
+          <div>
+            <label class="block font-semibold text-secondary mb-1">Huy hiệu / Tag nổi bật</label>
+            <input id="input-care-badge" type="text" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary font-medium" placeholder="72 Giờ, #SEAL-3T, HOT...">
+            <p class="text-[10px] text-secondary mt-0.5">Tùy chọn hiển thị tag</p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 pt-1">
+          <input id="input-care-active" type="checkbox" checked class="rounded text-primary focus:ring-primary w-4 h-4">
+          <label for="input-care-active" class="text-xs font-semibold text-on-surface cursor-pointer">Kích hoạt & cho phép khách hàng chọn trên App</label>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-2 pt-2 border-t border-surface-container">
+        <button onclick="hideCareModal()" class="px-4 py-2 rounded-lg bg-surface-container text-xs font-medium text-on-surface hover:bg-surface-container-high">Hủy</button>
+        <button id="confirm-save-care" onclick="saveCareOption()" class="px-4 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary-container">Lưu gói chăm sóc</button>
       </div>
     </div>
   </div>
@@ -295,8 +427,12 @@
       setTimeout(() => toast.remove(), 4000);
     }
 
+    // State Variables
+    let currentMainTab = 'services';
     let serviceCache = [];
+    let careOptionsCache = [];
     let editingServiceId = null;
+    let editingCareId = null;
     let activeCategory = 'all';
 
     function safeText(value) {
@@ -307,9 +443,52 @@
     function serviceUnit(s) { return s.price?.unit ?? s.Price?.Unit ?? s.currentPrice?.unit ?? s.CurrentPrice?.Unit ?? s.unit ?? 'kg'; }
     function serviceId(s) { return s.id ?? s.Id ?? s.serviceId ?? s.ServiceId; }
     function serviceName(s) { return s.name ?? s.Name ?? s.serviceName ?? s.ServiceName ?? 'Dịch vụ'; }
-    function serviceMinimum(s) { return s.price?.minimumPrice ?? s.Price?.MinimumPrice ?? s.currentPrice?.minimumPrice ?? s.CurrentPrice?.MinimumPrice ?? null; }
     function serviceCategory(unit) { return /kg|ký/i.test(String(unit)) ? 'kg' : 'item'; }
 
+    // Tab Switcher
+    function switchMainTab(tab) {
+      currentMainTab = tab;
+      const bSvc = document.getElementById('tab-btn-services');
+      const bCare = document.getElementById('tab-btn-care');
+      const sSvc = document.getElementById('section-services');
+      const sCare = document.getElementById('section-care-options');
+      const btnAddLabel = document.getElementById('btn-add-label');
+
+      if (tab === 'services') {
+        bSvc.className = 'pb-3 text-xs font-bold border-b-2 border-primary text-primary flex items-center gap-2 transition-all';
+        bCare.className = 'pb-3 text-xs font-semibold border-b-2 border-transparent text-secondary hover:text-on-surface flex items-center gap-2 transition-all';
+        sSvc.classList.remove('hidden');
+        sCare.classList.add('hidden');
+        btnAddLabel.textContent = 'Thêm Dịch Vụ Mới';
+      } else {
+        bCare.className = 'pb-3 text-xs font-bold border-b-2 border-primary text-primary flex items-center gap-2 transition-all';
+        bSvc.className = 'pb-3 text-xs font-semibold border-b-2 border-transparent text-secondary hover:text-on-surface flex items-center gap-2 transition-all';
+        sCare.classList.remove('hidden');
+        sSvc.classList.add('hidden');
+        btnAddLabel.textContent = 'Thêm Gói Chăm Sóc Mới';
+        if (careOptionsCache.length === 0) loadCareOptionsFromApi();
+      }
+    }
+
+    // Main Add Button Handlers
+    document.getElementById('open-add-service-modal')?.addEventListener('click', () => {
+      if (currentMainTab === 'services') {
+        editingServiceId = null;
+        document.getElementById('modal-service-title').textContent = 'Thêm Dịch Vụ Mới';
+        document.getElementById('input-service-name').value = '';
+        document.getElementById('input-service-price').value = '';
+        document.getElementById('input-service-unit').value = 'kg';
+        document.getElementById('input-service-type').value = 'kg';
+        const modal = document.getElementById('service-modal');
+        modal.classList.remove('hidden'); modal.classList.add('flex');
+      } else {
+        openAddCareModal();
+      }
+    });
+
+    // ============================================================
+    // SERVICES TAB LOGIC
+    // ============================================================
     function renderServices() {
       const tbody = document.getElementById('services-table-body');
       const query = (document.getElementById('service-search-input')?.value || '').trim().toLowerCase();
@@ -317,29 +496,61 @@
         const unit = serviceUnit(s);
         const categoryOk = activeCategory === 'all' || serviceCategory(unit) === activeCategory;
         const text = `${serviceName(s)} ${unit} ${servicePrice(s)}`.toLowerCase();
-        return categoryOk && text.includes(query);
+        return categoryOk && (currentMainTab !== 'services' || text.includes(query));
       });
+
       if (!visible.length) {
-        tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-secondary">Không có dịch vụ phù hợp.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="py-8 text-center text-secondary">Không có dịch vụ phù hợp.</td></tr>`;
       } else {
         tbody.innerHTML = visible.map(s => {
           const id = serviceId(s), name = serviceName(s), price = servicePrice(s), unit = serviceUnit(s);
           const cat = serviceCategory(unit);
           const desc = s.description ?? s.Description ?? '';
-          const icon = cat === 'kg' ? 'local_laundry_service' : 'dry_cleaning';
-          const typeLabel = cat === 'kg' ? 'Giặt ký' : 'Giặt hấp';
-          return `<tr class="service-row hover:bg-surface-container-low transition-colors" data-cat="${cat}">
-            <td class="py-3 px-4"><div class="flex items-center gap-3"><div class="w-8 h-8 rounded-lg bg-surface-container text-primary flex items-center justify-center font-bold"><span class="material-symbols-outlined text-base">${icon}</span></div><div><p class="font-bold text-on-surface">${safeText(name)}</p><p class="text-[11px] text-secondary">Mã: #DV-${safeText(id)}${desc ? ' · ' + safeText(desc) : ''}</p></div></div></td>
-            <td class="py-3 px-3"><span class="px-2.5 py-1 rounded-full ${cat==='kg'?'bg-surface-container text-on-surface':'bg-amber-100 text-amber-800'} text-[10px] font-semibold">${typeLabel}</span></td>
-            <td class="py-3 px-3 font-medium text-secondary">${safeText(unit)}</td>
+          const icon = cat === 'kg' ? 'local_laundry_service' : 'checkroom';
+          const typeLabel = cat === 'kg' ? 'Giặt ký (kg)' : 'Giặt món (' + unit + ')';
+          const ruleLabel = cat === 'kg' ? 'Shipper cân kg thực tế' : 'Số lượng nguyên (1, 2, 3...)';
+
+          return `<tr class="hover:bg-surface-container-low transition-colors">
+            <td class="py-3 px-4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-surface-container text-primary flex items-center justify-center font-bold">
+                  <span class="material-symbols-outlined text-base">${icon}</span>
+                </div>
+                <div>
+                  <p class="font-bold text-on-surface">${safeText(name)}</p>
+                  <p class="text-[11px] text-secondary">Mã: #DV-${safeText(id)}${desc ? ' · ' + safeText(desc) : ''}</p>
+                </div>
+              </div>
+            </td>
+            <td class="py-3 px-3">
+              <span class="px-2.5 py-1 rounded-full ${cat==='kg'?'bg-emerald-50 text-emerald-800 border border-emerald-200':'bg-amber-50 text-amber-800 border border-amber-200'} text-[10px] font-bold">
+                ${typeLabel}
+              </span>
+            </td>
+            <td class="py-3 px-3 font-semibold text-on-surface">${safeText(unit)}</td>
             <td class="py-3 px-3 text-right font-bold text-primary">${money(price)} / ${safeText(unit)}</td>
-            <td class="py-3 px-3 text-center"><span class="px-2 py-0.5 rounded bg-green-100 text-green-800 text-[10px] font-bold">Đang kinh doanh</span></td>
-            <td class="py-3 px-4 text-center"><div class="flex items-center justify-center gap-1.5"><button class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold text-[11px] transition-colors" data-edit-service="${safeText(id)}">Chỉnh sửa</button></div></td>
+            <td class="py-3 px-3 text-center">
+              <span class="text-[11px] text-secondary font-medium">${ruleLabel}</span>
+            </td>
+            <td class="py-3 px-3 text-center">
+              <span class="px-2 py-0.5 rounded bg-green-100 text-green-800 text-[10px] font-bold">Đang kinh doanh</span>
+            </td>
+            <td class="py-3 px-4 text-center">
+              <button class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold text-[11px] transition-colors" data-edit-service="${safeText(id)}">
+                Chỉnh sửa
+              </button>
+            </td>
           </tr>`;
         }).join('');
       }
+
+      const totalKg = serviceCache.filter(s => serviceCategory(serviceUnit(s)) === 'kg').length;
+      const totalItem = serviceCache.filter(s => serviceCategory(serviceUnit(s)) !== 'kg').length;
       document.getElementById('kpi-total-services').innerHTML = `${serviceCache.length} <span class="text-xs font-normal text-secondary">dịch vụ</span>`;
-      document.getElementById('kpi-kg-services').innerHTML = `${serviceCache.filter(s => serviceCategory(serviceUnit(s)) === 'kg').length} <span class="text-xs font-normal text-secondary">mục</span>`;
+      document.getElementById('kpi-kg-services').innerHTML = `${totalKg} <span class="text-xs font-normal text-secondary">mục</span>`;
+      document.getElementById('kpi-item-services').innerHTML = `${totalItem} <span class="text-xs font-normal text-secondary">mục</span>`;
+      document.getElementById('badge-services-count').textContent = serviceCache.length;
+
       tbody.querySelectorAll('[data-edit-service]').forEach(btn => btn.addEventListener('click', () => {
         const item = serviceCache.find(s => String(serviceId(s)) === btn.dataset.editService);
         if (item) editService(serviceId(item), serviceName(item), servicePrice(item), serviceUnit(item));
@@ -351,18 +562,7 @@
       btn.classList.add('active','bg-primary','text-white'); btn.classList.remove('text-secondary');
       activeCategory = btn.dataset.cat || 'all'; renderServices();
     }));
-    document.getElementById('service-search-input')?.addEventListener('input', renderServices);
 
-    const modal = document.getElementById('service-modal');
-    document.getElementById('open-add-service-modal')?.addEventListener('click', () => {
-      editingServiceId = null;
-      document.getElementById('modal-service-title').textContent = 'Thêm Dịch Vụ Mới';
-      document.getElementById('input-service-name').value = '';
-      document.getElementById('input-service-price').value = '';
-      document.getElementById('input-service-unit').value = 'kg';
-      document.getElementById('input-service-type').value = 'kg';
-      modal.classList.remove('hidden'); modal.classList.add('flex');
-    });
     function editService(id, name, price, unit) {
       editingServiceId = id;
       document.getElementById('modal-service-title').textContent = 'Chỉnh Sửa Dịch Vụ #' + id;
@@ -370,11 +570,16 @@
       document.getElementById('input-service-price').value = price;
       document.getElementById('input-service-unit').value = unit;
       document.getElementById('input-service-type').value = serviceCategory(unit);
+      const modal = document.getElementById('service-modal');
       modal.classList.remove('hidden'); modal.classList.add('flex');
     }
-    const hideModal = () => { modal.classList.add('hidden'); modal.classList.remove('flex'); };
-    document.getElementById('close-service-modal')?.addEventListener('click', hideModal);
-    document.getElementById('cancel-service-modal')?.addEventListener('click', hideModal);
+
+    const hideServiceModal = () => {
+      const modal = document.getElementById('service-modal');
+      modal.classList.add('hidden'); modal.classList.remove('flex');
+    };
+    document.getElementById('close-service-modal')?.addEventListener('click', hideServiceModal);
+    document.getElementById('cancel-service-modal')?.addEventListener('click', hideServiceModal);
 
     document.getElementById('confirm-save-service')?.addEventListener('click', async () => {
       const name = document.getElementById('input-service-name').value.trim();
@@ -391,10 +596,10 @@
         } else {
           const current = serviceCache.find(s => String(serviceId(s)) === String(editingServiceId));
           const description = current?.description ?? current?.Description ?? name;
-          await Api.Services.update(editingServiceId, { name, description, price, unit, minimumPrice: serviceMinimum(current) });
-          await Api.Services.updatePrice(editingServiceId, { price, unit, minimumPrice: serviceMinimum(current) });
+          await Api.Services.update(editingServiceId, { name, description, price, unit, minimumPrice: null });
+          await Api.Services.updatePrice(editingServiceId, { price, unit, minimumPrice: null });
         }
-        hideModal();
+        hideServiceModal();
         await loadServicesFromApi();
         showToast(`Đã lưu dịch vụ "${name}" thành công.`);
       } catch (e) {
@@ -406,17 +611,193 @@
       try {
         const list = await Api.Services.all();
         serviceCache = Array.isArray(list) ? list : (list?.data || list?.items || list?.result || []);
-        const status = document.getElementById('service-connection-status');
-        if (status) { status.className = 'text-2xl font-bold text-green-700 mt-1'; status.innerHTML = 'Đã đồng bộ <span class="text-xs font-normal text-secondary">(Database C#)</span>'; }
         renderServices();
       } catch (e) {
-        const status = document.getElementById('service-connection-status');
-        if (status) { status.className = 'text-2xl font-bold text-red-700 mt-1'; status.textContent = 'Chưa kết nối API'; }
-        document.getElementById('services-table-body').innerHTML = `<tr><td colspan="6" class="py-8 text-center text-red-700">Không tải được dữ liệu API: ${safeText(e.message)}. Kiểm tra backend và đăng nhập Admin.</td></tr>`;
-        showToast('Không tải được danh sách dịch vụ từ API.', true);
+        document.getElementById('services-table-body').innerHTML = `<tr><td colspan="7" class="py-8 text-center text-red-700">Không tải được dữ liệu: ${safeText(e.message)}</td></tr>`;
       }
     }
+
+    // ============================================================
+    // CARE OPTIONS (GÓI CHĂM SÓC NÂNG CAO) TAB LOGIC
+    // ============================================================
+    function renderCareOptions() {
+      const tbody = document.getElementById('care-options-table-body');
+      const query = (document.getElementById('service-search-input')?.value || '').trim().toLowerCase();
+      const visible = careOptionsCache.filter(c => {
+        const text = `${c.name} ${c.description} ${c.badgeText || ''} ${c.price}`.toLowerCase();
+        return currentMainTab !== 'care' || text.includes(query);
+      });
+
+      if (!visible.length) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-8 text-center text-secondary">Chưa có gói chăm sóc nào hoặc không tìm thấy kết quả.</td></tr>`;
+      } else {
+        tbody.innerHTML = visible.map(c => {
+          const isFree = Number(c.price || 0) === 0;
+          const priceBadge = isFree 
+            ? `<span class="text-green-700 font-bold bg-green-50 px-2.5 py-0.5 rounded border border-green-200">Miễn phí (0 đ)</span>`
+            : `<span class="text-primary font-bold bg-rose-50 px-2.5 py-0.5 rounded border border-rose-200">+${money(c.price)}</span>`;
+
+          const tagBadge = c.badgeText 
+            ? `<span class="px-2 py-0.5 rounded-full bg-secondary/15 text-secondary text-[10px] font-extrabold">${safeText(c.badgeText)}</span>`
+            : `<span class="text-secondary text-[11px]">—</span>`;
+
+          const statusBadge = c.isActive 
+            ? `<span class="px-2 py-0.5 rounded bg-green-100 text-green-800 text-[10px] font-bold">Đang áp dụng</span>`
+            : `<span class="px-2 py-0.5 rounded bg-gray-100 text-gray-600 text-[10px] font-medium">Tạm ẩn</span>`;
+
+          return `<tr class="hover:bg-surface-container-low transition-colors">
+            <td class="py-3 px-4">
+              <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-rose-50 text-primary flex items-center justify-center font-bold">
+                  <span class="material-symbols-outlined text-base">auto_awesome</span>
+                </div>
+                <div>
+                  <p class="font-bold text-on-surface">${safeText(c.name)}</p>
+                  <p class="text-[11px] text-secondary mt-0.5">${safeText(c.description || 'Không có mô tả')}</p>
+                </div>
+              </div>
+            </td>
+            <td class="py-3 px-3 text-center">${tagBadge}</td>
+            <td class="py-3 px-3 text-right">${priceBadge}</td>
+            <td class="py-3 px-3 text-center">${statusBadge}</td>
+            <td class="py-3 px-4 text-center">
+              <div class="flex items-center justify-center gap-1.5">
+                <button onclick="editCareOption(${c.id})" class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold text-[11px] transition-colors">
+                  Sửa
+                </button>
+                <button onclick="toggleCareOption(${c.id})" class="px-2 py-1 rounded ${c.isActive ? 'text-amber-700 hover:bg-amber-50' : 'text-green-700 hover:bg-green-50'} text-[11px] font-medium transition-colors">
+                  ${c.isActive ? 'Tạm ẩn' : 'Kích hoạt'}
+                </button>
+                <button onclick="deleteCareOption(${c.id})" class="px-2 py-1 rounded text-red-700 hover:bg-red-50 text-[11px] font-medium transition-colors">
+                  Xóa
+                </button>
+              </div>
+            </td>
+          </tr>`;
+        }).join('');
+      }
+
+      const totalCare = careOptionsCache.length;
+      const paidCare = careOptionsCache.filter(c => Number(c.price || 0) > 0).length;
+      const freeCare = careOptionsCache.filter(c => Number(c.price || 0) === 0).length;
+
+      document.getElementById('kpi-total-care').innerHTML = `${totalCare} <span class="text-xs font-normal text-secondary">gói</span>`;
+      document.getElementById('kpi-paid-care').innerHTML = `${paidCare} <span class="text-xs font-normal text-secondary">gói</span>`;
+      document.getElementById('kpi-free-care').innerHTML = `${freeCare} <span class="text-xs font-normal text-secondary">tiện ích</span>`;
+      document.getElementById('badge-care-count').textContent = totalCare;
+    }
+
+    async function loadCareOptionsFromApi() {
+      try {
+        const list = await Api.CareOptions.all(true);
+        careOptionsCache = Array.isArray(list) ? list : [];
+        renderCareOptions();
+      } catch (e) {
+        document.getElementById('care-options-table-body').innerHTML = `<tr><td colspan="5" class="py-8 text-center text-red-700">Không tải được danh sách gói chăm sóc: ${safeText(e.message)}</td></tr>`;
+      }
+    }
+
+    function openAddCareModal() {
+      editingCareId = null;
+      document.getElementById('modal-care-title').textContent = 'Thêm Gói Chăm Sóc Nâng Cao Mới';
+      document.getElementById('input-care-name').value = '';
+      document.getElementById('input-care-desc').value = '';
+      document.getElementById('input-care-price').value = '0';
+      document.getElementById('input-care-badge').value = '';
+      document.getElementById('input-care-active').checked = true;
+      const modal = document.getElementById('care-option-modal');
+      modal.classList.remove('hidden'); modal.classList.add('flex');
+    }
+
+    function editCareOption(id) {
+      const item = careOptionsCache.find(c => c.id === id);
+      if (!item) return;
+      editingCareId = id;
+      document.getElementById('modal-care-title').textContent = 'Chỉnh Sửa Gói Chăm Sóc #' + id;
+      document.getElementById('input-care-name').value = item.name || '';
+      document.getElementById('input-care-desc').value = item.description || '';
+      document.getElementById('input-care-price').value = item.price || 0;
+      document.getElementById('input-care-badge').value = item.badgeText || '';
+      document.getElementById('input-care-active').checked = !!item.isActive;
+      const modal = document.getElementById('care-option-modal');
+      modal.classList.remove('hidden'); modal.classList.add('flex');
+    }
+
+    function hideCareModal() {
+      const modal = document.getElementById('care-option-modal');
+      modal.classList.add('hidden'); modal.classList.remove('flex');
+    }
+
+    async function saveCareOption() {
+      const name = document.getElementById('input-care-name').value.trim();
+      const desc = document.getElementById('input-care-desc').value.trim();
+      const price = Number(document.getElementById('input-care-price').value);
+      const badge = document.getElementById('input-care-badge').value.trim();
+      const isActive = document.getElementById('input-care-active').checked;
+      const btn = document.getElementById('confirm-save-care');
+
+      if (!name) return showToast('Vui lòng nhập tên gói chăm sóc.', true);
+      if (isNaN(price) || price < 0) return showToast('Đơn giá không hợp lệ.', true);
+
+      btn.disabled = true; btn.textContent = 'Đang lưu...';
+      try {
+        const payload = {
+          name,
+          description: desc,
+          price,
+          badgeText: badge || null,
+          isActive
+        };
+
+        if (editingCareId == null) {
+          await Api.CareOptions.create(payload);
+          showToast(`Đã thêm gói chăm sóc "${name}" thành công!`);
+        } else {
+          await Api.CareOptions.update(editingCareId, payload);
+          showToast(`Đã cập nhật gói chăm sóc "${name}" thành công!`);
+        }
+
+        hideCareModal();
+        await loadCareOptionsFromApi();
+      } catch (e) {
+        showToast('Lỗi khi lưu gói chăm sóc: ' + (e.message || 'Lỗi API'), true);
+      } finally {
+        btn.disabled = false; btn.textContent = 'Lưu gói chăm sóc';
+      }
+    }
+
+    async function toggleCareOption(id) {
+      const item = careOptionsCache.find(c => c.id === id);
+      try {
+        await Api.CareOptions.toggle(id);
+        await loadCareOptionsFromApi();
+        showToast(`Đã chuyển đổi trạng thái gói "${item?.name || id}" thành công.`);
+      } catch (e) {
+        showToast('Không thể thay đổi trạng thái: ' + e.message, true);
+      }
+    }
+
+    async function deleteCareOption(id) {
+      const item = careOptionsCache.find(c => c.id === id);
+      if (!confirm(`Bạn có chắc muốn xóa vĩnh viễn gói chăm sóc "${item?.name || id}"?`)) return;
+      try {
+        await Api.CareOptions.delete(id);
+        await loadCareOptionsFromApi();
+        showToast(`Đã xóa gói chăm sóc thành công!`);
+      } catch (e) {
+        showToast('Xóa gói chăm sóc thất bại: ' + e.message, true);
+      }
+    }
+
+    // Search input listener
+    document.getElementById('service-search-input')?.addEventListener('input', () => {
+      if (currentMainTab === 'services') renderServices();
+      else renderCareOptions();
+    });
+
+    // Initial Load
     loadServicesFromApi();
+    loadCareOptionsFromApi();
   </script>
 </body>
 

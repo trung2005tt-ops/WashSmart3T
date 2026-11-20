@@ -441,6 +441,64 @@ public static class DbSeeder
             );
         }
 
+        // =========================
+        // SEED CARE OPTIONS (GÓI CHĂM SÓC NÂNG CAO)
+        // =========================
+        try
+        {
+            await context.Database.ExecuteSqlRawAsync(@"
+                IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='CareOptions' and xtype='U')
+                CREATE TABLE CareOptions (
+                    Id INT IDENTITY(1,1) PRIMARY KEY,
+                    Name NVARCHAR(255) NOT NULL,
+                    Description NVARCHAR(500) NULL,
+                    Price DECIMAL(18,2) NOT NULL DEFAULT 0,
+                    BadgeText NVARCHAR(50) NULL,
+                    IsActive BIT NOT NULL DEFAULT 1,
+                    CreatedAt DATETIME2 NOT NULL DEFAULT GETUTCDATE(),
+                    UpdatedAt DATETIME2 NULL
+                );
+            ");
+
+            if (!await context.CareOptions.AnyAsync())
+            {
+                context.CareOptions.AddRange(
+                    new CareOption
+                    {
+                        Name = "Ủi hơi nước chống nhăn form",
+                        Description = "Ủi đứng áp suất nhiệt, giữ phom áo sơ mi & quần âu",
+                        Price = 20000,
+                        BadgeText = null,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    },
+                    new CareOption
+                    {
+                        Name = "Hương Hoa Ban Mai 3T",
+                        Description = "Chiết xuất tinh dầu thảo mộc dịu nhẹ, an toàn da nhạy cảm",
+                        Price = 0,
+                        BadgeText = "72 Giờ",
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    },
+                    new CareOption
+                    {
+                        Name = "Túi vải niêm phong chống nước",
+                        Description = "Khóa seal an toàn chống ẩm bụi, mở seal tại nhà khách",
+                        Price = 0,
+                        BadgeText = "#SEAL-3T",
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    }
+                );
+                await context.SaveChangesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DbSeeder] CareOptions seed warning: {ex.Message}");
+        }
+
         await context.SaveChangesAsync();
     }
 }
