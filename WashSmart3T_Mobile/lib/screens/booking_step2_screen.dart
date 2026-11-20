@@ -49,9 +49,14 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
   int shippingFee = 30000; // Phí vận chuyển 2 chiều
   int selectedDateIndex = 0; // 0: hôm nay, 1: ngày mai, 2: ngày kia
   int selectedTimeSlot = 0; // Sẽ được tự động tính toán trong initState
-  bool isSameDeliveryAddress = true; // Giao trả về cùng địa chỉ lấy
+  bool isDifferentDeliveryAddress = false; // Mặc định không tích: giao trả về cùng địa chỉ lấy đồ
 
   late final TextEditingController _pickupNoteController;
+  late final TextEditingController _deliveryAddressController;
+  late final TextEditingController _deliveryReceiverNameController;
+  late final TextEditingController _deliveryReceiverPhoneController;
+  late final TextEditingController _deliveryNoteController;
+
   String userPhone = '0908123456';
   String userName = 'Kiều Như';
 
@@ -118,8 +123,15 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
         defaultNote,
       ].where((note) => note.isNotEmpty).join(' | '),
     );
+
+    _deliveryAddressController = TextEditingController();
+    _deliveryReceiverNameController = TextEditingController(text: userName);
+    _deliveryReceiverPhoneController = TextEditingController(text: userPhone);
+    _deliveryNoteController = TextEditingController();
+
     userPhone = widget.contactPhone.replaceAll(RegExp(r'[^0-9+]'), '');
     if (userPhone.isEmpty) userPhone = '0908123456';
+    _deliveryReceiverPhoneController.text = userPhone;
     _loadUserProfile();
   }
 
@@ -137,9 +149,15 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
             setState(() {
               if (data['phone'] != null && data['phone'].toString().isNotEmpty) {
                 userPhone = data['phone'].toString().replaceAll(RegExp(r'[^0-9+]'), '');
+                if (_deliveryReceiverPhoneController.text.isEmpty || _deliveryReceiverPhoneController.text == '0908123456') {
+                  _deliveryReceiverPhoneController.text = userPhone;
+                }
               }
               if (data['fullName'] != null && data['fullName'].toString().isNotEmpty) {
                 userName = data['fullName'].toString();
+                if (_deliveryReceiverNameController.text.isEmpty || _deliveryReceiverNameController.text == 'Kiều Như') {
+                  _deliveryReceiverNameController.text = userName;
+                }
               }
             });
           }
@@ -182,6 +200,10 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
   @override
   void dispose() {
     _pickupNoteController.dispose();
+    _deliveryAddressController.dispose();
+    _deliveryReceiverNameController.dispose();
+    _deliveryReceiverPhoneController.dispose();
+    _deliveryNoteController.dispose();
     super.dispose();
   }
 
@@ -1327,32 +1349,216 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
           ),
           const SizedBox(height: 10),
 
-          // Checkbox: Same delivery address
-          Row(
-            children: [
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: Checkbox(
-                  value: isSameDeliveryAddress,
-                  activeColor: primaryColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(4),
+          // Checkbox: Nhận đồ tại địa chỉ khác
+          InkWell(
+            onTap: () {
+              setState(() {
+                isDifferentDeliveryAddress = !isDifferentDeliveryAddress;
+              });
+            },
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4.0),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: Checkbox(
+                      value: isDifferentDeliveryAddress,
+                      activeColor: primaryColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      onChanged: (val) {
+                        setState(() {
+                          isDifferentDeliveryAddress = val ?? false;
+                        });
+                      },
+                    ),
                   ),
-                  onChanged: (val) =>
-                      setState(() => isSameDeliveryAddress = val ?? true),
-                ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Giao trả đồ tới địa chỉ khác',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: onSurface,
+                          ),
+                        ),
+                        Text(
+                          isDifferentDeliveryAddress
+                              ? 'Tùy chọn: Nhận đồ tại cơ quan, nhà người thân...'
+                              : 'Chỉ nhận đồ tại địa chỉ lấy đồ mặc định (${widget.pickupAddress.split(',').first})',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10,
+                            color: onSurfaceVariant,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 8),
-              Text(
-                'Giao trả về cùng địa chỉ lấy đồ',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  color: onSurface,
-                ),
-              ),
-            ],
+            ),
           ),
+
+          // Form nhập địa chỉ khác khi khách hàng tích chọn
+          if (isDifferentDeliveryAddress) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: surfaceLow,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: primaryFixed, width: 1),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.pin_drop, size: 16, color: primaryColor),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Địa chỉ giao trả đồ sạch khác:',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Ô nhập địa chỉ chi tiết
+                  TextField(
+                    controller: _deliveryAddressController,
+                    style: GoogleFonts.plusJakartaSans(fontSize: 12, color: onSurface),
+                    decoration: InputDecoration(
+                      hintText: 'Nhập số nhà, tên đường, tòa nhà, phường, quận...',
+                      hintStyle: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        color: onSurfaceVariant.withValues(alpha: 0.6),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: surfaceVariant),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: primaryColor, width: 1.5),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // 2 cột: Tên & SĐT người nhận tại địa chỉ này
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Người nhận đồ:',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            TextField(
+                              controller: _deliveryReceiverNameController,
+                              style: GoogleFonts.plusJakartaSans(fontSize: 11, color: onSurface),
+                              decoration: InputDecoration(
+                                hintText: 'Tên người nhận',
+                                filled: true,
+                                fillColor: Colors.white,
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: surfaceVariant),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Số điện thoại:',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            TextField(
+                              controller: _deliveryReceiverPhoneController,
+                              keyboardType: TextInputType.phone,
+                              style: GoogleFonts.plusJakartaSans(fontSize: 11, color: onSurface),
+                              decoration: InputDecoration(
+                                hintText: 'SĐT người nhận',
+                                filled: true,
+                                fillColor: Colors.white,
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                  borderSide: const BorderSide(color: surfaceVariant),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Ghi chú thêm cho shipper khi giao đồ
+                  TextField(
+                    controller: _deliveryNoteController,
+                    style: GoogleFonts.plusJakartaSans(fontSize: 11, color: onSurface),
+                    decoration: InputDecoration(
+                      hintText: 'Ghi chú giao đồ (Gửi lễ tân, bảo vệ, gọi trước 15p...)',
+                      hintStyle: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        color: onSurfaceVariant.withValues(alpha: 0.6),
+                      ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        borderSide: const BorderSide(color: surfaceVariant),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1514,9 +1720,10 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                       return;
                     }
 
-                    if (!isSameDeliveryAddress) {
+                    if (isDifferentDeliveryAddress &&
+                        _deliveryAddressController.text.trim().isEmpty) {
                       _showToast(
-                        'Chức năng nhập địa chỉ giao trả khác sẽ được bổ sung. Hiện hãy chọn giao trả cùng địa chỉ lấy đồ.',
+                        'Vui lòng nhập địa chỉ giao trả đồ sạch hoặc bỏ tích chọn.',
                       );
                       return;
                     }
@@ -1584,15 +1791,34 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                       deliveryTimeFull = '$currentSlotRange Ngày $rDateStr (Chuẩn 24h)';
                     }
 
+                    final finalDeliveryAddress = isDifferentDeliveryAddress
+                        ? _deliveryAddressController.text.trim()
+                        : widget.pickupAddress;
+                    final receiverPhone = isDifferentDeliveryAddress &&
+                            _deliveryReceiverPhoneController.text.trim().isNotEmpty
+                        ? _deliveryReceiverPhoneController.text.trim()
+                        : userPhone;
+                    final receiverName = isDifferentDeliveryAddress &&
+                            _deliveryReceiverNameController.text.trim().isNotEmpty
+                        ? _deliveryReceiverNameController.text.trim()
+                        : userName;
+                    final deliveryNote = isDifferentDeliveryAddress &&
+                            _deliveryNoteController.text.trim().isNotEmpty
+                        ? 'Ghi chú giao: ${_deliveryNoteController.text.trim()}'
+                        : '';
+
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => BookingStep3Screen(
                           pickupAddress: widget.pickupAddress,
-                          deliveryAddress: widget.pickupAddress,
-                          contactPhone: userPhone,
+                          deliveryAddress: finalDeliveryAddress,
+                          contactPhone: receiverPhone,
                           note: [
                             _pickupNoteController.text.trim(),
+                            deliveryNote,
+                            if (isDifferentDeliveryAddress)
+                              'Giao tới địa chỉ khác: $finalDeliveryAddress (Người nhận: $receiverName - $receiverPhone)',
                             'Lịch lấy đồ: $pickupTimeFull',
                             'Dự kiến giao trả: $deliveryTimeFull',
                           ].where((value) => value.trim().isNotEmpty).join(' | '),

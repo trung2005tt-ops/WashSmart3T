@@ -940,15 +940,47 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
                           ),
                         ],
                       ),
-                      Text(
-                        widget.pickupAddress.isNotEmpty ? widget.pickupAddress : 'Căn 302, 128 Hai Bà Trưng, P. Bến Nghé, Q.1, TP.HCM',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
-                          color: onSurfaceVariant,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      const SizedBox(height: 3),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(Icons.arrow_upward, size: 12, color: primaryColor),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              'Lấy: ${widget.pickupAddress.isNotEmpty ? widget.pickupAddress : 'Căn 302, 128 Hai Bà Trưng, P. Bến Nghé, Q.1, TP.HCM'}',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                color: onSurfaceVariant,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
+                      if (widget.deliveryAddress.isNotEmpty && widget.deliveryAddress != widget.pickupAddress) ...[
+                        const SizedBox(height: 3),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Icon(Icons.arrow_downward, size: 12, color: tertiaryColor),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                'Giao trả: ${widget.deliveryAddress}',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: tertiaryColor,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
                   ),
                 ),
