@@ -38,6 +38,8 @@ class ShipperOrderModel {
   final String customerNote;
   final String? proofPhotoUrl;
   final String? pickupProofPhotoUrl;
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
   final List<Map<String, dynamic>> items;
 
   ShipperOrderModel({
@@ -58,6 +60,8 @@ class ShipperOrderModel {
     required this.customerNote,
     this.proofPhotoUrl,
     this.pickupProofPhotoUrl,
+    this.createdAt,
+    this.updatedAt,
     this.items = const [],
   });
 
@@ -127,6 +131,7 @@ class _ShipperScreenState extends State<ShipperScreen>
   Timer? _orderPollingTimer;
   bool _hasNewOrderNotification = false;
   int _selectedFilterIndex = 0; // 0: Cần lấy, 1: Cần giao, 2: Đã hoàn tất
+  int _completedTimeFilter = 0; // 0: Đã đi hôm nay, 1: Tất cả lịch sử
   String _searchQuery = '';
   final TextEditingController _searchController = TextEditingController();
 
@@ -137,6 +142,29 @@ class _ShipperScreenState extends State<ShipperScreen>
   static const double _baseSalary = 10000000;
   final double _violationFee = 50000;
   int _todayCompletedCount = 0;
+
+  bool _isSameDay(DateTime? d1, DateTime d2) {
+    if (d1 == null) return false;
+    final local = d1.toLocal();
+    return local.year == d2.year && local.month == d2.month && local.day == d2.day;
+  }
+
+  // Danh sách các đơn đã hoàn tất trong ngày hôm nay
+  List<ShipperOrderModel> get todayCompletedOrders {
+    final now = DateTime.now();
+    return _orders.where((o) {
+      if (o.status != ShipperOrderStatus.completed) return false;
+      return _isSameDay(o.updatedAt, now) || _isSameDay(o.createdAt, now);
+    }).toList();
+  }
+
+  // Tổng tiền COD đã thu trong ngày hôm nay
+  double get todayCodCollected {
+    return todayCompletedOrders.fold(
+      0.0,
+      (sum, o) => sum + (o.isPaidOnline ? 0.0 : o.codAmount),
+    );
+  }
 
   double get kpiEarnings => _todayCompletedCount * _kpiPerOrder;
   double get totalIncome => kpiEarnings + _baseSalary - _violationFee;
@@ -197,7 +225,6 @@ class _ShipperScreenState extends State<ShipperScreen>
       final List<dynamic> raw = jsonDecode(res.body);
       final List<ShipperOrderModel> parsed = [];
       final List<String> newlyCancelledCodes = [];
-      int completedCount = 0;
 
       for (final o in raw) {
         final apiStatus = (o['status'] as String? ?? '').trim();
@@ -245,10 +272,11 @@ class _ShipperScreenState extends State<ShipperScreen>
         final createdAt = o['createdAt'] != null
             ? DateTime.tryParse(o['createdAt'] as String) ?? DateTime.now()
             : DateTime.now();
+        final updatedAt = o['updatedAt'] != null
+            ? DateTime.tryParse(o['updatedAt'] as String)
+            : null;
         final timeStr =
             '${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')} ngày ${createdAt.day}/${createdAt.month}';
-
-        if (shipperStatus == ShipperOrderStatus.completed) completedCount++;
 
         parsed.add(
           ShipperOrderModel(
@@ -280,6 +308,8 @@ class _ShipperScreenState extends State<ShipperScreen>
             customerNote: o['note'] as String? ?? '',
             proofPhotoUrl: o['deliveryProofPhotoUrl'] as String?,
             pickupProofPhotoUrl: o['pickupProofPhotoUrl'] as String?,
+            createdAt: createdAt,
+            updatedAt: updatedAt,
             items: items,
           ),
         );
@@ -305,7 +335,7 @@ class _ShipperScreenState extends State<ShipperScreen>
 
       setState(() {
         _orders = parsed;
-        _todayCompletedCount = completedCount;
+        _todayCompletedCount = todayCompletedOrders.length;
         // Nếu không có đơn lấy nhưng có đơn giao, tự mở tab giao để đơn hiện ngay.
         final hasPickup = parsed.any(
           (o) =>
@@ -543,9 +573,15 @@ class _ShipperScreenState extends State<ShipperScreen>
           return false;
         }
       }
-      if (_selectedFilterIndex == 2 &&
-          order.status != ShipperOrderStatus.completed) {
-        return false;
+      if (_selectedFilterIndex == 2) {
+        if (order.status != ShipperOrderStatus.completed) {
+          return false;
+        }
+        if (_completedTimeFilter == 0) {
+          final now = DateTime.now();
+          final isToday = _isSameDay(order.updatedAt, now) || _isSameDay(order.createdAt, now);
+          if (!isToday) return false;
+        }
       }
 
       // Filter by search text
@@ -837,7 +873,11 @@ class _ShipperScreenState extends State<ShipperScreen>
 
             // 2. Stats Dashboard Cards (Daily Performance & COD)
             _buildDashboardStats(),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
+
+            // 🌟 Tuyến đường di chuyển hôm nay
+            _buildRouteShortcutCard(pickupCount, deliveryCount),
+            const SizedBox(height: 4),
 
             // 3. Search Bar
             _buildSearchBar(),
@@ -845,6 +885,12 @@ class _ShipperScreenState extends State<ShipperScreen>
 
             // 4. Custom Filter Chips
             _buildFilterTabs(pickupCount, deliveryCount),
+
+            // 🌟 Tổng kết chuyến đi hôm nay (khi xem tab Đã hoàn tất)
+            if (_selectedFilterIndex == 2) ...[
+              const SizedBox(height: 12),
+              _buildCompletedTodaySummaryHeader(),
+            ],
             const SizedBox(height: 16),
 
             // 5. Header Title & Count
@@ -1213,6 +1259,353 @@ class _ShipperScreenState extends State<ShipperScreen>
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRouteShortcutCard(int pickupCount, int deliveryCount) {
+    final activeOrders = _orders
+        .where(
+          (o) =>
+              o.status != ShipperOrderStatus.completed &&
+              o.status != ShipperOrderStatus.cancelled,
+        )
+        .toList();
+    final totalStops = activeOrders.length;
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF006577), Color(0xFF0284C7)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF006577).withValues(alpha: 0.25),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _showTodayRouteModal(),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Icon(
+                    Icons.alt_route_rounded,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            'Tuyến đường hôm nay',
+                            style: GoogleFonts.plusJakartaSans(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              '$totalStops trạm',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        totalStops > 0
+                            ? '$pickupCount điểm lấy • $deliveryCount điểm giao • Bấm xem lộ trình'
+                            : 'Đã hoàn tất mọi chuyến đi hôm nay!',
+                        style: GoogleFonts.plusJakartaSans(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.map_rounded,
+                        size: 14,
+                        color: Color(0xFF006577),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Xem tuyến',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF006577),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompletedTodaySummaryHeader() {
+    final allCompleted = _orders
+        .where((o) => o.status == ShipperOrderStatus.completed)
+        .length;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFECFDF5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFA7F3D0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF059669).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.assignment_turned_in_rounded,
+                  color: Color(0xFF059669),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Tổng kết chuyến đi trong ngày',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF065F46),
+                      ),
+                    ),
+                    Text(
+                      'Xem lại các đơn đã đi & đối chiếu tiền thu COD hôm nay',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10.5,
+                        color: const Color(0xFF047857),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Đã đi hôm nay',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          color: outlineColor,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${todayCompletedOrders.length} đơn',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF065F46),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'COD đã thu',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          color: outlineColor,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _formatVnd(todayCodCollected),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: primaryColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 8,
+                    horizontal: 10,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Thưởng KPI',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          color: outlineColor,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _formatVnd(
+                          todayCompletedOrders.length * _kpiPerOrder,
+                        ),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF0284C7),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              ChoiceChip(
+                label: Text(
+                  'Đã đi hôm nay (${todayCompletedOrders.length})',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: _completedTimeFilter == 0
+                        ? Colors.white
+                        : const Color(0xFF065F46),
+                  ),
+                ),
+                selected: _completedTimeFilter == 0,
+                selectedColor: const Color(0xFF059669),
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                onSelected: (val) {
+                  if (val) setState(() => _completedTimeFilter = 0);
+                },
+              ),
+              const SizedBox(width: 8),
+              ChoiceChip(
+                label: Text(
+                  'Tất cả lịch sử ($allCompleted)',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: _completedTimeFilter == 1 ? Colors.white : onSurface,
+                  ),
+                ),
+                selected: _completedTimeFilter == 1,
+                selectedColor: outlineColor,
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                onSelected: (val) {
+                  if (val) setState(() => _completedTimeFilter = 1);
+                },
+              ),
+            ],
           ),
         ],
       ),
@@ -1867,6 +2260,22 @@ class _ShipperScreenState extends State<ShipperScreen>
                         ),
                         tooltip: 'Mở chỉ đường',
                       ),
+                      if (order.status == ShipperOrderStatus.completed &&
+                          ((order.proofPhotoUrl != null && order.proofPhotoUrl!.isNotEmpty) ||
+                           (order.pickupProofPhotoUrl != null && order.pickupProofPhotoUrl!.isNotEmpty))) ...[
+                        const SizedBox(width: 4),
+                        IconButton.filledTonal(
+                          onPressed: () => _showProofPhotoDialog(
+                            order,
+                            isPickup: order.type == OrderType.pickup,
+                          ),
+                          icon: const Icon(Icons.photo_library_outlined, color: secondaryColor),
+                          style: IconButton.styleFrom(
+                            backgroundColor: secondaryColor.withValues(alpha: 0.1),
+                          ),
+                          tooltip: 'Xem ảnh minh chứng',
+                        ),
+                      ],
                       const SizedBox(width: 6),
                       // Main Action Button
                       Expanded(
@@ -4096,6 +4505,630 @@ class _ShipperScreenState extends State<ShipperScreen>
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _showTodayRouteModal() {
+    final pendingOrders = _orders
+        .where(
+          (o) =>
+              o.status != ShipperOrderStatus.completed &&
+              o.status != ShipperOrderStatus.cancelled,
+        )
+        .toList();
+
+    pendingOrders.sort((a, b) {
+      int score(ShipperOrderModel m) {
+        if (m.status == ShipperOrderStatus.pickingUp) return 0;
+        if (m.type == OrderType.pickup &&
+            m.status == ShipperOrderStatus.available) {
+          return 1;
+        }
+        if (m.status == ShipperOrderStatus.delivering) return 2;
+        if (m.type == OrderType.delivery &&
+            m.status == ShipperOrderStatus.available) {
+          return 3;
+        }
+        return 4;
+      }
+
+      return score(a).compareTo(score(b));
+    });
+
+    final doneOrders = todayCompletedOrders;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => DefaultTabController(
+        length: 2,
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(sheetCtx).size.height * 0.9,
+          ),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.fromLTRB(20, 16, 16, 12),
+                decoration: const BoxDecoration(
+                  border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: tertiaryColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(
+                        Icons.alt_route_rounded,
+                        color: tertiaryColor,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Tuyến đường di chuyển',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: onSurface,
+                            ),
+                          ),
+                          Text(
+                            'Lộ trình gom đồ & giao nhận tối ưu trong ngày',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: outlineColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(sheetCtx),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Tab Selector
+              TabBar(
+                labelColor: primaryColor,
+                unselectedLabelColor: outlineColor,
+                indicatorColor: primaryColor,
+                labelStyle: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+                unselectedLabelStyle: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13,
+                ),
+                tabs: [
+                  Tab(text: 'Tuyến cần đi (${pendingOrders.length})'),
+                  Tab(text: 'Đã đi hôm nay (${doneOrders.length})'),
+                ],
+              ),
+
+              // Tab Content
+              Expanded(
+                child: TabBarView(
+                  children: [
+                    _buildPendingRouteTab(sheetCtx, pendingOrders),
+                    _buildCompletedRouteTab(sheetCtx, doneOrders),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPendingRouteTab(
+    BuildContext ctx,
+    List<ShipperOrderModel> pendingOrders,
+  ) {
+    if (pendingOrders.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.check_circle_outline,
+                size: 54,
+                color: successColor,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Không có đơn cần đi lúc này',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: onSurface,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Bạn đã hoàn thành tất cả các trạm trong tuyến hôm nay!',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  color: outlineColor,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(16),
+            children: [
+              // Trạm xuất phát: Cửa hàng WashSmart 3T
+              _buildRouteStationCard(
+                stationNumber: 0,
+                isStartOrEnd: true,
+                title: 'Xuất phát: Cửa hàng WashSmart 3T',
+                address: '128 Hai Bà Trưng, P. Bến Nghé, Quận 1, TP. HCM',
+                tag: 'ĐIỂM XUẤT PHÁT',
+                tagColor: const Color(0xFF0284C7),
+                icon: Icons.storefront_rounded,
+              ),
+              const SizedBox(height: 12),
+
+              // Các trạm gom / giao của khách hàng
+              ...List.generate(pendingOrders.length, (idx) {
+                final o = pendingOrders[idx];
+                final isPickup = o.type == OrderType.pickup;
+                final targetAddress = isPickup
+                    ? o.pickupAddress
+                    : o.deliveryAddress;
+
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _buildRouteStationCard(
+                    stationNumber: idx + 1,
+                    isStartOrEnd: false,
+                    title: '#${o.id} • ${o.customerName}',
+                    subtitle: 'SĐT: ${o.customerPhone}',
+                    address: targetAddress,
+                    tag: isPickup ? 'LẤY ĐỒ TẬN NƠI' : 'GIAO ĐỒ SẠCH',
+                    tagColor: isPickup ? tertiaryColor : primaryColor,
+                    infoBadge: isPickup
+                        ? '${o.weightKg} kg'
+                        : (o.isPaidOnline
+                              ? 'Đã TT online'
+                              : 'COD: ${o.codAmount.toStringAsFixed(0)} đ'),
+                    icon: isPickup
+                        ? Icons.arrow_circle_up_rounded
+                        : Icons.local_shipping_rounded,
+                    onCall: () => _simulateCallCustomer(o),
+                    onNavigate: () {
+                      Navigator.pop(ctx);
+                      _showNavigationModal(o);
+                    },
+                  ),
+                );
+              }),
+
+              // Trạm kết thúc: Quay về cửa hàng
+              _buildRouteStationCard(
+                stationNumber: pendingOrders.length + 1,
+                isStartOrEnd: true,
+                title: 'Kết thúc: Quay về Cửa hàng WashSmart 3T',
+                address:
+                    'Bàn giao đồ đã gom & nhận mẻ giặt sạch mới tại xưởng',
+                tag: 'KẾT THÚC TUYẾN',
+                tagColor: const Color(0xFF059669),
+                icon: Icons.home_work_rounded,
+              ),
+            ],
+          ),
+        ),
+
+        // Nút mở Google Maps toàn tuyến
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black12,
+                blurRadius: 8,
+                offset: Offset(0, -2),
+              ),
+            ],
+          ),
+          child: SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(ctx);
+                _showToast(
+                  'Đang mở lộ trình Google Maps ${pendingOrders.length} điểm dừng...',
+                );
+              },
+              icon: const Icon(Icons.navigation, color: Colors.white),
+              label: Text(
+                'Mở Google Maps dẫn đường toàn tuyến',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: tertiaryColor,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCompletedRouteTab(
+    BuildContext ctx,
+    List<ShipperOrderModel> doneOrders,
+  ) {
+    if (doneOrders.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(
+                Icons.history_toggle_off,
+                size: 54,
+                color: outlineColor,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Chưa có đơn hoàn tất hôm nay',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: onSurface,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Các đơn giao/lấy hoàn thành trong ngày hôm nay sẽ hiển thị tại đây.',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  color: outlineColor,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: doneOrders.length,
+      separatorBuilder: (ctx, i) => const SizedBox(height: 10),
+      itemBuilder: (context, idx) {
+        final o = doneOrders[idx];
+        final isPickup = o.type == OrderType.pickup;
+        final completedTime = o.updatedAt != null
+            ? '${o.updatedAt!.hour.toString().padLeft(2, '0')}:${o.updatedAt!.minute.toString().padLeft(2, '0')}'
+            : o.timeWindow;
+
+        final hasProof =
+            (o.proofPhotoUrl != null && o.proofPhotoUrl!.isNotEmpty) ||
+            (o.pickupProofPhotoUrl != null && o.pickupProofPhotoUrl!.isNotEmpty);
+
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFD1FAE5),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          'XONG LÚC $completedTime',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF059669),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '#${o.id}',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Text(
+                    o.isPaidOnline
+                        ? 'Đã TT Online'
+                        : 'COD: ${o.codAmount.toStringAsFixed(0)} đ',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: o.isPaidOnline ? successColor : primaryColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Khách: ${o.customerName} (${o.customerPhone})',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: onSurface,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                isPickup ? o.pickupAddress : o.deliveryAddress,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  color: outlineColor,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (hasProof)
+                    TextButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _showProofPhotoDialog(o, isPickup: isPickup);
+                      },
+                      icon: const Icon(
+                        Icons.photo_library,
+                        size: 14,
+                        color: secondaryColor,
+                      ),
+                      label: Text(
+                        'Xem ảnh minh chứng',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: secondaryColor,
+                        ),
+                      ),
+                    ),
+                  TextButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _showNavigationModal(o);
+                    },
+                    icon: const Icon(Icons.map, size: 14, color: tertiaryColor),
+                    label: Text(
+                      'Xem vị trí',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: tertiaryColor,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildRouteStationCard({
+    required int stationNumber,
+    required bool isStartOrEnd,
+    required String title,
+    String? subtitle,
+    required String address,
+    required String tag,
+    required Color tagColor,
+    String? infoBadge,
+    required IconData icon,
+    VoidCallback? onCall,
+    VoidCallback? onNavigate,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: isStartOrEnd ? surfaceLow : cardBg,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: isStartOrEnd
+              ? tagColor.withValues(alpha: 0.3)
+              : const Color(0xFFE2E8F0),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: tagColor,
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  isStartOrEnd ? (stationNumber == 0 ? 'S' : 'E') : '$stationNumber',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: tagColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  tag,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.bold,
+                    color: tagColor,
+                  ),
+                ),
+              ),
+              if (infoBadge != null) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    infoBadge,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.bold,
+                      color: onSurface,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            title,
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+              color: onSurface,
+            ),
+          ),
+          if (subtitle != null) ...[
+            const SizedBox(height: 1),
+            Text(
+              subtitle,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                color: outlineColor,
+              ),
+            ),
+          ],
+          const SizedBox(height: 4),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.location_on, size: 14, color: primaryColor),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  address,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11.5,
+                    color: onSurface,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          if (!isStartOrEnd) ...[
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (onCall != null)
+                  IconButton.filledTonal(
+                    onPressed: onCall,
+                    icon: const Icon(Icons.call, size: 16, color: primaryColor),
+                    style: IconButton.styleFrom(backgroundColor: surfaceLow),
+                    tooltip: 'Gọi điện',
+                  ),
+                if (onNavigate != null) ...[
+                  const SizedBox(width: 6),
+                  ElevatedButton.icon(
+                    onPressed: onNavigate,
+                    icon: const Icon(Icons.near_me, size: 14),
+                    label: Text(
+                      'Chỉ đường',
+                      style: GoogleFonts.plusJakartaSans(fontSize: 11),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: tertiaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      minimumSize: Size.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ],
+        ],
       ),
     );
   }
