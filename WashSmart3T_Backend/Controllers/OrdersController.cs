@@ -893,7 +893,7 @@ public class OrdersController : ControllerBase
         }
 
         var orders = await _context.Orders
-            .Where(x => (x.ShipperId == null && (x.Status == OrderStatus.Confirmed || x.Status == OrderStatus.Ready)) || x.ShipperId == shipperId)
+            .Where(x => x.Status != OrderStatus.Cancelled && ((x.ShipperId == null && (x.Status == OrderStatus.Confirmed || x.Status == OrderStatus.Ready)) || x.ShipperId == shipperId))
             .Include(x => x.Customer)
             .Include(x => x.OrderDetails)
                 .ThenInclude(x => x.Service)
@@ -1297,6 +1297,13 @@ public class OrdersController : ControllerBase
         });
 
         await _context.SaveChangesAsync();
+
+        try
+        {
+            await _hubContext.Clients.All.SendAsync("OrderStatusUpdated", new { orderId = order.Id, status = order.Status.ToString(), shipperId = order.ShipperId });
+            await _hubContext.Clients.All.SendAsync("DashboardStatsUpdated");
+        }
+        catch { }
 
         return Ok(new
         {

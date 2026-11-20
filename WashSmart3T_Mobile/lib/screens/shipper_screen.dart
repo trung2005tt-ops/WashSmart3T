@@ -184,13 +184,35 @@ class _ShipperScreenState extends State<ShipperScreen>
       // Lấy tên tài khoản hiện tại từ API hồ sơ; không dùng tên mẫu hard-code.
       await _loadShipperProfile(token);
 
+      final previousActiveIds = _orders
+          .where(
+            (o) =>
+                o.status != ShipperOrderStatus.completed &&
+                o.status != ShipperOrderStatus.cancelled,
+          )
+          .map((o) => o.orderId)
+          .whereType<int>()
+          .toSet();
+
       final List<dynamic> raw = jsonDecode(res.body);
       final List<ShipperOrderModel> parsed = [];
+      final List<String> newlyCancelledCodes = [];
       int completedCount = 0;
 
       for (final o in raw) {
-        final apiStatus = o['status'] as String? ?? '';
+        final apiStatus = (o['status'] as String? ?? '').trim();
         final shipperStatus = ShipperOrderModel.statusFromApi(apiStatus);
+        final backendId = o['id'] as int? ?? 0;
+        final displayCode = 'WS3T-${backendId.toString().padLeft(4, '0')}';
+
+        // 🚀 ĐƠN ĐÃ HỦY: Biến mất hoàn toàn, tuyệt đối không để dính trên app shipper
+        if (apiStatus.toLowerCase() == 'cancelled' ||
+            shipperStatus == ShipperOrderStatus.cancelled) {
+          if (previousActiveIds.contains(backendId)) {
+            newlyCancelledCodes.add(displayCode);
+          }
+          continue;
+        }
 
         // Xác định loại đơn: pickup (lấy đồ về tiệm) hay delivery (giao đồ đến khách)
         // Confirmed/PickingUp/Received => shipper lấy hàng từ khách về tiệm
@@ -226,9 +248,6 @@ class _ShipperScreenState extends State<ShipperScreen>
         final timeStr =
             '${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')} ngày ${createdAt.day}/${createdAt.month}';
 
-        final backendId = o['id'] as int? ?? 0;
-        final displayCode = 'WS3T-${backendId.toString().padLeft(4, '0')}';
-
         if (shipperStatus == ShipperOrderStatus.completed) completedCount++;
 
         parsed.add(
@@ -263,6 +282,24 @@ class _ShipperScreenState extends State<ShipperScreen>
             pickupProofPhotoUrl: o['pickupProofPhotoUrl'] as String?,
             items: items,
           ),
+        );
+      }
+
+      // Phát hiện những đơn trước đây shipper đang theo dõi nhưng nay biến mất khỏi API (do backend loại bỏ vì đã hủy)
+      final newActiveIds = parsed.map((o) => o.orderId).whereType<int>().toSet();
+      final disappearedIds = previousActiveIds.difference(newActiveIds);
+      for (final dId in disappearedIds) {
+        final code = 'WS3T-${dId.toString().padLeft(4, '0')}';
+        if (!newlyCancelledCodes.contains(code)) {
+          newlyCancelledCodes.add(code);
+        }
+      }
+
+      // Thông báo rõ ràng cho shipper khi có đơn bị hủy
+      if (newlyCancelledCodes.isNotEmpty && _orders.isNotEmpty) {
+        _showToast(
+          'Đơn ${newlyCancelledCodes.join(', ')} đã bị hủy! Đã tự động gỡ khỏi màn hình làm việc.',
+          isSuccess: false,
         );
       }
 
@@ -427,6 +464,36 @@ class _ShipperScreenState extends State<ShipperScreen>
       );
       if (res.statusCode == 200) {
         final List<dynamic> raw = jsonDecode(res.body);
+
+        // Kiểm tra xem có đơn nào bị hủy hoặc số đơn đang làm thay đổi không
+        final currentActiveIds = raw
+            .where(
+              (o) =>
+                  (o['status'] ?? '').toString().toLowerCase() != 'cancelled' &&
+                  (o['status'] ?? '').toString().toLowerCase() != 'completed',
+            )
+            .map((o) => (o['id'] as num?)?.toInt())
+            .whereType<int>()
+            .toSet();
+        final localActiveIds = _orders
+            .where(
+              (o) =>
+                  o.status != ShipperOrderStatus.completed &&
+                  o.status != ShipperOrderStatus.cancelled,
+            )
+            .map((o) => o.orderId)
+            .whereType<int>()
+            .toSet();
+
+        // Nếu có đơn bị hủy/biến mất hoặc thay đổi, tự động reload ngay để đơn biến mất tức thì
+        if (!currentActiveIds.containsAll(localActiveIds) ||
+            currentActiveIds.length != localActiveIds.length) {
+          if (mounted) {
+            _loadOrdersFromApi();
+          }
+          return;
+        }
+
         final currentPickupWaiting = raw
             .where((o) => o['status'] == 'Confirmed')
             .length;
@@ -458,20 +525,28 @@ class _ShipperScreenState extends State<ShipperScreen>
 
   List<ShipperOrderModel> get filteredOrders {
     return _orders.where((order) {
+      // 🚀 ĐƠN ĐÃ HỦY: Biến mất hoàn toàn, tuyệt đối không để dính trên màn hình của shipper
+      if (order.status == ShipperOrderStatus.cancelled) {
+        return false;
+      }
+
       // Filter by tab (0: Cần lấy, 1: Cần giao, 2: Đã hoàn tất)
       if (_selectedFilterIndex == 0) {
         if (order.type != OrderType.pickup ||
-            order.status == ShipperOrderStatus.completed)
+            order.status == ShipperOrderStatus.completed) {
           return false;
+        }
       }
       if (_selectedFilterIndex == 1) {
         if (order.type != OrderType.delivery ||
-            order.status == ShipperOrderStatus.completed)
+            order.status == ShipperOrderStatus.completed) {
           return false;
+        }
       }
       if (_selectedFilterIndex == 2 &&
-          order.status != ShipperOrderStatus.completed)
+          order.status != ShipperOrderStatus.completed) {
         return false;
+      }
 
       // Filter by search text
       if (_searchQuery.isNotEmpty) {
