@@ -37,6 +37,7 @@ class ShipperOrderModel {
   final String timeWindow;
   final String customerNote;
   final String? proofPhotoUrl;
+  final String? pickupProofPhotoUrl;
   final List<Map<String, dynamic>> items;
 
   ShipperOrderModel({
@@ -56,6 +57,7 @@ class ShipperOrderModel {
     required this.timeWindow,
     required this.customerNote,
     this.proofPhotoUrl,
+    this.pickupProofPhotoUrl,
     this.items = const [],
   });
 
@@ -257,6 +259,8 @@ class _ShipperScreenState extends State<ShipperScreen>
             isPaidOnline: false,
             timeWindow: timeStr,
             customerNote: o['note'] as String? ?? '',
+            proofPhotoUrl: o['deliveryProofPhotoUrl'] as String?,
+            pickupProofPhotoUrl: o['pickupProofPhotoUrl'] as String?,
             items: items,
           ),
         );
@@ -2436,11 +2440,42 @@ class _ShipperScreenState extends State<ShipperScreen>
     return '${buffer.toString()} đ';
   }
 
+  Future<String?> _uploadSinglePhoto(Uint8List bytes, String fileName) async {
+    try {
+      final token = await AuthService.getToken();
+      final request = http.MultipartRequest('POST', Uri.parse('$_baseUrl/Uploads'));
+      if (token != null && token.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+      final safeName = fileName.isNotEmpty ? fileName : 'pickup_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: safeName,
+        ),
+      );
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        if (body is Map && body['url'] != null) {
+          return body['url'].toString();
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Lỗi tải ảnh minh chứng: $e');
+      return null;
+    }
+  }
+
   Future<bool> _savePickupDetails(
     ShipperOrderModel order,
     List<Map<String, dynamic>> measuredItems,
-    String note,
-  ) async {
+    String note, {
+    String? pickupProofPhotoUrl,
+  }) async {
     try {
       final token = await AuthService.getToken();
       if (token == null || token.isEmpty) {
@@ -2450,24 +2485,28 @@ class _ShipperScreenState extends State<ShipperScreen>
         );
         return false;
       }
+      final payload = <String, dynamic>{
+        'customerConfirmed': true,
+        'note': note,
+        'items': measuredItems
+            .map(
+              (item) => {
+                'serviceId': item['serviceId'],
+                'quantity': item['quantity'],
+              },
+            )
+            .toList(),
+      };
+      if (pickupProofPhotoUrl != null && pickupProofPhotoUrl.isNotEmpty) {
+        payload['pickupProofPhotoUrl'] = pickupProofPhotoUrl;
+      }
       final res = await http.put(
         Uri.parse('$_baseUrl/Orders/${order.orderId}/pickup-details'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
         },
-        body: jsonEncode({
-          'customerConfirmed': true,
-          'note': note,
-          'items': measuredItems
-              .map(
-                (item) => {
-                  'serviceId': item['serviceId'],
-                  'quantity': item['quantity'],
-                },
-              )
-              .toList(),
-        }),
+        body: jsonEncode(payload),
       );
       if (res.statusCode != 200) {
         var message = 'HTTP ${res.statusCode}';
@@ -2606,6 +2645,30 @@ class _ShipperScreenState extends State<ShipperScreen>
     final noteController = TextEditingController();
     var customerConfirmed = false;
     var submitting = false;
+    final picker = ImagePicker();
+    final pickupPhotos = <Map<String, dynamic>>[];
+
+    Future<void> pickPhoto(ImageSource source, StateSetter setSheetState) async {
+      try {
+        final xfile = await picker.pickImage(
+          source: source,
+          maxWidth: 1600,
+          maxHeight: 1600,
+          imageQuality: 85,
+        );
+        if (xfile == null) return;
+        final bytes = await xfile.readAsBytes();
+        setSheetState(() {
+          pickupPhotos.add({
+            'bytes': bytes,
+            'name': xfile.name,
+            'url': null,
+          });
+        });
+      } catch (e) {
+        _showToast('Không thể chọn ảnh: $e', isSuccess: false);
+      }
+    }
     // Cho phép thêm nhiều dòng, kể cả cùng dịch vụ (ví dụ khách tách riêng
     // hai túi giặt thường). Khi gửi API, các dòng cùng ServiceId sẽ được cộng gộp.
     final initiallyAvailableServices = catalog;
@@ -2989,6 +3052,186 @@ class _ShipperScreenState extends State<ShipperScreen>
                       ),
                     ],
                     const SizedBox(height: 12),
+
+                    // KHỐI ẢNH CHỤP ĐỒ & NIÊM PHONG HIỆN TRƯỜNG (BẢO VỆ TÀI SẢN KHÁCH HÀNG)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF9F9),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: primaryColor.withOpacity(0.2)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: BoxDecoration(
+                                  color: primaryColor.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(Icons.shield_outlined, color: primaryColor, size: 18),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Ảnh chụp đồ & Niêm phong hiện trường',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: onSurface,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Bảo vệ tài sản khách hàng • Minh bạch tình trạng trước khi giặt',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 10.5,
+                                        color: outlineColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: submitting
+                                      ? null
+                                      : () => pickPhoto(ImageSource.camera, setSheetState),
+                                  icon: const Icon(Icons.camera_alt, size: 16, color: primaryColor),
+                                  label: Text(
+                                    'Chụp ảnh',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: primaryColor,
+                                    ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(color: primaryColor),
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: submitting
+                                      ? null
+                                      : () => pickPhoto(ImageSource.gallery, setSheetState),
+                                  icon: const Icon(Icons.photo_library, size: 16, color: tertiaryColor),
+                                  label: Text(
+                                    'Thư viện ảnh',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: tertiaryColor,
+                                    ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(color: tertiaryColor),
+                                    padding: const EdgeInsets.symmetric(vertical: 8),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (pickupPhotos.isNotEmpty) ...[
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              height: 80,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: pickupPhotos.length,
+                                separatorBuilder: (ctx, i) => const SizedBox(width: 8),
+                                itemBuilder: (ctx, idx) {
+                                  final photo = pickupPhotos[idx];
+                                  final bytes = photo['bytes'] as Uint8List;
+                                  return Stack(
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.memory(
+                                          bytes,
+                                          width: 80,
+                                          height: 80,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                      Positioned(
+                                        top: 2,
+                                        right: 2,
+                                        child: GestureDetector(
+                                          onTap: submitting
+                                              ? null
+                                              : () {
+                                                  setSheetState(() {
+                                                    pickupPhotos.removeAt(idx);
+                                                  });
+                                                },
+                                          child: Container(
+                                            padding: const EdgeInsets.all(2),
+                                            decoration: const BoxDecoration(
+                                              color: Colors.black54,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.close,
+                                              size: 14,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ),
+                          ] else ...[
+                            const SizedBox(height: 6),
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.black12, style: BorderStyle.solid),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.info_outline, size: 14, color: outlineColor),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'Chưa tải ảnh. Khuyến nghị chụp túi đồ & tem seal để bảo vệ tài sản khách hàng.',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 10.5,
+                                        fontStyle: FontStyle.italic,
+                                        color: outlineColor,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+
                     TextField(
                       controller: noteController,
                       maxLines: 2,
@@ -3096,10 +3339,29 @@ class _ShipperScreenState extends State<ShipperScreen>
                                   return;
                                 }
                                 setSheetState(() => submitting = true);
+
+                                // Upload ảnh minh chứng hiện trường nếu có
+                                final uploadedUrls = <String>[];
+                                for (final photo in pickupPhotos) {
+                                  if (photo['url'] != null && (photo['url'] as String).isNotEmpty) {
+                                    uploadedUrls.add(photo['url'] as String);
+                                  } else if (photo['bytes'] != null) {
+                                    final bytes = photo['bytes'] as Uint8List;
+                                    final name = (photo['name'] as String?) ?? 'pickup.jpg';
+                                    final uploadedUrl = await _uploadSinglePhoto(bytes, name);
+                                    if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
+                                      photo['url'] = uploadedUrl;
+                                      uploadedUrls.add(uploadedUrl);
+                                    }
+                                  }
+                                }
+                                final proofUrlStr = uploadedUrls.isNotEmpty ? uploadedUrls.join(',') : null;
+
                                 final saved = await _savePickupDetails(
                                   order,
                                   groupedMeasured,
                                   noteController.text.trim(),
+                                  pickupProofPhotoUrl: proofUrlStr,
                                 );
                                 if (!saved) {
                                   if (sheetContext.mounted)

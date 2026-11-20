@@ -7,6 +7,8 @@ public class PickupConfirmationRequest
 
     public string? Note { get; set; }
 
+    public string? PickupProofPhotoUrl { get; set; }
+
     public List<PickupConfirmationItemRequest> Items { get; set; }
         = new();
 }

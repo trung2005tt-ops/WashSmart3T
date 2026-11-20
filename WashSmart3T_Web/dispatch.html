@@ -455,6 +455,19 @@
               </div>
             </div>
 
+            <!-- Proof Image Boxes (Bảo vệ tài sản khách hàng) -->
+            <div class="p-3 rounded-lg bg-surface-card border border-surface-container space-y-1.5 text-xs">
+              <div class="flex items-center justify-between text-[11px]">
+                <span class="font-bold text-primary flex items-center gap-1">
+                  <span class="material-symbols-outlined text-sm">photo_camera</span> Ảnh Đối Soát Hiện Trường
+                </span>
+                <span class="text-[10px] text-secondary" id="inspectPhotoCount">0 ảnh</span>
+              </div>
+              <div id="inspectPhotoGallery" class="flex items-center gap-2 overflow-x-auto py-1 min-h-[64px]">
+                <p class="text-[10px] text-secondary italic">Chờ shipper chụp ảnh đồ & niêm phong...</p>
+              </div>
+            </div>
+
             <!-- GPS Geofence Box -->
             <div class="p-3 rounded-lg bg-surface-card border border-surface-container space-y-1.5 text-xs">
               <div class="flex items-center justify-between text-[11px]">
@@ -1118,6 +1131,29 @@
       if (gpsElem) {
         const sp = shippers.find(s => s.id === order.shipperId);
         gpsElem.textContent = sp ? `${sp.fullName} (GPS ±8m)` : 'Chưa gán tài xế';
+      }
+
+      // Ảnh đối soát hiện trường (Bảo vệ tài sản khách hàng)
+      const photoGallery = document.getElementById('inspectPhotoGallery');
+      const photoCount = document.getElementById('inspectPhotoCount');
+      const rawPhotos = order.pickupProofPhotoUrl || order.deliveryProofPhotoUrl || '';
+      const photoUrls = rawPhotos.split(',').map(s => s.trim()).filter(Boolean);
+
+      if (photoGallery && photoCount) {
+        photoCount.textContent = `${photoUrls.length} ảnh`;
+        if (photoUrls.length > 0) {
+          photoGallery.innerHTML = photoUrls.map(url => {
+            const fullUrl = url.startsWith('http') ? url : `http://localhost:5085${url}`;
+            return `<a href="${fullUrl}" target="_blank" title="Bấm để xem ảnh phóng to" class="relative group block flex-shrink-0">
+              <img src="${fullUrl}" alt="Ảnh hiện trường" class="w-16 h-16 object-cover rounded-md border border-surface-container hover:opacity-90 shadow-sm transition" />
+              <span class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-md transition text-white">
+                <span class="material-symbols-outlined text-sm">zoom_in</span>
+              </span>
+            </a>`;
+          }).join('');
+        } else {
+          photoGallery.innerHTML = `<p class="text-[10px] text-secondary italic">Chưa có ảnh chụp đối soát hiện trường.</p>`;
+        }
       }
 
       // Cập nhật hộp điều phối nhanh bên cột Đối Soát

@@ -99,6 +99,7 @@ public class OrdersController : ControllerBase
                     o.DiscountAmount,
                     o.TotalAmount,
                     o.PaymentMethod,
+                    o.PickupProofPhotoUrl,
                     o.DeliveryProofPhotoUrl,
                     o.CreatedAt,
                     o.UpdatedAt,
@@ -914,6 +915,7 @@ public class OrdersController : ControllerBase
                 x.DiscountAmount,
                 x.TotalAmount,
                 x.PaymentMethod,
+                x.PickupProofPhotoUrl,
                 x.DeliveryProofPhotoUrl,
                 x.CreatedAt,
                 x.UpdatedAt,
@@ -1103,6 +1105,10 @@ public class OrdersController : ControllerBase
 
             // BẢO LƯU PHỤ PHÍ TIỆN ÍCH, PHÍ GIAO VÀ GIẢM GIÁ
             order.TotalAmount = Math.Max(0, newSubTotal + order.ShippingFee + order.AddonFee - order.DiscountAmount);
+            if (!string.IsNullOrWhiteSpace(request.PickupProofPhotoUrl))
+            {
+                order.PickupProofPhotoUrl = request.PickupProofPhotoUrl.Trim();
+            }
             order.UpdatedAt = DateTime.UtcNow;
 
             // ĐỒNG BỘ 100% SANG PAYMENT (DUY NHẤT 1 NGUỒN SỰ THẬT TÀI CHÍNH)
@@ -1143,6 +1149,7 @@ public class OrdersController : ControllerBase
                 shippingFee = order.ShippingFee,
                 addonFee = order.AddonFee,
                 totalAmount = order.TotalAmount,
+                pickupProofPhotoUrl = order.PickupProofPhotoUrl,
                 paymentAmount = payment?.Amount ?? order.TotalAmount,
                 updatedAt = order.UpdatedAt
             });
@@ -1187,6 +1194,7 @@ public class OrdersController : ControllerBase
                 x.DiscountAmount,
                 x.TotalAmount,
                 x.PaymentMethod,
+                x.PickupProofPhotoUrl,
                 x.DeliveryProofPhotoUrl,
                 sealCode = !string.IsNullOrWhiteSpace(x.SealCode) ? x.SealCode : $"WS-SEAL-{x.Id:D4}",
                 sealStatus = !string.IsNullOrWhiteSpace(x.SealStatus) ? x.SealStatus : "Intact",
@@ -1355,6 +1363,7 @@ public class OrdersController : ControllerBase
             order.DiscountAmount,
             order.TotalAmount,
             order.PaymentMethod,
+            order.PickupProofPhotoUrl,
             order.DeliveryProofPhotoUrl,
             sealCode = !string.IsNullOrWhiteSpace(order.SealCode) ? order.SealCode : $"WS-SEAL-{order.Id:D4}",
             sealStatus = !string.IsNullOrWhiteSpace(order.SealStatus) ? order.SealStatus : "Intact",

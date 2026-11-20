@@ -478,6 +478,12 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     final id = order['id'] ?? order['Id'] ?? widget.orderId;
     final orderCode = 'WS3T-${id.toString().padLeft(4, '0')}';
     final sealCode = (order['sealCode'] ?? 'WS-SEAL-${id.toString().padLeft(4, '0')}').toString();
+    final pickupProofPhotoUrl = (order['pickupProofPhotoUrl'] ?? '').toString();
+    final proofList = pickupProofPhotoUrl
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
     final weightKg = (order['weightKg'] is num) ? (order['weightKg'] as num).toDouble() : 2.5;
     final items = order['items'] is List
         ? (order['items'] as List)
@@ -545,6 +551,75 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
               color: secondaryText,
             ),
           ),
+          if (proofList.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              'Ảnh chụp đồ & Niêm phong đối soát (${proofList.length} ảnh):',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+                color: textColor,
+              ),
+            ),
+            const SizedBox(height: 6),
+            SizedBox(
+              height: 72,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: proofList.length,
+                separatorBuilder: (ctx, i) => const SizedBox(width: 8),
+                itemBuilder: (ctx, idx) {
+                  final rawUrl = proofList[idx];
+                  final fullUrl = rawUrl.startsWith('http')
+                      ? rawUrl
+                      : 'http://localhost:5085$rawUrl';
+                  return GestureDetector(
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (_) => Dialog(
+                          backgroundColor: Colors.transparent,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(
+                              fullUrl,
+                              fit: BoxFit.contain,
+                              errorBuilder: (ctx, err, stack) => const ColoredBox(
+                                color: Colors.white,
+                                child: Padding(
+                                  padding: EdgeInsets.all(24),
+                                  child: Text('Không tải được ảnh.'),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        fullUrl,
+                        width: 72,
+                        height: 72,
+                        fit: BoxFit.cover,
+                        errorBuilder: (ctx, err, stack) => Container(
+                          width: 72,
+                          height: 72,
+                          color: Colors.grey.shade200,
+                          child: const Icon(
+                            Icons.broken_image,
+                            size: 24,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           if (isPaidOrCompleted)
             SizedBox(
@@ -555,7 +630,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                     context,
                     MaterialPageRoute(
                       builder: (_) => SubmitClaimScreen(
-                        orderId: (id is num) ? (id as num).toInt() : int.tryParse(id.toString()) ?? widget.orderId,
+                        orderId: (id is num) ? id.toInt() : int.tryParse(id.toString()) ?? widget.orderId,
                         orderCode: orderCode,
                         orderWeight: weightKg,
                         items: items,
