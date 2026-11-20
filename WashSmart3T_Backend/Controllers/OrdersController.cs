@@ -499,6 +499,14 @@ public class OrdersController : ControllerBase
                     return BadRequest(new { message = $"Dịch vụ '{service.Name}' chưa có giá." });
                 }
 
+                var unitStr = (currentPrice.Unit ?? "").Trim().ToLower();
+                bool isByItem = !unitStr.Contains("kg") && !unitStr.Contains("ký") && !unitStr.Contains("kí");
+                if (isByItem)
+                {
+                    item.Quantity = Math.Round(item.Quantity);
+                    if (item.Quantity <= 0) item.Quantity = 1;
+                }
+
                 var calculated = item.Quantity * currentPrice.Price;
                 var lineTotal = item.Quantity == 0 ? 0 : (currentPrice.MinimumPrice.HasValue ? Math.Max(calculated, currentPrice.MinimumPrice.Value) : calculated);
                 var effectiveUnitPrice = item.Quantity > 0 ? lineTotal / item.Quantity : currentPrice.Price;
@@ -1062,6 +1070,14 @@ public class OrdersController : ControllerBase
 
                 if (currentPrice == null)
                     return BadRequest(new { message = $"Dịch vụ '{service.Name}' chưa có bảng giá." });
+
+                var unitStr = (currentPrice.Unit ?? "").Trim().ToLower();
+                bool isByItem = !unitStr.Contains("kg") && !unitStr.Contains("ký") && !unitStr.Contains("kí");
+                if (isByItem)
+                {
+                    input.Quantity = Math.Round(input.Quantity);
+                    if (input.Quantity <= 0) input.Quantity = 1;
+                }
 
                 var calculated = input.Quantity * currentPrice.Price;
                 var lineTotal = currentPrice.MinimumPrice.HasValue ? Math.Max(calculated, currentPrice.MinimumPrice.Value) : calculated;

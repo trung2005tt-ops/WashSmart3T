@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -422,8 +423,16 @@ class _ShipperScreenState extends State<ShipperScreen>
       );
       if (res.statusCode == 200) {
         final List<dynamic> raw = jsonDecode(res.body);
-        final currentPickupWaiting = raw.where((o) => o['status'] == 'Confirmed').length;
-        final localPickupWaiting = _orders.where((o) => o.type == OrderType.pickup && o.status == ShipperOrderStatus.available).length;
+        final currentPickupWaiting = raw
+            .where((o) => o['status'] == 'Confirmed')
+            .length;
+        final localPickupWaiting = _orders
+            .where(
+              (o) =>
+                  o.type == OrderType.pickup &&
+                  o.status == ShipperOrderStatus.available,
+            )
+            .length;
         if (currentPickupWaiting > localPickupWaiting) {
           if (mounted) {
             setState(() {
@@ -685,7 +694,11 @@ class _ShipperScreenState extends State<ShipperScreen>
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.notifications_active, color: Color(0xFFD97706), size: 22),
+                    const Icon(
+                      Icons.notifications_active,
+                      color: Color(0xFFD97706),
+                      size: 22,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
@@ -717,11 +730,22 @@ class _ShipperScreenState extends State<ShipperScreen>
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryColor,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
                         minimumSize: Size.zero,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                       ),
-                      child: const Text('Xem ngay', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        'Xem ngay',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -1718,9 +1742,13 @@ class _ShipperScreenState extends State<ShipperScreen>
                       Row(
                         children: [
                           Icon(
-                            order.type == OrderType.pickup ? Icons.moped : Icons.schedule,
+                            order.type == OrderType.pickup
+                                ? Icons.moped
+                                : Icons.schedule,
                             size: 14,
-                            color: order.type == OrderType.pickup ? primaryColor : tertiaryColor,
+                            color: order.type == OrderType.pickup
+                                ? primaryColor
+                                : tertiaryColor,
                           ),
                           const SizedBox(width: 4),
                           Text(
@@ -2301,7 +2329,7 @@ class _ShipperScreenState extends State<ShipperScreen>
         case ShipperOrderStatus.available:
           return 'Nhận đơn lấy hàng';
         case ShipperOrderStatus.pickingUp:
-          return 'Đã lấy đồ & Cân tại chỗ';
+          return 'Cân đồ';
         case ShipperOrderStatus.inStore:
           return 'Đã về tiệm giặt';
         default:
@@ -2326,7 +2354,10 @@ class _ShipperScreenState extends State<ShipperScreen>
     }
 
     if (order.status == ShipperOrderStatus.cancelled) {
-      _showToast('Đơn hàng này đã bị hủy, không thể thao tác tiếp.', isSuccess: false);
+      _showToast(
+        'Đơn hàng này đã bị hủy, không thể thao tác tiếp.',
+        isSuccess: false,
+      );
       return;
     }
     if (order.status == ShipperOrderStatus.completed) {
@@ -2507,6 +2538,11 @@ class _ShipperScreenState extends State<ShipperScreen>
         .toList();
   }
 
+  bool _isUnitByItem(dynamic unit) {
+    final u = unit?.toString().toLowerCase().trim() ?? '';
+    return !u.contains('kg') && !u.contains('ký') && !u.contains('kí');
+  }
+
   void _showPickupWeighingDialog(ShipperOrderModel order) async {
     List<Map<String, dynamic>> catalog;
     try {
@@ -2531,6 +2567,20 @@ class _ShipperScreenState extends State<ShipperScreen>
         (s) => s?['serviceId'] == serviceId,
         orElse: () => null,
       );
+      final unitStr = (item['unit'] ?? catalogItem?['unit'] ?? 'KG').toString();
+      final isByItem = _isUnitByItem(unitStr);
+      final rawQty = item['kg'] ?? item['quantity'] ?? '';
+      String initialText = '';
+      if (rawQty != null && rawQty.toString().isNotEmpty) {
+        final parsed = double.tryParse(rawQty.toString().replaceAll(',', '.'));
+        if (parsed != null) {
+          initialText = isByItem
+              ? parsed.round().toString()
+              : (parsed % 1 == 0 ? parsed.toInt().toString() : parsed.toString());
+        } else {
+          initialText = rawQty.toString();
+        }
+      }
       rows.add({
         'serviceId': serviceId,
         'name':
@@ -2539,7 +2589,7 @@ class _ShipperScreenState extends State<ShipperScreen>
                     catalogItem?['name'] ??
                     'Dịch vụ')
                 .toString(),
-        'unit': (item['unit'] ?? catalogItem?['unit'] ?? 'KG').toString(),
+        'unit': unitStr,
         'unitPrice':
             ((item['unitPrice'] ??
                         item['UnitPrice'] ??
@@ -2549,9 +2599,7 @@ class _ShipperScreenState extends State<ShipperScreen>
                 .toDouble(),
         'minimumPrice': item['minimumPrice'] ?? catalogItem?['minimumPrice'],
         'isOriginal': true,
-        'controller': TextEditingController(
-          text: ((item['kg'] ?? item['quantity'] ?? '')).toString(),
-        ),
+        'controller': TextEditingController(text: initialText),
       });
     }
 
@@ -2676,13 +2724,15 @@ class _ShipperScreenState extends State<ShipperScreen>
                                       ),
                                       Builder(
                                         builder: (context) {
-                                          final q =
-                                              double.tryParse(
-                                                controller.text
-                                                    .trim()
-                                                    .replaceAll(',', '.'),
-                                              ) ??
-                                              0;
+                                          final isByItem = _isUnitByItem(row['unit']);
+                                          final q = isByItem
+                                              ? (int.tryParse(controller.text.trim())?.toDouble() ?? 0)
+                                              : (double.tryParse(
+                                                    controller.text
+                                                        .trim()
+                                                        .replaceAll(',', '.'),
+                                                  ) ??
+                                                  0);
                                           final price =
                                               (row['unitPrice'] as num?)
                                                   ?.toDouble() ??
@@ -2724,27 +2774,111 @@ class _ShipperScreenState extends State<ShipperScreen>
                               ],
                             ),
                             const SizedBox(height: 8),
-                            TextField(
-                              controller: controller,
-                              onChanged: (_) => setSheetState(() {}),
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
+                            Builder(
+                              builder: (context) {
+                                final isByItem = _isUnitByItem(row['unit']);
+                                if (isByItem) {
+                                  return Row(
+                                    children: [
+                                      Expanded(
+                                        child: TextField(
+                                          controller: controller,
+                                          onChanged: (_) => setSheetState(() {}),
+                                          keyboardType: TextInputType.number,
+                                          inputFormatters: [
+                                            FilteringTextInputFormatter.digitsOnly,
+                                          ],
+                                          decoration: InputDecoration(
+                                            labelText:
+                                                'Số lượng thực tế (Số nguyên ${row['unit']})',
+                                            suffixText: row['unit'].toString(),
+                                            prefixIcon: const Icon(
+                                              Icons.checkroom,
+                                              color: Color(0xFFC6003D),
+                                            ),
+                                            isDense: true,
+                                            border: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(10),
+                                            ),
+                                            filled: true,
+                                            fillColor: Colors.white,
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        decoration: BoxDecoration(
+                                          color: Colors.white,
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(
+                                            color: const Color(0xFFF5BBC8),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(Icons.remove, size: 18),
+                                              color: const Color(0xFFC6003D),
+                                              onPressed: submitting
+                                                  ? null
+                                                  : () {
+                                                      final cur = int.tryParse(
+                                                            controller.text.trim(),
+                                                          ) ??
+                                                          1;
+                                                      if (cur > 1) {
+                                                        controller.text =
+                                                            (cur - 1).toString();
+                                                        setSheetState(() {});
+                                                      }
+                                                    },
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.add, size: 18),
+                                              color: const Color(0xFFC6003D),
+                                              onPressed: submitting
+                                                  ? null
+                                                  : () {
+                                                      final cur = int.tryParse(
+                                                            controller.text.trim(),
+                                                          ) ??
+                                                          0;
+                                                      controller.text =
+                                                          (cur + 1).toString();
+                                                      setSheetState(() {});
+                                                    },
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                }
+                                return TextField(
+                                  controller: controller,
+                                  onChanged: (_) => setSheetState(() {}),
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
                                     decimal: true,
                                   ),
-                              decoration: InputDecoration(
-                                labelText: 'Số lượng thực tế (${row['unit']})',
-                                suffixText: row['unit'].toString(),
-                                prefixIcon: const Icon(
-                                  Icons.scale_outlined,
-                                  color: Color(0xFFC6003D),
-                                ),
-                                isDense: true,
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                filled: true,
-                                fillColor: Colors.white,
-                              ),
+                                  decoration: InputDecoration(
+                                    labelText: 'Số lượng thực tế (${row['unit']})',
+                                    suffixText: row['unit'].toString(),
+                                    prefixIcon: const Icon(
+                                      Icons.scale_outlined,
+                                      color: Color(0xFFC6003D),
+                                    ),
+                                    isDense: true,
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    filled: true,
+                                    fillColor: Colors.white,
+                                  ),
+                                );
+                              },
                             ),
                           ],
                         ),
@@ -2804,6 +2938,7 @@ class _ShipperScreenState extends State<ShipperScreen>
                                           s['serviceId'] ==
                                           selectedNewServiceId,
                                     );
+                                    final isByItem = _isUnitByItem(service['unit']);
                                     setSheetState(() {
                                       rows.add({
                                         'serviceId': service['serviceId'],
@@ -2812,7 +2947,9 @@ class _ShipperScreenState extends State<ShipperScreen>
                                         'unitPrice': service['unitPrice'] ?? 0,
                                         'minimumPrice': service['minimumPrice'],
                                         'isOriginal': false,
-                                        'controller': TextEditingController(),
+                                        'controller': TextEditingController(
+                                          text: isByItem ? '1' : '',
+                                        ),
                                       });
                                       final remaining = catalog.where(
                                         (s) => !rows.any(
@@ -2900,20 +3037,40 @@ class _ShipperScreenState extends State<ShipperScreen>
                                   final controller =
                                       row['controller']
                                           as TextEditingController;
-                                  final quantity = double.tryParse(
-                                    controller.text.trim().replaceAll(',', '.'),
-                                  );
-                                  if (quantity == null || quantity <= 0) {
-                                    _showToast(
-                                      'Vui lòng nhập số lượng ${row['name']} lớn hơn 0.',
-                                      isSuccess: false,
+                                  final isByItem = _isUnitByItem(row['unit']);
+                                  final textVal = controller.text.trim();
+                                  if (isByItem) {
+                                    final intQty = int.tryParse(textVal);
+                                    if (intQty == null ||
+                                        intQty <= 0 ||
+                                        textVal.contains('.') ||
+                                        textVal.contains(',')) {
+                                      _showToast(
+                                        'Số lượng "${row['name']}" phải là số nguyên lớn hơn 0 (không được là số thập phân).',
+                                        isSuccess: false,
+                                      );
+                                      return;
+                                    }
+                                    measured.add({
+                                      'serviceId': row['serviceId'],
+                                      'quantity': intQty.toDouble(),
+                                    });
+                                  } else {
+                                    final quantity = double.tryParse(
+                                      textVal.replaceAll(',', '.'),
                                     );
-                                    return;
+                                    if (quantity == null || quantity <= 0) {
+                                      _showToast(
+                                        'Vui lòng nhập khối lượng "${row['name']}" lớn hơn 0 kg.',
+                                        isSuccess: false,
+                                      );
+                                      return;
+                                    }
+                                    measured.add({
+                                      'serviceId': row['serviceId'],
+                                      'quantity': quantity,
+                                    });
                                   }
-                                  measured.add({
-                                    'serviceId': row['serviceId'],
-                                    'quantity': quantity,
-                                  });
                                 }
                                 final grouped = <int, double>{};
                                 for (final item in measured) {
@@ -3112,18 +3269,20 @@ class _ShipperScreenState extends State<ShipperScreen>
                                 width: 210,
                                 height: 210,
                                 fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) => Container(
-                                  width: 210,
-                                  height: 210,
-                                  color: Colors.white,
-                                  alignment: Alignment.center,
-                                  child: QrImageView(
-                                    data: 'https://img.vietqr.io/image/970422-0818606505-compact2.png?amount=${order.codAmount.toInt() > 0 ? order.codAmount.toInt() : 50000}&addInfo=WS3T%20${order.id}&accountName=TRAN%20DIEP%20MINH%20TRUNG',
-                                    version: QrVersions.auto,
-                                    size: 190.0,
-                                    gapless: true,
-                                  ),
-                                ),
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Container(
+                                      width: 210,
+                                      height: 210,
+                                      color: Colors.white,
+                                      alignment: Alignment.center,
+                                      child: QrImageView(
+                                        data:
+                                            'https://img.vietqr.io/image/970422-0818606505-compact2.png?amount=${order.codAmount.toInt() > 0 ? order.codAmount.toInt() : 50000}&addInfo=WS3T%20${order.id}&accountName=TRAN%20DIEP%20MINH%20TRUNG',
+                                        version: QrVersions.auto,
+                                        size: 190.0,
+                                        gapless: true,
+                                      ),
+                                    ),
                               ),
                             ),
                           ),
@@ -3133,39 +3292,96 @@ class _ShipperScreenState extends State<ShipperScreen>
                             decoration: BoxDecoration(
                               color: Colors.white,
                               borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: outlineColor.withOpacity(0.2)),
+                              border: Border.all(
+                                color: outlineColor.withOpacity(0.2),
+                              ),
                             ),
                             child: Column(
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text('STK / Ví MoMo:', style: GoogleFonts.plusJakartaSans(fontSize: 11, color: outlineColor)),
-                                    Text('0818606505', style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.bold, color: primaryColor)),
+                                    Text(
+                                      'STK / Ví MoMo:',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11,
+                                        color: outlineColor,
+                                      ),
+                                    ),
+                                    Text(
+                                      '0818606505',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: primaryColor,
+                                      ),
+                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 3),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text('Chủ thụ hưởng:', style: GoogleFonts.plusJakartaSans(fontSize: 11, color: outlineColor)),
-                                    Text('TRAN DIEP MINH TRUNG', style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.bold)),
+                                    Text(
+                                      'Chủ thụ hưởng:',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11,
+                                        color: outlineColor,
+                                      ),
+                                    ),
+                                    Text(
+                                      'TRAN DIEP MINH TRUNG',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 3),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text('Ngân hàng:', style: GoogleFonts.plusJakartaSans(fontSize: 11, color: outlineColor)),
-                                    Text('MBBank / Ví MoMo', style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.bold, color: tertiaryColor)),
+                                    Text(
+                                      'Ngân hàng:',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11,
+                                        color: outlineColor,
+                                      ),
+                                    ),
+                                    Text(
+                                      'MBBank / Ví MoMo',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        color: tertiaryColor,
+                                      ),
+                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 3),
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text('Số tiền:', style: GoogleFonts.plusJakartaSans(fontSize: 11, color: outlineColor)),
-                                    Text('${order.codAmount.toStringAsFixed(0)} đ', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.bold, color: primaryColor)),
+                                    Text(
+                                      'Số tiền:',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11,
+                                        color: outlineColor,
+                                      ),
+                                    ),
+                                    Text(
+                                      '${order.codAmount.toStringAsFixed(0)} đ',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: primaryColor,
+                                      ),
+                                    ),
                                   ],
                                 ),
                               ],
