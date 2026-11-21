@@ -177,6 +177,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void _openEditProfileSheet(BuildContext context) {
     final nameController = TextEditingController(text: _user?['fullName'] ?? '');
     final emailController = TextEditingController(text: _user?['email'] ?? '');
+    final addressController = TextEditingController(text: _user?['address'] ?? '');
     final phone = (_user?['phone'] ?? '').toString();
     bool isSaving = false;
 
@@ -281,6 +282,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(height: 14),
 
+              // Địa chỉ nơi ở
+              Text(
+                'Địa chỉ nơi ở / Giao nhận đồ (Khi thay đổi nơi ở)',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: onSurface,
+                ),
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                controller: addressController,
+                maxLines: 2,
+                minLines: 1,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: surfaceLow,
+                  prefixIcon: const Icon(Icons.home_outlined, color: primaryColor, size: 20),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  hintText: 'Ví dụ: 140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú',
+                ),
+              ),
+              const SizedBox(height: 14),
+
               // Số điện thoại (read-only)
               Text(
                 'Số điện thoại tài khoản (Không thể sửa)',
@@ -316,6 +344,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       : () async {
                           final newName = nameController.text.trim();
                           final newEmail = emailController.text.trim();
+                          final newAddress = addressController.text.trim();
 
                           if (newName.isEmpty || newEmail.isEmpty) {
                             _showToast(context, 'Họ tên và email không được để trống.', isError: true);
@@ -328,13 +357,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               fullName: newName,
                               phone: phone,
                               email: newEmail,
+                              address: newAddress,
                             );
-                            if (!mounted) return;
+                            if (!mounted || !context.mounted) return;
                             Navigator.pop(ctx);
                             _showToast(context, 'Cập nhật thông tin thành công!');
                             _loadProfile();
                           } catch (err) {
-                            if (!mounted) return;
+                            if (!mounted || !context.mounted) return;
                             setModalState(() => isSaving = false);
                             _showToast(context, err.toString().replaceAll('Exception: ', ''), isError: true);
                           }
@@ -480,8 +510,163 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  // Hộp thoại Cập nhật / Đổi địa chỉ nơi ở của khách hàng
+  void _showUpdateAddressDialog(BuildContext context, {String? initialAddress}) {
+    final currentAddr = initialAddress ?? (_user?['address'] ?? '');
+    final addrController = TextEditingController(text: currentAddr);
+    bool isSaving = false;
+
+    final quickSuggestions = [
+      '140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú, TP.HCM',
+      'Chợ Bến Thành, Đường Lê Lợi, Phường Bến Thành, Quận 1, TP.HCM',
+      '268 Lý Thường Kiệt, Phường 14, Quận 10, TP.HCM',
+      'Landmark 81, 720A Điện Biên Phủ, P. 22, Q. Bình Thạnh, TP.HCM',
+      'Khu đô thị Sala, 10 Mai Chí Thọ, P. An Lợi Đông, TP. Thủ Đức',
+    ];
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: surfaceLow,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.location_city, color: primaryColor, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Cập nhật địa chỉ nơi ở',
+                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 16, color: onSurface),
+                ),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Nhập địa chỉ nhà riêng hoặc nơi ở mới của bạn để Shipper đến lấy và trả đồ chính xác:',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: const Color(0xFF5B4041)),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: addrController,
+                  maxLines: 2,
+                  minLines: 1,
+                  decoration: InputDecoration(
+                    hintText: 'Số nhà, tên đường, phường/xã, quận/huyện...',
+                    hintStyle: GoogleFonts.plusJakartaSans(fontSize: 12, color: outlineColor),
+                    filled: true,
+                    fillColor: surfaceLow,
+                    prefixIcon: const Icon(Icons.home_outlined, color: primaryColor, size: 20),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Gợi ý nhanh khu vực TP.HCM:',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600, color: outlineColor),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: quickSuggestions.map((suggestion) {
+                    return InkWell(
+                      onTap: () {
+                        addrController.text = suggestion;
+                        setDialogState(() {});
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: surfaceLow,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
+                        ),
+                        child: Text(
+                          suggestion.split(',').take(2).join(','),
+                          style: GoogleFonts.plusJakartaSans(fontSize: 10, color: primaryColor, fontWeight: FontWeight.w500),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: isSaving ? null : () => Navigator.pop(ctx),
+              child: Text('Hủy', style: GoogleFonts.plusJakartaSans(color: outlineColor, fontWeight: FontWeight.w600)),
+            ),
+            ElevatedButton(
+              onPressed: isSaving
+                  ? null
+                  : () async {
+                      final newAddr = addrController.text.trim();
+                      if (newAddr.isEmpty) {
+                        _showToast(context, 'Vui lòng nhập địa chỉ nơi ở.', isError: true);
+                        return;
+                      }
+
+                      setDialogState(() => isSaving = true);
+                      try {
+                        await ApiService.updateProfile(
+                          fullName: _user?['fullName'],
+                          phone: (_user?['phone'] ?? '').toString(),
+                          email: _user?['email'],
+                          address: newAddr,
+                        );
+                        if (!mounted || !context.mounted) return;
+                        Navigator.pop(ctx);
+                        _showToast(context, 'Cập nhật địa chỉ nơi ở thành công!');
+                        _loadProfile();
+                      } catch (e) {
+                        if (!mounted || !context.mounted) return;
+                        setDialogState(() => isSaving = false);
+                        _showToast(context, e.toString().replaceAll('Exception: ', ''), isError: true);
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: isSaving
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                    )
+                  : Text('Lưu địa chỉ', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // Mở Sổ Địa Chỉ Giao Nhận
   void _openAddressBookDialog(BuildContext context) {
+    final currentAddress = (_user?['address'] ?? '').toString().trim();
+    final displayHomeAddress = currentAddress.isNotEmpty
+        ? currentAddress
+        : '140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú, TP.HCM';
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -508,32 +693,41 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             const SizedBox(height: 12),
             _buildAddressItem(
-              title: 'Nhà riêng (Mặc định)',
-              address: '140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú, TP.HCM',
+              title: 'Nhà riêng / Nơi ở chính (Mặc định)',
+              address: displayHomeAddress,
               isDefault: true,
+              onEdit: () {
+                Navigator.pop(ctx);
+                _showUpdateAddressDialog(context, initialAddress: displayHomeAddress);
+              },
             ),
             const SizedBox(height: 10),
             _buildAddressItem(
-              title: 'Công ty / Cơ quan',
+              title: 'Công ty / Cơ quan (Tùy chọn)',
               address: 'Chợ Bến Thành, Đường Lê Lợi, Phường Bến Thành, Quận 1',
               isDefault: false,
+              onEdit: () {
+                Navigator.pop(ctx);
+                _showUpdateAddressDialog(context, initialAddress: 'Chợ Bến Thành, Đường Lê Lợi, Phường Bến Thành, Quận 1');
+              },
             ),
             const SizedBox(height: 16),
             SizedBox(
               width: double.infinity,
               height: 44,
-              child: OutlinedButton.icon(
+              child: ElevatedButton.icon(
                 onPressed: () {
                   Navigator.pop(ctx);
-                  _showToast(context, 'Chức năng thêm địa chỉ mới đã sẵn sàng!');
+                  _showUpdateAddressDialog(context, initialAddress: currentAddress);
                 },
-                icon: const Icon(Icons.add_location_alt, size: 18, color: primaryColor),
+                icon: const Icon(Icons.edit_location_alt, size: 18),
                 label: Text(
-                  '+ Thêm địa chỉ mới',
-                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, color: primaryColor),
+                  currentAddress.isEmpty ? '+ Cập nhật địa chỉ nơi ở mới' : 'Thay đổi địa chỉ nơi ở',
+                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
                 ),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: primaryColor),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.white,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
                 ),
               ),
@@ -544,7 +738,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildAddressItem({required String title, required String address, required bool isDefault}) {
+  Widget _buildAddressItem({
+    required String title,
+    required String address,
+    required bool isDefault,
+    VoidCallback? onEdit,
+  }) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -579,6 +778,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ],
             ),
           ),
+          if (onEdit != null)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 18, color: primaryColor),
+              onPressed: onEdit,
+              tooltip: 'Chỉnh sửa địa chỉ này',
+            ),
         ],
       ),
     );
@@ -724,6 +929,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final name = (_user?['fullName'] ?? '').toString().trim();
     final phone = (_user?['phone'] ?? '').toString().trim();
     final email = (_user?['email'] ?? '').toString().trim();
+    final address = (_user?['address'] ?? '').toString().trim();
 
     final initials = name
         .split(RegExp(r'\s+'))
@@ -847,6 +1053,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     const SizedBox(width: 4),
                     const Icon(Icons.verified, size: 13, color: Color(0xFF1B6B40)),
                   ],
+                ),
+                const SizedBox(height: 4),
+                InkWell(
+                  onTap: () => _openAddressBookDialog(context),
+                  borderRadius: BorderRadius.circular(6),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.home_outlined, size: 14, color: primaryColor),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          address.isEmpty ? 'Chạm để cập nhật địa chỉ nơi ở' : address,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            color: address.isEmpty ? outlineColor : const Color(0xFF5B4041),
+                            fontStyle: address.isEmpty ? FontStyle.italic : FontStyle.normal,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.edit_note, size: 15, color: outlineColor),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -1169,7 +1400,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
             icon: Icons.location_on,
             iconColor: primaryColor,
             title: 'Sổ địa chỉ nhận & giao đồ',
-            subtitle: '140 Lê Trọng Tấn, P. Tây Thạnh, Tân Phú',
+            subtitle: (_user?['address'] != null && (_user!['address'] as String).trim().isNotEmpty)
+                ? _user!['address']
+                : '140 Lê Trọng Tấn, P. Tây Thạnh, Tân Phú',
             onTap: () => _openAddressBookDialog(context),
           ),
           const Divider(height: 1, indent: 60, color: surfaceLow),

@@ -63,6 +63,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
 
   String userPhone = '0908123456';
   String userName = 'Kiều Như';
+  late String currentPickupAddress;
 
   String _formatCurrency(num amount) {
     return amount.toInt().toString().replaceAllMapped(
@@ -143,6 +144,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
     userPhone = widget.contactPhone.replaceAll(RegExp(r'[^0-9+]'), '');
     if (userPhone.isEmpty) userPhone = '0908123456';
     _deliveryReceiverPhoneController.text = userPhone;
+    currentPickupAddress = widget.pickupAddress;
     _loadUserProfile();
   }
 
@@ -169,6 +171,9 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                 if (_deliveryReceiverNameController.text.isEmpty || _deliveryReceiverNameController.text == 'Kiều Như') {
                   _deliveryReceiverNameController.text = userName;
                 }
+              }
+              if (data['address'] != null && data['address'].toString().trim().isNotEmpty) {
+                currentPickupAddress = data['address'].toString().trim();
               }
             });
           }
@@ -602,6 +607,145 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
     );
   }
 
+  void _showChangePickupAddressDialog() {
+    final addrController = TextEditingController(text: currentPickupAddress);
+    final quickSuggestions = [
+      '140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú, TP.HCM',
+      'Chợ Bến Thành, Đường Lê Lợi, Phường Bến Thành, Quận 1, TP.HCM',
+      '268 Lý Thường Kiệt, Phường 14, Quận 10, TP.HCM',
+      'Landmark 81, 720A Điện Biên Phủ, P. 22, Q. Bình Thạnh, TP.HCM',
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setSheetState) => Container(
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Đổi địa chỉ lấy đồ',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: onSurface,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: addrController,
+                maxLines: 2,
+                minLines: 1,
+                decoration: InputDecoration(
+                  hintText: 'Nhập số nhà, tên đường, phường/xã...',
+                  filled: true,
+                  fillColor: surfaceLow,
+                  prefixIcon: const Icon(Icons.pin_drop, color: primaryColor, size: 20),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'Gợi ý nhanh khu vực TP.HCM:',
+                style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey),
+              ),
+              const SizedBox(height: 6),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                children: quickSuggestions.map((suggestion) {
+                  return InkWell(
+                    onTap: () {
+                      addrController.text = suggestion;
+                      setSheetState(() {});
+                    },
+                    borderRadius: BorderRadius.circular(12),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: surfaceLow,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: primaryColor.withOpacity(0.2)),
+                      ),
+                      child: Text(
+                        suggestion.split(',').take(2).join(','),
+                        style: GoogleFonts.plusJakartaSans(fontSize: 10, color: primaryColor, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 46,
+                child: ElevatedButton(
+                  onPressed: () {
+                    final newAddr = addrController.text.trim();
+                    if (newAddr.isEmpty) {
+                      _showToast('Vui lòng nhập địa chỉ lấy đồ');
+                      return;
+                    }
+                    setState(() {
+                      currentPickupAddress = newAddr;
+                    });
+                    Navigator.pop(ctx);
+                    _showToast('Đã đổi địa chỉ lấy đồ thành công');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(23)),
+                  ),
+                  child: Text(
+                    'Xác nhận địa chỉ này',
+                    style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   // --- WIDGET 3: PICKUP ADDRESS SECTION ---
   Widget _buildPickupAddressSection() {
     return Container(
@@ -650,7 +794,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                 ],
               ),
               InkWell(
-                onTap: () => _showToast('Chức năng Đổi địa chỉ sắp ra mắt!'),
+                onTap: _showChangePickupAddressDialog,
                 child: Row(
                   children: [
                     Text(
@@ -728,7 +872,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                 const SizedBox(height: 6),
 
                 Text(
-                  'Căn hộ Heritage Manor, Căn 302, 128 Hai Bà Trưng, P. Bến Nghé, Quận 1, TP. Hồ Chí Minh',
+                  currentPickupAddress,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 11,
                     color: onSurface,
@@ -1444,7 +1588,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                         Text(
                           isDifferentDeliveryAddress
                               ? 'Tùy chọn: Nhận đồ tại cơ quan, nhà người thân...'
-                              : 'Chỉ nhận đồ tại địa chỉ lấy đồ mặc định (${widget.pickupAddress.split(',').first})',
+                              : 'Chỉ nhận đồ tại địa chỉ lấy đồ mặc định (${currentPickupAddress.split(',').first})',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 10,
                             color: onSurfaceVariant,
@@ -1844,7 +1988,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
 
                     final finalDeliveryAddress = isDifferentDeliveryAddress
                         ? _deliveryAddressController.text.trim()
-                        : widget.pickupAddress;
+                        : currentPickupAddress;
                     final receiverPhone = isDifferentDeliveryAddress &&
                             _deliveryReceiverPhoneController.text.trim().isNotEmpty
                         ? _deliveryReceiverPhoneController.text.trim()
@@ -1862,7 +2006,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => BookingStep3Screen(
-                          pickupAddress: widget.pickupAddress,
+                          pickupAddress: currentPickupAddress,
                           deliveryAddress: finalDeliveryAddress,
                           contactPhone: receiverPhone,
                           note: [

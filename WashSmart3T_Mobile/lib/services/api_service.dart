@@ -105,6 +105,7 @@ class ApiService {
     required String fullName,
     required String phone,
     required String email,
+    String? address,
   }) async {
     final token = await AuthService.getToken();
     if (token == null || token.isEmpty) {
@@ -115,13 +116,14 @@ class ApiService {
       Uri.parse('$baseUrl/Auth/profile'),
       headers: {
         'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
         'Accept': 'application/json',
       },
       body: jsonEncode({
         'fullName': fullName,
         'phone': phone,
         'email': email,
+        if (address != null) 'address': address,
       }),
     );
 
@@ -204,7 +206,7 @@ class ApiService {
       Uri.parse('$baseUrl/Orders/$orderId/cancel'),
       headers: {
         'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
         'Accept': 'application/json',
       },
       body: jsonEncode({
@@ -344,7 +346,7 @@ class ApiService {
       Uri.parse('$baseUrl/Orders/$orderId/assign-shipper'),
       headers: {
         'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
         'Accept': 'application/json',
       },
       body: jsonEncode({'shipperId': shipperId}),
@@ -402,7 +404,7 @@ class ApiService {
       Uri.parse('$baseUrl/Orders'),
       headers: {
         'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
         'Accept': 'application/json',
       },
       body: jsonEncode(payload),
@@ -459,7 +461,7 @@ class ApiService {
       Uri.parse('$baseUrl/Orders/$orderId/status'),
       headers: {
         'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
         'Accept': 'application/json',
       },
       body: jsonEncode({
@@ -510,7 +512,7 @@ class ApiService {
       Uri.parse('$baseUrl/Complaints'),
       headers: {
         'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
         'Accept': 'application/json',
       },
       body: jsonEncode(payload),
@@ -563,7 +565,7 @@ class ApiService {
       Uri.parse('$baseUrl/Orders/$orderId/delivery-proof'),
       headers: {
         'Authorization': 'Bearer $token',
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
         'Accept': 'application/json',
       },
       body: jsonEncode({

@@ -435,6 +435,7 @@ public class AuthController : ControllerBase
                 fullName = user.FullName,
                 phone = user.Phone,
                 email = user.Email,
+                address = user.Address,
                 role = user.Role?.Name,
                 isActive = user.IsActive,
                 loyaltyPoints = user.LoyaltyPoints,
@@ -486,6 +487,7 @@ public class AuthController : ControllerBase
             fullName = user.FullName,
             phone = user.Phone,
             email = user.Email,
+            address = user.Address,
             role = user.Role?.Name,
             isActive = user.IsActive,
             loyaltyPoints = user.LoyaltyPoints,
@@ -575,6 +577,10 @@ public class AuthController : ControllerBase
         user.FullName = request.FullName.Trim();
         user.Phone = request.Phone.Trim();
         user.Email = request.Email.Trim();
+        if (request.Address != null)
+        {
+            user.Address = request.Address.Trim();
+        }
 
         await _context.SaveChangesAsync();
 
@@ -587,6 +593,7 @@ public class AuthController : ControllerBase
                 user.FullName,
                 user.Phone,
                 user.Email,
+                user.Address,
                 role = user.Role?.Name,
                 user.IsActive
             }
