@@ -31,5 +31,10 @@ public class SendOtpRequest
     [RegularExpression(@"^(\+?84|0)[0-9\s\.\-]{8,15}$", ErrorMessage = "Số điện thoại không đúng định dạng di động Việt Nam.")]
     public string Phone { get; set; } = string.Empty;
 
+    [EmailAddress(ErrorMessage = "Email không đúng định dạng hợp lệ.")]
+    public string? Email { get; set; }
+
+    public string? FullName { get; set; }
+
     public string Purpose { get; set; } = "Register";
 }

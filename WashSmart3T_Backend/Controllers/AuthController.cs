@@ -71,7 +71,26 @@ public class AuthController : ControllerBase
             }
         }
 
-        // 2. Chống spam SMS: giới hạn 60 giây giữa các lần yêu cầu
+        // 1.1 Kiểm tra email đã đăng ký chưa nếu có truyền email
+        if (!string.IsNullOrWhiteSpace(request.Email))
+        {
+            var cleanEmail = request.Email.Trim();
+            var existingEmail = await _context.Users.FirstOrDefaultAsync(x => x.Email == cleanEmail);
+            if (existingEmail != null)
+            {
+                bool isPosGhost = existingEmail.Email.EndsWith("@customer.washsmart.local") ||
+                                  existingEmail.Email.StartsWith("pos-");
+                if (!isPosGhost)
+                {
+                    return BadRequest(new
+                    {
+                        message = "Địa chỉ Email này đã được đăng ký tài khoản khác. Vui lòng dùng email khác hoặc Đăng nhập."
+                    });
+                }
+            }
+        }
+
+        // 2. Chống spam SMS/Email: giới hạn 60 giây giữa các lần yêu cầu
         if (_otpCooldowns.TryGetValue(phone, out var lastSent))
         {
             var elapsed = DateTime.UtcNow - lastSent;
@@ -91,17 +110,32 @@ public class AuthController : ControllerBase
         var otpCode = OtpManager.GenerateOtp("Register", phone);
         var storeConfig = await GetStoreConfigAsync();
 
-        // 4. Gửi SMS đến số điện thoại thật
+        // 4. Gửi OTP qua Email (Gmail SMTP) nếu người dùng có cung cấp Email
+        bool emailSuccess = false;
+        string? emailAddress = request.Email?.Trim();
+        if (!string.IsNullOrWhiteSpace(emailAddress))
+        {
+            var (eSuccess, eMsg, isESimulated) = await EmailService.SendOtpEmailAsync(
+                emailAddress, otpCode, "Register", _configuration, request.FullName);
+            emailSuccess = eSuccess;
+        }
+
+        // 5. Gửi SMS đến số điện thoại thật qua SmsService
         var smsResult = await SmsService.SendOtpSmsAsync(phone, otpCode, "Register", storeConfig);
+
+        string returnMsg = !string.IsNullOrWhiteSpace(emailAddress)
+            ? $"Mã OTP xác thực đã được gửi tới email {emailAddress} (và SMS số {phone}). Vui lòng kiểm tra hộp thư đến hoặc mục Thư rác/Spam!"
+            : $"Mã OTP xác thực đã được gửi tới số {phone}. Mã có hiệu lực trong 5 phút.";
 
         return Ok(new
         {
             success = true,
-            message = $"Mã OTP xác thực đã được gửi tới số {phone}. Mã có hiệu lực trong 5 phút.",
+            message = returnMsg,
             phone = phone,
+            email = emailAddress,
             isSimulated = smsResult.IsSimulated,
             // Hỗ trợ hiển thị devHint khi đang ở chế độ Simulation để chấm đồ án/thử nghiệm thuận lợi
-            devHint = smsResult.IsSimulated ? $"[Chế độ Demo] Mã OTP của bạn là: {otpCode}" : null
+            devHint = smsResult.IsSimulated ? $"[Chế độ Demo/Email] Mã OTP của bạn là: {otpCode}" : null
         });
     }
 

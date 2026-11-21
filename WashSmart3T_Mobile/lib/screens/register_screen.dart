@@ -857,9 +857,29 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _sendOtp() async {
     final phone = _phoneController.text.trim();
+    final email = _emailController.text.trim();
+    final fullName = _fullNameController.text.trim();
+
     if (phone.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng nhập số điện thoại trước khi lấy mã OTP.')),
+      );
+      return;
+    }
+
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Vui lòng nhập địa chỉ Email để nhận mã OTP xác thực.')),
+      );
+      return;
+    }
+
+    if (!_isValidEmail(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Email chưa đúng cú pháp hợp lệ (Ví dụ: tenban@gmail.com).'),
+          backgroundColor: Color(0xFFBA1A1A),
+        ),
       );
       return;
     }
@@ -869,16 +889,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
     });
 
     try {
-      final res = await ApiService.sendRegistrationOtp(phone: phone);
+      final res = await ApiService.sendRegistrationOtp(
+        phone: phone,
+        email: email,
+        fullName: fullName,
+      );
       if (!mounted) return;
 
       final devHint = res['devHint'];
-      final msg = res['message'] ?? 'Đã gửi mã OTP xác thực qua SMS.';
+      final msg = res['message'] ?? 'Đã gửi mã OTP xác thực qua Email & SMS.';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(devHint != null ? '$msg\n$devHint' : msg),
           backgroundColor: const Color(0xFF1B6B40),
-          duration: const Duration(seconds: 6),
+          duration: const Duration(seconds: 7),
         ),
       );
 

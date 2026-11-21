@@ -27,12 +27,16 @@ class ApiService {
 
   static Future<Map<String, dynamic>> sendRegistrationOtp({
     required String phone,
+    String? email,
+    String? fullName,
   }) async {
     final response = await http.post(
       Uri.parse('$baseUrl/Auth/send-registration-otp'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'phone': phone,
+        if (email != null && email.isNotEmpty) 'email': email,
+        if (fullName != null && fullName.isNotEmpty) 'fullName': fullName,
         'purpose': 'Register',
       }),
     );
