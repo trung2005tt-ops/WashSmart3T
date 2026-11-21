@@ -51,13 +51,13 @@ public static class DbSeeder
         var customerRole = await context.Roles.FirstAsync(x => x.Name == "Customer");
 
         // 1. Admin
-        var admin = await context.Users.FirstOrDefaultAsync(x => x.Phone == "0900000000");
+        var admin = await context.Users.FirstOrDefaultAsync(x => x.Email == "admin@washsmart.com" || x.RoleId == adminRole.Id);
         if (admin == null)
         {
             context.Users.Add(new User
             {
                 FullName = "Nguyễn Kiều Như",
-                Phone = "0900000000",
+                Phone = "0908123456",
                 Email = "admin@washsmart.com",
                 PasswordHash = passwordHash,
                 RoleId = adminRole.Id,
@@ -68,21 +68,22 @@ public static class DbSeeder
         else
         {
             admin.FullName = "Nguyễn Kiều Như";
+            admin.Phone = "0908123456";
             admin.PasswordHash = passwordHash;
         }
 
         // 2. Nhân viên tiếp nhận / Lễ tân POS (Staff)
         var staffList = new[]
         {
-            new { Phone = "0911000001", Name = "Trần Tuyết Mai", Email = "mai.tran@washsmart.com" },
-            new { Phone = "0911000002", Name = "Lê Hoài Nam", Email = "nam.le@washsmart.com" },
-            new { Phone = "0911000003", Name = "Đặng Thu Thảo", Email = "thao.dang@washsmart.com" },
+            new { Phone = "0911223301", Name = "Trần Tuyết Mai", Email = "mai.tran@washsmart.com" },
+            new { Phone = "0911223302", Name = "Lê Hoài Nam", Email = "nam.le@washsmart.com" },
+            new { Phone = "0911223303", Name = "Đặng Thu Thảo", Email = "thao.dang@washsmart.com" },
             new { Phone = "0965112233", Name = "Đặng Thùy Dương", Email = "duong.dang@washsmart.com" }
         };
 
         foreach (var s in staffList)
         {
-            var u = await context.Users.FirstOrDefaultAsync(x => x.Phone == s.Phone);
+            var u = await context.Users.FirstOrDefaultAsync(x => x.Phone == s.Phone || x.Email == s.Email);
             if (u == null)
             {
                 context.Users.Add(new User
@@ -99,6 +100,7 @@ public static class DbSeeder
             else
             {
                 u.FullName = s.Name;
+                u.Phone = s.Phone;
                 u.PasswordHash = passwordHash;
             }
         }
@@ -106,16 +108,12 @@ public static class DbSeeder
         // 3. Nhân viên giao nhận (Shipper)
         var shipperList = new[]
         {
-            new { Phone = "0922222222", Name = "Lê Minh Hoàng", Email = "hoang.le@washsmart.com" },
-            new { Phone = "0818605505", Name = "Nguyễn Thành Trung", Email = "tt@gmail.com" },
-            new { Phone = "0323232323", Name = "Phạm Quang Trung", Email = "trung.pham@washsmart.com" },
-            new { Phone = "0933333333", Name = "Trần Văn Giao", Email = "giao.tran@washsmart.com" },
-            new { Phone = "0999333444", Name = "Trần Anh Thái", Email = "thai.tran@washsmart.com" }
+            new { Phone = "0818605505", Name = "Nguyễn Thành Trung", Email = "tt@gmail.com" }
         };
 
         foreach (var sh in shipperList)
         {
-            var u = await context.Users.FirstOrDefaultAsync(x => x.Phone == sh.Phone);
+            var u = await context.Users.FirstOrDefaultAsync(x => x.Phone == sh.Phone || x.Email == sh.Email);
             if (u == null)
             {
                 context.Users.Add(new User
@@ -132,6 +130,7 @@ public static class DbSeeder
             else
             {
                 u.FullName = sh.Name;
+                u.Phone = sh.Phone;
                 u.PasswordHash = passwordHash;
             }
         }
@@ -139,16 +138,13 @@ public static class DbSeeder
         // 4. Khách hàng Demo (Customer)
         var customers = new[]
         {
-            new { Phone = "0999222111", Name = "Như Nguyễn", Email = "nhu.nguyen@gmail.com" },
-            new { Phone = "0944444444", Name = "Hoàng Tuấn Kiên", Email = "kien.hoang@gmail.com" },
-            new { Phone = "0999222777", Name = "Đỗ Minh Đạt", Email = "dat.do@gmail.com" },
             new { Phone = "0912306271", Name = "Nguyễn Bích Phương", Email = "phuong.nguyen@gmail.com" },
             new { Phone = "0977889911", Name = "Võ Văn Nam", Email = "nam.vo@gmail.com" }
         };
 
         foreach (var c in customers)
         {
-            var u = await context.Users.FirstOrDefaultAsync(x => x.Phone == c.Phone);
+            var u = await context.Users.FirstOrDefaultAsync(x => x.Phone == c.Phone || x.Email == c.Email);
             if (u == null)
             {
                 context.Users.Add(new User
@@ -159,28 +155,17 @@ public static class DbSeeder
                     PasswordHash = passwordHash,
                     RoleId = customerRole.Id,
                     IsActive = true,
-                    LoyaltyPoints = c.Phone == "0999222111" ? 1450 : 120,
-                    MembershipTier = c.Phone == "0999222111" ? "Gold" : "Silver",
-                    TotalSpent = c.Phone == "0999222111" ? 1450000 : 480000,
+                    LoyaltyPoints = 120,
+                    MembershipTier = "Silver",
+                    TotalSpent = 480000,
                     CreatedAt = DateTime.UtcNow
                 });
             }
             else
             {
                 u.FullName = c.Name;
+                u.Phone = c.Phone;
                 u.PasswordHash = passwordHash;
-                if (c.Phone == "0999222111" && (u.LoyaltyPoints < 1450 || u.MembershipTier == "Bronze"))
-                {
-                    u.LoyaltyPoints = 1450;
-                    u.MembershipTier = "Gold";
-                    u.TotalSpent = 1450000;
-                }
-                else
-                {
-                    if (u.LoyaltyPoints == 0) u.LoyaltyPoints = 120;
-                    if (string.IsNullOrWhiteSpace(u.MembershipTier) || u.MembershipTier == "Bronze") u.MembershipTier = "Silver";
-                    if (u.TotalSpent == 0) u.TotalSpent = 480000;
-                }
             }
         }
 
@@ -391,8 +376,8 @@ public static class DbSeeder
         // =========================
         if (!await context.Complaints.AnyAsync())
         {
-            var customer1 = await context.Users.FirstOrDefaultAsync(u => u.Phone == "0999222111");
-            var customer2 = await context.Users.FirstOrDefaultAsync(u => u.Phone == "0944444444");
+            var customer1 = await context.Users.FirstOrDefaultAsync(u => u.Phone == "0912306271");
+            var customer2 = await context.Users.FirstOrDefaultAsync(u => u.Phone == "0977889911");
             var latestOrder = await context.Orders.OrderByDescending(o => o.Id).FirstOrDefaultAsync();
             var prevOrder = await context.Orders.Where(o => o.Id != (latestOrder != null ? latestOrder.Id : 0)).OrderByDescending(o => o.Id).FirstOrDefaultAsync();
 
@@ -412,7 +397,7 @@ public static class DbSeeder
                     SealCode = "WS-SEAL-0019",
                     SealStatus = "Intact",
                     DrumInfo = "Lồng giặt sấy thông minh LG Turbo #02",
-                    ShipperName = "Lê Minh Hoàng (0922222222)",
+                    ShipperName = "Nguyễn Thành Trung (0818605505)",
                     CreatedAt = DateTime.UtcNow.AddMinutes(-45)
                 },
                 new Complaint
@@ -435,7 +420,7 @@ public static class DbSeeder
                     SealCode = "WS-SEAL-0018",
                     SealStatus = "Inspected",
                     DrumInfo = "Lồng hấp chuyên dụng Electrolux #01",
-                    ShipperName = "Lê Minh Hoàng (0922222222)",
+                    ShipperName = "Nguyễn Thành Trung (0818605505)",
                     CreatedAt = DateTime.UtcNow.AddDays(-1)
                 }
             );
