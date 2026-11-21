@@ -4,8 +4,9 @@
 // ============================================================
 
 const API_BASE = 'http://localhost:5085/api';
+window.API_BASE = API_BASE;
 
-const Auth = {
+var Auth = window.Auth = {
   save(token, role, fullName) {
     localStorage.setItem('ws_token', token);
     localStorage.setItem('ws_role', role || 'Customer');
@@ -100,7 +101,7 @@ const Auth = {
   },
 };
 
-const Api = {
+var Api = window.Api = {
   headers() {
     return {
       'Content-Type': 'application/json',
