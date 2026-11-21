@@ -101,6 +101,37 @@ class ApiService {
     return Map<String, dynamic>.from(jsonDecode(response.body) as Map);
   }
 
+  static Future<Map<String, dynamic>> updateProfile({
+    required String fullName,
+    required String phone,
+    required String email,
+  }) async {
+    final token = await AuthService.getToken();
+    if (token == null || token.isEmpty) {
+      throw Exception('Bạn chưa đăng nhập.');
+    }
+
+    final response = await http.put(
+      Uri.parse('$baseUrl/Auth/profile'),
+      headers: {
+        'Authorization': 'Bearer $token',
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: jsonEncode({
+        'fullName': fullName,
+        'phone': phone,
+        'email': email,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return Map<String, dynamic>.from(data as Map);
+    }
+    throw Exception(data['message'] ?? 'Cập nhật thông tin thất bại');
+  }
+
   static Future<List<Map<String, dynamic>>> getMyOrders() async {
     final token = await AuthService.getToken();
 
