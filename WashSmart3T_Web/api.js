@@ -384,6 +384,8 @@ function formatMoney(amount) {
 // Keep the existing global names available for classic-script pages.
 window.Api = Api;
 window.Auth = Auth;
+window.orderCode = orderCode;
+window.formatMoney = formatMoney;
 
 // ============================================================
 // HÀM TÁCH GHI CHÚ ĐƠN HÀNG THÀNH TỪNG PHẦN RÕ RÀNG

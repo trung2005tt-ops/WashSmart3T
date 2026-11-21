@@ -399,10 +399,39 @@
     let allCustomers = [];
     let currentTierFilter = 'all';
 
+    function formatVND(amount) {
+      if (typeof formatMoney === 'function') return formatMoney(amount);
+      return (Number(amount) || 0).toLocaleString('vi-VN') + ' đ';
+    }
+
     async function loadCustomers() {
       try {
         const query = document.getElementById('customer-search-input')?.value.trim() || '';
-        allCustomers = await Api.Users.customers(query);
+        const rawList = await Api.Users.customers(query);
+        allCustomers = (rawList || []).map(c => {
+          const tier = c.membershipTier || c.tier || 'Thành viên mới';
+          let tierBadge = 'bg-gray-100 text-gray-700';
+          const tierLower = tier.toLowerCase();
+          if (tierLower.includes('diamond')) {
+            tierBadge = 'bg-cyan-100 text-cyan-800';
+          } else if (tierLower.includes('gold')) {
+            tierBadge = 'bg-amber-100 text-amber-800';
+          } else if (tierLower.includes('thân') || tierLower.includes('silver')) {
+            tierBadge = 'bg-blue-100 text-blue-800';
+          }
+          const points = typeof c.loyaltyPoints === 'number' ? c.loyaltyPoints : (typeof c.points === 'number' ? c.points : 0);
+          const code = c.code || `KH-${String(c.id).padStart(4, '0')}`;
+          return {
+            ...c,
+            code,
+            tier,
+            tierBadge,
+            points,
+            totalSpent: c.totalSpent || 0,
+            fullName: c.fullName || 'Khách hàng',
+            phone: c.phone || ''
+          };
+        });
         renderCustomerTable();
       } catch (err) {
         console.error('Lỗi tải khách hàng:', err);
@@ -419,21 +448,25 @@
       const search = (document.getElementById('customer-search-input')?.value || '').toLowerCase().trim();
 
       const filtered = allCustomers.filter(c => {
+        const tierStr = String(c.tier || '').toLowerCase();
         let matchTier = true;
-        if (currentTierFilter === 'diamond') matchTier = c.tier.includes('Diamond');
-        else if (currentTierFilter === 'gold') matchTier = c.tier.includes('Gold');
-        else if (currentTierFilter === 'member') matchTier = c.tier.includes('Mới') || c.tier.includes('Thân');
+        if (currentTierFilter === 'diamond') matchTier = tierStr.includes('diamond');
+        else if (currentTierFilter === 'gold') matchTier = tierStr.includes('gold');
+        else if (currentTierFilter === 'member') matchTier = tierStr.includes('mới') || tierStr.includes('thân') || (!tierStr.includes('diamond') && !tierStr.includes('gold'));
 
         const matchSearch = !search || 
-          c.fullName.toLowerCase().includes(search) || 
-          c.phone.includes(search) || 
-          c.code.toLowerCase().includes(search);
+          String(c.fullName || '').toLowerCase().includes(search) || 
+          String(c.phone || '').includes(search) || 
+          String(c.code || '').toLowerCase().includes(search);
 
         return matchTier && matchSearch;
       });
 
       // Update KPI
-      const vipCount = allCustomers.filter(c => c.tier.includes('VIP')).length;
+      const vipCount = allCustomers.filter(c => {
+        const t = String(c.tier || '').toLowerCase();
+        return t.includes('vip') || t.includes('gold') || t.includes('diamond');
+      }).length;
       const kpiTotal = document.getElementById('kpi-total-customers');
       if (kpiTotal) kpiTotal.innerHTML = `${allCustomers.length} <span class="text-xs font-normal text-secondary">tài khoản</span>`;
       
@@ -449,7 +482,7 @@
       filtered.forEach(c => {
         const tr = document.createElement('tr');
         tr.className = 'customer-row hover:bg-surface-container-low transition-colors';
-        const initials = c.fullName.split(' ').map(p => p[0]).slice(-2).join('').toUpperCase();
+        const initials = String(c.fullName || '').split(' ').filter(Boolean).map(p => p[0]).slice(-2).join('').toUpperCase();
 
         tr.innerHTML = `
           <td class="py-3 px-4">
@@ -469,10 +502,10 @@
             </span>
           </td>
           <td class="py-3 px-3 text-right font-bold text-primary">
-            ${c.points.toLocaleString('vi-VN')} xu
+            ${(Number(c.points) || 0).toLocaleString('vi-VN')} xu
           </td>
           <td class="py-3 px-3 text-right font-semibold text-on-surface">
-            ${formatMoney(c.totalSpent)}
+            ${formatVND(c.totalSpent)}
           </td>
           <td class="py-3 px-4 text-center">
             <div class="flex items-center justify-center gap-1.5">
@@ -498,8 +531,8 @@
     }
 
     async function handleUpgradeTier(id, name, currentTier) {
-      const nextTier = currentTier.includes('Diamond') ? 'VIP Gold' : (currentTier.includes('Gold') ? 'VIP Diamond' : 'VIP Gold');
-      const voucher = nextTier.includes('Diamond') ? 'DIAMOND-VIP' : 'GOLD-WELCOME';
+      const tierStr = String(currentTier || '');
+      const nextTier = tierStr.includes('Diamond') ? 'VIP Gold' : (tierStr.includes('Gold') ? 'VIP Diamond' : 'VIP Gold');
       try {
         const res = await Api.Users.upgradeTier(id, nextTier);
         showToast(`🎉 ${res.message || `Đã thăng hạng khách hàng ${name} lên ${nextTier}!`}`);
@@ -537,35 +570,8 @@
 
     loadCustomers();
 
-
-
-    // Search Filter
-    document.getElementById('customer-search-input')?.addEventListener('input', (e) => {
-      const query = e.target.value.toLowerCase().trim();
-      customerRows.forEach(row => {
-        row.style.display = row.innerText.toLowerCase().includes(query) ? '' : 'none';
-      });
-    });
-
-    // Upgrade Tier Button
-    document.querySelectorAll('.btn-upgrade-tier').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const name = btn.dataset.name;
-        const nextTier = btn.dataset.next;
-        const voucherCode = nextTier === 'VIP Diamond' ? 'DIAMOND-VIP' : 'GOLD-WELCOME';
-        showToast(`🎉 Đã thăng hạng ${name} lên ${nextTier}! Tự động phát Voucher [${voucherCode}] về App.`);
-      });
-    });
-
     // Modal Points
     const pointsModal = document.getElementById('points-modal');
-    document.querySelectorAll('.btn-adjust-points').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.getElementById('modal-points-target').textContent = `Khách hàng: ${btn.dataset.name} (Hiện có ${btn.dataset.points} xu)`;
-        pointsModal.classList.remove('hidden');
-        pointsModal.classList.add('flex');
-      });
-    });
 
     const hidePointsModal = () => {
       pointsModal.classList.add('hidden');
