@@ -415,13 +415,41 @@ class _RegisterScreenState extends State<RegisterScreen> {
                     ),
 
                     const SizedBox(height: 16),
-                    _buildLabel('Email cá nhân (Nhận hóa đơn điện tử)', false),
+                    _buildLabel('Email cá nhân (Nhận hóa đơn điện tử)', true),
                     _buildTextField(
                       controller: _emailController,
                       hint: 'lananh@gmail.com',
                       icon: Icons.mail,
                       keyboardType: TextInputType.emailAddress,
+                      onChanged: (val) => setState(() {}),
+                      customSuffix: _emailController.text.isNotEmpty
+                          ? Padding(
+                              padding: const EdgeInsets.only(right: 12),
+                              child: Icon(
+                                _isValidEmail(_emailController.text)
+                                    ? Icons.check_circle
+                                    : Icons.error_outline,
+                                color: _isValidEmail(_emailController.text)
+                                    ? const Color(0xFF1B6B40)
+                                    : Colors.orange,
+                                size: 20,
+                              ),
+                            )
+                          : null,
                     ),
+                    if (_emailController.text.isNotEmpty &&
+                        !_isValidEmail(_emailController.text))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4, left: 4),
+                        child: Text(
+                          'Cú pháp email chưa hợp lệ (Ví dụ: tenban@gmail.com)',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 11,
+                            color: const Color(0xFFBA1A1A),
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
 
                     // Mật khẩu có thanh đo sức mạnh
                     const SizedBox(height: 16),
@@ -673,35 +701,39 @@ class _RegisterScreenState extends State<RegisterScreen> {
     TextEditingController? controller,
     VoidCallback? onToggleVisibility,
     bool showMatchIcon = false,
+    ValueChanged<String>? onChanged,
+    Widget? customSuffix,
   }) {
     return TextField(
       controller: controller,
       obscureText: obscureState,
       keyboardType: keyboardType,
+      onChanged: onChanged,
       decoration: InputDecoration(
         filled: true,
         fillColor: surfaceContainerLow,
         prefixIcon: Icon(icon, color: outlineColor),
         hintText: hint,
         hintStyle: GoogleFonts.plusJakartaSans(
-          color: outlineColor.withOpacity(0.6),
+          color: outlineColor.withValues(alpha: 0.6),
           fontSize: 14,
         ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
         ),
-        suffixIcon: isPassword
-            ? IconButton(
-                icon: Icon(
-                  obscureState ? Icons.visibility_off : Icons.visibility,
-                  color: outlineColor,
-                ),
-                onPressed: onToggleVisibility,
-              )
-            : (showMatchIcon && _isPasswordMatch)
-            ? const Icon(Icons.check_circle, color: Color(0xFF006577))
-            : null,
+        suffixIcon: customSuffix ??
+            (isPassword
+                ? IconButton(
+                    icon: Icon(
+                      obscureState ? Icons.visibility_off : Icons.visibility,
+                      color: outlineColor,
+                    ),
+                    onPressed: onToggleVisibility,
+                  )
+                : (showMatchIcon && _isPasswordMatch)
+                ? const Icon(Icons.check_circle, color: Color(0xFF006577))
+                : null),
       ),
     );
   }
@@ -887,6 +919,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  bool _isValidEmail(String email) {
+    return RegExp(
+      r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+    ).hasMatch(email.trim());
+  }
+
   Future<void> _register() async {
     final fullName = _fullNameController.text.trim();
     final phone = _phoneController.text.trim();
@@ -904,6 +942,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
         confirmPassword.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Vui lòng nhập đầy đủ thông tin.')),
+      );
+      return;
+    }
+
+    // Kiểm tra cú pháp Email chuẩn
+    if (!_isValidEmail(email)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Email không đúng cú pháp hợp lệ (Ví dụ: tenban@gmail.com).'),
+          backgroundColor: Color(0xFFBA1A1A),
+        ),
       );
       return;
     }
