@@ -293,88 +293,6 @@ class _LoginScreenState extends State<LoginScreen> {
                               ),
                       ),
                     ),
-                    const SizedBox(height: 12),
-
-                    // Nút Face ID / Vân tay
-                    SizedBox(
-                      width: double.infinity,
-                      height: 44,
-                      child: TextButton.icon(
-                        onPressed: () {},
-                        style: TextButton.styleFrom(
-                          backgroundColor: surfaceContainerLow,
-                          foregroundColor: primaryColor,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(22),
-                          ),
-                        ),
-                        icon: const Icon(Icons.fingerprint),
-                        label: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            'Đăng nhập bằng Face ID / Vân tay',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Hoặc tiếp tục với
-                    Row(
-                      children: [
-                        const Expanded(
-                          child: Divider(color: Color(0xFFFFD9DC)),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Text(
-                            'HOẶC TIẾP TỤC VỚI',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              color: outlineColor,
-                            ),
-                          ),
-                        ),
-                        const Expanded(
-                          child: Divider(color: Color(0xFFFFD9DC)),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Mạng xã hội (Đã chia tỉ lệ bằng Expanded tự động co giãn)
-                    Row(
-                      children: [
-                        Expanded(
-                          child: _buildSocialButton(
-                            Icons.g_mobiledata,
-                            'Google',
-                            Colors.red,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildSocialButton(
-                            Icons.apple,
-                            'Apple',
-                            Colors.black,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: _buildSocialButton(
-                            Icons.facebook,
-                            'Facebook',
-                            Colors.blue,
-                          ),
-                        ),
-                      ],
-                    ),
                   ],
                 ),
               ),
@@ -535,33 +453,6 @@ class _LoginScreenState extends State<LoginScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  // Đã bỏ thuộc tính `width` cứng để nút tự co giãn linh hoạt
-  Widget _buildSocialButton(IconData icon, String label, Color iconColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: surfaceContainerLow,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          Icon(icon, size: 28, color: iconColor),
-          const SizedBox(height: 4),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              label,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
-                color: const Color(0xFF5B4041),
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
