@@ -444,6 +444,28 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
           builder: (context) => BookingSuccessScreen(
             orderId: orderId,
             orderCode: 'WS3T-${orderId.toString().padLeft(4, '0')}',
+            pickupAddress: widget.pickupAddress,
+            deliveryAddress: widget.deliveryAddress,
+            contactPhone: widget.contactPhone,
+            pickupTime: widget.pickupTime,
+            deliveryTime: widget.deliveryTime,
+            items: widget.items,
+            selectedCareOptions: widget.selectedCareOptions,
+            estimatedWeight: widget.estimatedWeight,
+            washPrice: washPrice,
+            shippingFee: shippingFee,
+            expressFee: widget.expressFee,
+            addonFee: widget.addonFee,
+            voucherDiscount: voucherDiscount,
+            selectedVoucherCode: selectedVoucherCode,
+            isCoinUsed: isCoinUsed,
+            coinDiscount: isCoinUsed ? coinDiscount : 0,
+            finalPrice: finalPrice,
+            paymentMethod: paymentMethod == 'vietqr'
+                ? 'Chuyển khoản VietQR'
+                : (paymentMethod == 'washpay'
+                    ? 'Ví WashPay'
+                    : 'Thanh toán khi Shipper cân đồ (Tiền mặt / Quét VietQR)'),
           ),
         ),
         (route) => route.isFirst,
