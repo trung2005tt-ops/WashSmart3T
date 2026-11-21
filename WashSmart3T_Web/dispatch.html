@@ -313,10 +313,10 @@
           </button>
           
           <!-- Smart Auto Bundle Quick Button -->
-          <button onclick="openLiveMapModal({ autoCluster: true })"
-            class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-amber-600 text-white hover:bg-amber-700 text-xs font-semibold shadow-sm transition-colors">
-            <span class="material-symbols-outlined text-base">alt_route</span>
-            <span>Gợi ý ghép đơn AI</span>
+          <button onclick="openLiveMapModal({ autoAiRoute: true })"
+            class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-gradient-to-r from-purple-700 to-indigo-600 text-white hover:from-purple-800 hover:to-indigo-700 text-xs font-semibold shadow-sm transition-all cursor-pointer">
+            <span class="material-symbols-outlined text-base text-amber-300">auto_awesome</span>
+            <span>✨ AI Đề Xuất Ghép Đơn</span>
           </button>
 
           <!-- LIVE MAP BUTTON (Real interactive Map, replaces mock alert) -->
@@ -394,10 +394,10 @@
             </div>
           </div>
           <div class="flex items-center gap-2 shrink-0">
-            <button onclick="openLiveMapModal({ autoCluster: true })"
-              class="px-3 py-1.5 rounded-lg bg-white border border-primary text-primary hover:bg-primary hover:text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm">
-              <span class="material-symbols-outlined text-sm">hub</span>
-              <span>Tự động gom cụm đơn</span>
+            <button onclick="openLiveMapModal({ autoAiRoute: true })"
+              class="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-purple-700 to-indigo-600 text-white hover:from-purple-800 hover:to-indigo-700 font-bold text-xs transition-all flex items-center gap-1.5 shadow-sm cursor-pointer">
+              <span class="material-symbols-outlined text-sm text-amber-300">auto_awesome</span>
+              <span>✨ AI Đề Xuất Tuyến Đường</span>
             </button>
             <button onclick="openLiveMapModal()"
               class="px-3.5 py-1.5 rounded-lg bg-primary text-white hover:bg-primary-container font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm">
@@ -719,6 +719,13 @@
             <span>Về Trụ Sở</span>
           </button>
 
+          <!-- AI Route Suggestion Button -->
+          <button id="btnAiSuggestRoutes" onclick="triggerAiSmartRouteProposal()" title="AI quét và tự động đề xuất tuyến đường gom các đơn gần nhất cho Shipper"
+            class="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-purple-700 via-indigo-600 to-pink-600 hover:from-purple-800 hover:to-indigo-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md hover:shadow-lg transition-all ring-2 ring-purple-300 active:scale-95 cursor-pointer">
+            <span class="material-symbols-outlined text-sm text-amber-300 animate-pulse">auto_awesome</span>
+            <span>✨ AI Đề Xuất Tuyến Đường</span>
+          </button>
+
           <!-- Toggle Simulation -->
           <button id="btnSimulateGps" onclick="toggleSimulateGps()"
             class="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold flex items-center gap-1 shadow-sm transition-colors">
@@ -893,6 +900,25 @@
           
           <!-- Leaflet Map Container -->
           <div id="leafletMapCanvas" class="w-full h-full bg-slate-100"></div>
+
+          <!-- Floating AI Route Proposal Toast / Notification -->
+          <div id="aiRouteToast"
+            class="hidden absolute top-4 left-1/2 -translate-x-1/2 z-[500] max-w-lg w-[92%] sm:w-auto bg-slate-900/95 text-white backdrop-blur-md px-4 py-3 rounded-2xl shadow-2xl border border-purple-400/50 flex items-center gap-3 transition-all duration-300">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center shrink-0 shadow-md">
+              <span class="material-symbols-outlined text-white text-xl animate-pulse">auto_awesome</span>
+            </div>
+            <div class="flex-1 text-xs min-w-0">
+              <div class="flex items-center gap-2">
+                <h5 class="font-bold text-amber-300 text-xs sm:text-sm">✨ AI Đã Lập Tuyến Đường Ghép Đơn!</h5>
+                <span class="px-1.5 py-0.2 rounded bg-purple-800 text-purple-200 text-[9px] font-extrabold uppercase">TSP 2-Opt</span>
+              </div>
+              <p id="aiRouteToastMsg" class="text-slate-200 mt-0.5 leading-snug">Đang phân tích dữ liệu...</p>
+            </div>
+            <button onclick="document.getElementById('aiRouteToast').classList.add('hidden')"
+              class="w-7 h-7 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 hover:text-white flex items-center justify-center transition-colors">
+              <span class="material-symbols-outlined text-sm">close</span>
+            </button>
+          </div>
 
           <!-- Map Floating Overlays: Layer Switcher & Status -->
           <div class="absolute top-4 right-4 z-[400] flex flex-col gap-2">
@@ -1415,25 +1441,38 @@
     // GOOGLE MAPS-LIKE LIVE ROUTING & SMART BUNDLING SYSTEM
     // ============================================================
 
-    // Realistic Geocoding for HCMC Addresses
+    // Realistic Geocoding for HCMC Addresses with Micro-Jitter for Multi-Stop Clustering
     function resolveOrderCoordinates(order) {
       const address = (order.deliveryAddress || order.pickupAddress || '').trim();
       const q = address.toLowerCase();
 
-      // Known landmarks and streets
-      if (q.includes("nguyễn sỹ sách")) return { lat: 10.8170, lng: 106.6380, label: "2 Nguyễn Sỹ Sách, P. 15, Tân Bình" };
-      if (q.includes("lê trọng tấn") || q.includes("tây thạnh") || q.includes("sơn kỳ")) return { lat: 10.8090, lng: 106.6300, label: "Lê Trọng Tấn, P. Tây Thạnh, Tân Phú" };
-      if (q.includes("trường chinh") || q.includes("bình long") || q.includes("tân kỳ tân quý")) return { lat: 10.7980, lng: 106.6210, label: "Trường Chinh / Bình Long, Tân Phú" };
-      if (q.includes("celadon") || q.includes("aeon")) return { lat: 10.8020, lng: 106.6180, label: "Celadon City, Tân Phú" };
-      if (q.includes("cộng hòa") || q.includes("hoàng hoa thám") || q.includes("tân bình")) return { lat: 10.7990, lng: 106.6490, label: "Cộng Hòa, Q. Tân Bình" };
-      if (q.includes("lũy bán bích") || q.includes("thoại ngọc hầu") || q.includes("hòa bình")) return { lat: 10.7830, lng: 106.6360, label: "Lũy Bán Bích, Q. Tân Phú" };
-      if (q.includes("lý thường kiệt") || q.includes("quận 10") || q.includes("bách khoa")) return { lat: 10.7720, lng: 106.6570, label: "Lý Thường Kiệt, Quận 10" };
-      if (q.includes("cách mạng tháng 8") || q.includes("quận 3")) return { lat: 10.7790, lng: 106.6780, label: "Cách Mạng Tháng 8, Quận 3" };
-      if (q.includes("quận 1") || q.includes("bến thành")) return { lat: 10.7725, lng: 106.6980, label: "Chợ Bến Thành, Quận 1" };
-      if (q.includes("quang trung") || q.includes("gò vấp")) return { lat: 10.8350, lng: 106.6620, label: "Quang Trung, Q. Gò Vấp" };
-      if (q.includes("quận 12") || q.includes("an sương")) return { lat: 10.8520, lng: 106.6120, label: "An Sương, Quận 12" };
-      if (q.includes("midtown") || q.includes("phú mỹ hưng") || q.includes("quận 7")) return { lat: 10.7290, lng: 106.7110, label: "Phú Mỹ Hưng, Quận 7" };
-      if (q.includes("số 79") || q.includes("tân quy") || q.includes("lotte")) return { lat: 10.7480, lng: 106.7020, label: "Tân Quy, Quận 7" };
+      // Seed micro-jitter from order ID to distinguish nearby/same-address pins without overlapping
+      const seed = Math.abs(Number(order.id) || 1);
+      const jLat = ((seed % 7) - 3) * 0.00045; // ~30-50m
+      const jLng = ((((seed * 3) + 2) % 7) - 3) * 0.00045;
+
+      let base = null;
+      if (q.includes("nguyễn sỹ sách")) base = { lat: 10.8170, lng: 106.6380, label: "2 Nguyễn Sỹ Sách, P. 15, Tân Bình" };
+      else if (q.includes("lê trọng tấn") || q.includes("tây thạnh") || q.includes("sơn kỳ")) base = { lat: 10.8090, lng: 106.6300, label: "Lê Trọng Tấn, P. Tây Thạnh, Tân Phú" };
+      else if (q.includes("trường chinh") || q.includes("bình long") || q.includes("tân kỳ tân quý")) base = { lat: 10.7980, lng: 106.6210, label: "Trường Chinh / Bình Long, Tân Phú" };
+      else if (q.includes("celadon") || q.includes("aeon")) base = { lat: 10.8020, lng: 106.6180, label: "Celadon City, Tân Phú" };
+      else if (q.includes("cộng hòa") || q.includes("hoàng hoa thám") || q.includes("tân bình")) base = { lat: 10.7990, lng: 106.6490, label: "Cộng Hòa, Q. Tân Bình" };
+      else if (q.includes("lũy bán bích") || q.includes("thoại ngọc hầu") || q.includes("hòa bình")) base = { lat: 10.7830, lng: 106.6360, label: "Lũy Bán Bích, Q. Tân Phú" };
+      else if (q.includes("lý thường kiệt") || q.includes("quận 10") || q.includes("bách khoa")) base = { lat: 10.7720, lng: 106.6570, label: "Lý Thường Kiệt, Quận 10" };
+      else if (q.includes("cách mạng tháng 8") || q.includes("quận 3")) base = { lat: 10.7790, lng: 106.6780, label: "Cách Mạng Tháng 8, Quận 3" };
+      else if (q.includes("quận 1") || q.includes("bến thành") || q.includes("hai bà trưng") || q.includes("bến nghé") || q.includes("q.1") || q.includes("q1")) base = { lat: 10.7725, lng: 106.6980, label: "Chợ Bến Thành, Quận 1" };
+      else if (q.includes("quang trung") || q.includes("gò vấp")) base = { lat: 10.8350, lng: 106.6620, label: "Quang Trung, Q. Gò Vấp" };
+      else if (q.includes("quận 12") || q.includes("an sương")) base = { lat: 10.8520, lng: 106.6120, label: "An Sương, Quận 12" };
+      else if (q.includes("midtown") || q.includes("phú mỹ hưng") || q.includes("quận 7")) base = { lat: 10.7290, lng: 106.7110, label: "Phú Mỹ Hưng, Quận 7" };
+      else if (q.includes("số 79") || q.includes("tân quy") || q.includes("lotte")) base = { lat: 10.7480, lng: 106.7020, label: "Tân Quy, Quận 7" };
+
+      if (base) {
+        return {
+          lat: Number((base.lat + jLat).toFixed(5)),
+          lng: Number((base.lng + jLng).toFixed(5)),
+          label: address || base.label
+        };
+      }
 
       // Deterministic hash fallback to distribute points naturally near store (1.2km to 3.8km)
       let hash = 0;
@@ -1444,8 +1483,8 @@
       const angle = (Math.abs(hash % 360)) * (Math.PI / 180);
       const radius = 0.012 + (Math.abs(hash) % 25) * 0.001; // ~1.3km to ~3.7km
       return {
-        lat: STORE_HUB.lat + radius * Math.cos(angle),
-        lng: STORE_HUB.lng + radius * Math.sin(angle),
+        lat: Number((STORE_HUB.lat + radius * Math.cos(angle) + jLat).toFixed(5)),
+        lng: Number((STORE_HUB.lng + radius * Math.sin(angle) + jLng).toFixed(5)),
         label: address || "Địa chỉ khách hàng"
       };
     }
@@ -1593,9 +1632,19 @@
         }, 150);
       }
 
-      if (options.autoCluster) {
+      if (options.autoAiRoute) {
         switchMapTab('bundler');
-        setTimeout(() => triggerAutoClusterSuggestion(), 300);
+        setTimeout(() => triggerAiSmartRouteProposal(), 400);
+      } else if (options.autoCluster) {
+        switchMapTab('bundler');
+        setTimeout(() => {
+          triggerAutoClusterSuggestion();
+          // Also automatically propose the best route if clusters exist
+          const c = detectSmartClusters();
+          if (c.length > 0) {
+            triggerAiSmartRouteProposal();
+          }
+        }, 400);
       }
     }
 
@@ -2378,27 +2427,51 @@
       }
     }
 
-    // Auto Cluster Suggestions (AI Grouping)
-    function triggerAutoClusterSuggestion() {
-      const pendingOrders = allOrders.filter(o =>
-        isDispatchOrder(o) && ['Confirmed', 'Ready'].includes(o.status)
-      );
-      pendingOrders.forEach(o => o.coords = resolveOrderCoordinates(o));
+    // ============================================================
+    // AI SMART ROUTE PROPOSAL & ORDER CLUSTERING (ALGORITHMIC)
+    // ============================================================
 
+    // Filter candidate orders for batching (prioritize unassigned orders)
+    function getEligibleBundleOrders() {
+      // 1. Prioritize unassigned orders that need shipper action
+      let eligible = allOrders.filter(o =>
+        isDispatchOrder(o) &&
+        !o.shipperId &&
+        ['Pending', 'Confirmed', 'Ready', 'Received'].includes(o.status)
+      );
+
+      // 2. Fallback: if all orders have shippers or waiting, include all active dispatch orders
+      if (eligible.length === 0) {
+        eligible = allOrders.filter(o =>
+          isDispatchOrder(o) &&
+          ['Pending', 'Confirmed', 'Ready', 'Received'].includes(o.status)
+        );
+      }
+
+      eligible.forEach(o => {
+        o.coords = resolveOrderCoordinates(o);
+      });
+      return eligible;
+    }
+
+    // AI Spatial Clustering Algorithm (Haversine Grid + Density Neighborhood)
+    function detectSmartClusters() {
+      const orders = getEligibleBundleOrders();
       const clusters = [];
       const assigned = new Set();
 
-      for (let i = 0; i < pendingOrders.length; i++) {
-        const o = pendingOrders[i];
+      for (let i = 0; i < orders.length; i++) {
+        const o = orders[i];
         if (assigned.has(o.id)) continue;
         const group = [o];
         assigned.add(o.id);
 
-        for (let j = i + 1; j < pendingOrders.length; j++) {
-          const c = pendingOrders[j];
+        for (let j = i + 1; j < orders.length; j++) {
+          const c = orders[j];
           if (assigned.has(c.id)) continue;
           const dist = haversineKm(o.coords.lat, o.coords.lng, c.coords.lat, c.coords.lng);
-          if (dist <= 3.5 && group.length < 4) {
+          // Same neighborhood or within 3.8km radius
+          if (dist <= 3.8 && group.length < 5) {
             group.push(c);
             assigned.add(c.id);
           }
@@ -2408,36 +2481,194 @@
         }
       }
 
+      // If no tight clusters but >= 2 orders exist, pair the 2 closest orders in the city
+      if (clusters.length === 0 && orders.length >= 2) {
+        let bestPair = null;
+        let minDist = Infinity;
+        for (let i = 0; i < orders.length; i++) {
+          for (let j = i + 1; j < orders.length; j++) {
+            const d = haversineKm(orders[i].coords.lat, orders[i].coords.lng, orders[j].coords.lat, orders[j].coords.lng);
+            if (d < minDist) {
+              minDist = d;
+              bestPair = [orders[i], orders[j]];
+            }
+          }
+        }
+        if (bestPair) {
+          clusters.push(bestPair);
+        }
+      }
+
+      // Sort clusters: largest bundle first
+      clusters.sort((a, b) => b.length - a.length);
+      return clusters;
+    }
+
+    // Auto Select Best/Free Shipper
+    function autoSelectBestShipper() {
+      const sel = document.getElementById('bundleShipperSelect');
+      if (!sel || !shippers || shippers.length === 0) return null;
+
+      // Find idle shipper (0 orders) or least loaded shipper
+      let chosen = null;
+      let minLoad = Infinity;
+
+      for (const s of shippers) {
+        const load = shipperActiveOrderCount(s.id);
+        if (load < minLoad && load < 5) {
+          minLoad = load;
+          chosen = s;
+        }
+      }
+
+      if (chosen) {
+        sel.value = chosen.id;
+        return chosen;
+      }
+      return null;
+    }
+
+    // Show Floating AI Toast on Map
+    let aiToastTimeout = null;
+    function showAiToast(msg) {
+      const toast = document.getElementById('aiRouteToast');
+      const msgBox = document.getElementById('aiRouteToastMsg');
+      if (!toast || !msgBox) {
+        alert('✨ AI Tuyến Đường:\n' + msg);
+        return;
+      }
+
+      msgBox.innerHTML = msg;
+      toast.classList.remove('hidden');
+
+      if (aiToastTimeout) clearTimeout(aiToastTimeout);
+      aiToastTimeout = setTimeout(() => {
+        toast.classList.add('hidden');
+      }, 8500);
+    }
+
+    // MAIN AI FEATURE: Trigger Smart Route Proposal (Click on '✨ AI Đề Xuất Tuyến Đường')
+    async function triggerAiSmartRouteProposal() {
+      switchMapTab('bundler');
+
+      const clusters = detectSmartClusters();
+      const eligibleOrders = getEligibleBundleOrders();
+
+      if (eligibleOrders.length === 0) {
+        showAiToast('Không có đơn hàng nào đang chờ điều phối lấy hoặc giao.');
+        return;
+      }
+
+      let targetGroup = null;
+      let reasonText = '';
+
+      if (clusters.length > 0) {
+        targetGroup = clusters[0];
+        const area = targetGroup[0].coords.label.split(',')[0];
+        const pCount = targetGroup.filter(o => ['Pending', 'Confirmed', 'PickingUp'].includes(o.status)).length;
+        const dCount = targetGroup.filter(o => ['Ready', 'Delivering', 'Received'].includes(o.status)).length;
+        const details = [];
+        if (pCount > 0) details.push(`<strong>${pCount} lấy đồ</strong>`);
+        if (dCount > 0) details.push(`<strong>${dCount} giao đồ</strong>`);
+
+        reasonText = `AI đã gom <strong>${targetGroup.length} đơn</strong> gần nhau nhất tại <strong>${area}</strong> (${details.join(', ')}).`;
+      } else {
+        targetGroup = [eligibleOrders[0]];
+        reasonText = `AI đã định tuyến nhanh nhất cho đơn <strong>#${orderCode(targetGroup[0].id)}</strong> từ Trụ sở.`;
+      }
+
+      // Apply selection
+      await applyAutoCluster(targetGroup.map(o => o.id), reasonText);
+
+      // Refresh left cluster list
+      triggerAutoClusterSuggestion();
+    }
+
+    // Auto Cluster Suggestions Widget (Render Left Drawer Chips)
+    function triggerAutoClusterSuggestion() {
+      const clusters = detectSmartClusters();
       const clusterContainer = document.getElementById('autoClusterContainer');
       const clusterCountTxt = document.getElementById('autoClusterCount');
+      if (!clusterContainer || !clusterCountTxt) return;
 
       clusterCountTxt.textContent = `${clusters.length} cụm sẵn sàng`;
 
       if (clusters.length === 0) {
-        clusterContainer.innerHTML = '<p class="text-[11px] text-amber-800 italic">Hiện các đơn đang rải rác hoặc chỉ có 1 đơn trong khu vực.</p>';
+        clusterContainer.innerHTML = `
+          <div class="p-2.5 rounded-lg bg-amber-100/60 border border-amber-200 text-xs text-amber-900 space-y-1">
+            <p class="font-semibold flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm text-amber-700">info</span>
+              <span>Các đơn đang rải rác</span>
+            </p>
+            <p class="text-[11px] text-amber-800">Bấm nút bên dưới để AI tự động chọn tuyến ghép gần nhất.</p>
+            <button onclick="triggerAiSmartRouteProposal()"
+              class="w-full mt-1 py-1 rounded bg-amber-600 hover:bg-amber-700 text-white font-bold text-[10px] transition-colors">
+              ✨ AI Lập Tuyến Ngay
+            </button>
+          </div>
+        `;
         return;
       }
 
       clusterContainer.innerHTML = clusters.map((group, idx) => {
         const orderCodes = group.map(o => (typeof orderCode === 'function' ? orderCode(o.id) : o.id)).join(', #');
         const firstAddr = group[0].coords.label.split(',')[0];
+        const isSelectedGroup = group.every(o => selectedBundleOrderIds.has(o.id)) && selectedBundleOrderIds.size === group.length;
+
         return `
-          <button onclick="applyAutoCluster([${group.map(o => o.id).join(',')}])"
-            class="w-full text-left p-2 rounded-lg bg-white border border-amber-300 hover:border-amber-500 hover:bg-amber-100/50 transition-all text-xs space-y-0.5">
+          <div class="w-full text-left p-2.5 rounded-xl border transition-all text-xs space-y-1.5 ${isSelectedGroup ? 'bg-amber-100/90 border-amber-500 shadow-sm' : 'bg-white border-amber-300 hover:border-amber-500 hover:bg-amber-50'}">
             <div class="flex items-center justify-between font-bold text-[11px] text-amber-950">
-              <span>Cụm ${idx + 1}: Khu vực ${firstAddr}</span>
-              <span class="px-1.5 py-0.2 rounded bg-amber-200 text-amber-900 text-[9px] font-bold">${group.length} đơn</span>
+              <span class="flex items-center gap-1">
+                <span class="material-symbols-outlined text-xs text-amber-700">hub</span>
+                <span>Cụm ${idx + 1}: ${firstAddr}</span>
+              </span>
+              <span class="px-2 py-0.5 rounded-full bg-amber-200 text-amber-900 text-[10px] font-extrabold">${group.length} đơn</span>
             </div>
             <p class="text-[10px] text-amber-800 truncate">Mã đơn: #${orderCodes}</p>
-          </button>
+            <div class="flex items-center justify-between pt-1 border-t border-amber-200/60">
+              <span class="text-[10px] font-semibold text-green-700 flex items-center gap-0.5">
+                <span class="material-symbols-outlined text-xs">savings</span> Tiết kiệm ~38% xăng
+              </span>
+              <button onclick="applyAutoCluster([${group.map(o => o.id).join(',')}], 'Đã áp dụng Cụm ${idx + 1} (${firstAddr})')"
+                class="px-2.5 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white text-[10px] font-bold shadow-xs transition-colors flex items-center gap-1">
+                <span>Áp dụng tuyến</span>
+                <span class="material-symbols-outlined text-xs">arrow_forward</span>
+              </button>
+            </div>
+          </div>
         `;
       }).join('');
     }
 
-    function applyAutoCluster(orderIds) {
+    // Apply a Cluster to the Bundler
+    async function applyAutoCluster(orderIds, customMessage = '') {
       selectedBundleOrderIds.clear();
       orderIds.forEach(id => selectedBundleOrderIds.add(id));
-      updateBundlerUI();
+
+      // Calculate TSP sequence & query OSRM polyline
+      await updateBundlerUI();
+
+      // Suggest idle shipper
+      const sp = autoSelectBestShipper();
+
+      // Zoom map to fit the generated route
+      if (currentOptimizedRoute && currentOptimizedRoute.routeData && currentOptimizedRoute.routeData.coordinates.length > 0) {
+        leafletMap.fitBounds(currentOptimizedRoute.routeData.coordinates, {
+          padding: [60, 60],
+          maxZoom: 16
+        });
+      }
+
+      // Construct notification message
+      const dist = currentOptimizedRoute && currentOptimizedRoute.routeData ? currentOptimizedRoute.routeData.distanceKm : '0.0';
+      const time = currentOptimizedRoute && currentOptimizedRoute.routeData ? currentOptimizedRoute.routeData.durationMin : '0';
+      const spName = sp ? sp.fullName : 'Shipper sẵn sàng';
+
+      const fullMsg = customMessage
+        ? `${customMessage}<br>Lộ trình: <strong>${dist} km (${time} phút)</strong> • Đã gợi ý chọn <strong>${spName}</strong>.`
+        : `Đã chọn cụm <strong>${orderIds.length} đơn</strong>. Lộ trình tối ưu: <strong>${dist} km (${time} phút)</strong>. Đã chọn <strong>${spName}</strong>.`;
+
+      showAiToast(fullMsg);
     }
 
     // GPS Simulation along Route
