@@ -1490,29 +1490,51 @@ class _OrdersListScreenState extends State<OrdersListScreen>
                     ),
                   ],
                 ),
-                if (hasProof) ...[
+                if (hasProof || status.toLowerCase() == 'completed' || (order['paymentStatus'] ?? '').toString().toLowerCase() == 'paid') ...[
                   const SizedBox(height: 10),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    alignment: WrapAlignment.end,
                     children: [
-                      TextButton.icon(
-                        onPressed: () => _showProofPhotosSheet(order),
-                        icon: const Icon(Icons.photo_library, size: 14, color: Color(0xFF0284C7)),
-                        label: Text(
-                          'Xem ảnh xác nhận giao nhận',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: const Color(0xFF0284C7),
+                      if (hasProof)
+                        TextButton.icon(
+                          onPressed: () => _showProofPhotosSheet(order),
+                          icon: const Icon(Icons.photo_library, size: 14, color: Color(0xFF0284C7)),
+                          label: Text(
+                            'Xem ảnh minh chứng',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF0284C7),
+                            ),
+                          ),
+                          style: TextButton.styleFrom(
+                            backgroundColor: const Color(0xFFEFF6FF),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            visualDensity: VisualDensity.compact,
                           ),
                         ),
-                        style: TextButton.styleFrom(
-                          backgroundColor: const Color(0xFFEFF6FF),
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          visualDensity: VisualDensity.compact,
+                      if (status.toLowerCase() == 'completed' || (order['paymentStatus'] ?? '').toString().toLowerCase() == 'paid')
+                        TextButton.icon(
+                          onPressed: () => _showInvoiceDetailsSheet(order),
+                          icon: const Icon(Icons.receipt_long, size: 14, color: Color(0xFF059669)),
+                          label: Text(
+                            'Xem hóa đơn điện tử',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF059669),
+                            ),
+                          ),
+                          style: TextButton.styleFrom(
+                            backgroundColor: const Color(0xFFECFDF5),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            visualDensity: VisualDensity.compact,
+                          ),
                         ),
-                      ),
                     ],
                   ),
                 ],
@@ -1559,8 +1581,11 @@ class _OrdersListScreenState extends State<OrdersListScreen>
   void _showProofPhotosSheet(Map<String, dynamic> order) {
     final id = order['id'] ?? order['Id'] ?? 0;
     String formatFullUrl(String raw) {
-      if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
-      final clean = raw.startsWith('/') ? raw : '/$raw';
+      final trimmed = raw.trim();
+      if (trimmed.isEmpty) return '';
+      if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) return trimmed;
+      final normalized = trimmed.replaceAll(r'\', '/');
+      final clean = normalized.startsWith('/') ? normalized : '/$normalized';
       return 'http://localhost:5085$clean';
     }
 
@@ -1678,6 +1703,19 @@ class _OrdersListScreenState extends State<OrdersListScreen>
                                 child: Image.network(
                                   imgUrl,
                                   fit: BoxFit.cover,
+                                  loadingBuilder: (ctx, child, progress) {
+                                    if (progress == null) return child;
+                                    return Container(
+                                      color: Colors.grey.shade100,
+                                      child: const Center(
+                                        child: SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0284C7)),
+                                        ),
+                                      ),
+                                    );
+                                  },
                                   errorBuilder: (_, __, ___) => const Center(
                                     child: Icon(Icons.broken_image, color: Colors.grey),
                                   ),
@@ -1727,6 +1765,19 @@ class _OrdersListScreenState extends State<OrdersListScreen>
                                 child: Image.network(
                                   imgUrl,
                                   fit: BoxFit.cover,
+                                  loadingBuilder: (ctx, child, progress) {
+                                    if (progress == null) return child;
+                                    return Container(
+                                      color: Colors.grey.shade100,
+                                      child: const Center(
+                                        child: SizedBox(
+                                          width: 20,
+                                          height: 20,
+                                          child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF0284C7)),
+                                        ),
+                                      ),
+                                    );
+                                  },
                                   errorBuilder: (_, __, ___) => const Center(
                                     child: Icon(Icons.broken_image, color: Colors.grey),
                                   ),
@@ -1812,6 +1863,662 @@ class _OrdersListScreenState extends State<OrdersListScreen>
       ),
     );
   }
+  Widget _buildDashedLine() {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final boxWidth = constraints.constrainWidth();
+        const dashWidth = 5.0;
+        const dashHeight = 1.0;
+        final dashCount = (boxWidth / (2 * dashWidth)).floor();
+        return Flex(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          direction: Axis.horizontal,
+          children: List.generate(dashCount, (_) {
+            return SizedBox(
+              width: dashWidth,
+              height: dashHeight,
+              child: DecoratedBox(
+                decoration: BoxDecoration(color: Colors.grey.shade400),
+              ),
+            );
+          }),
+        );
+      },
+    );
+  }
+
+  Widget _buildReceiptRow(String label, String value, {bool isHighlight = false, bool isDiscount = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2.5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 130,
+            child: Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                color: outlineColor,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                fontWeight: isHighlight || isDiscount ? FontWeight.bold : FontWeight.w600,
+                color: isDiscount
+                    ? Colors.red.shade600
+                    : isHighlight
+                        ? primaryColor
+                        : onSurface,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showInvoiceDetailsSheet(Map<String, dynamic> order) {
+    final id = order['id'] ?? order['Id'] ?? 0;
+    final orderCode = 'WS3T-${id.toString().padLeft(4, '0')}';
+    final invoiceCode = 'HD-WS3T-${id.toString().padLeft(4, '0')}';
+    final sealCode = (order['sealCode'] ?? 'WS-SEAL-${id.toString().padLeft(4, '0')}').toString();
+
+    final customerName = (order['customerName'] ?? 'Quý khách').toString();
+    final customerPhone = (order['customerPhone'] ?? order['contactPhone'] ?? 'Chưa có SĐT').toString();
+    final pickupAddress = (order['pickupAddress'] ?? 'Tại cửa hàng').toString();
+    final deliveryAddress = (order['deliveryAddress'] ?? order['pickupAddress'] ?? 'Tại cửa hàng').toString();
+    final shipperName = (order['shipperName'] ?? 'Đang điều phối').toString();
+    final shipperPhone = (order['shipperPhone'] ?? '').toString();
+
+    final items = order['items'] is List
+        ? (order['items'] as List).whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
+        : <Map<String, dynamic>>[];
+
+    final shippingFee = ((order['shippingFee'] ?? order['ShippingFee'] ?? 0) as num).toDouble();
+    final addonFee = ((order['addonFee'] ?? order['AddonFee'] ?? 0) as num).toDouble();
+    final discountAmount = ((order['discountAmount'] ?? order['DiscountAmount'] ?? 0) as num).toDouble();
+    final totalAmount = ((order['totalAmount'] ?? order['TotalAmount'] ?? 0) as num).toDouble();
+
+    final paymentMethod = (order['paymentMethod'] ?? order['PaymentMethod'] ?? 'Chuyển khoản').toString();
+    String paidDate = 'Đã hoàn tất';
+    if (order['paidAt'] != null) {
+      final d = DateTime.tryParse(order['paidAt'].toString());
+      if (d != null) {
+        paidDate = '${d.toLocal().hour.toString().padLeft(2, '0')}:${d.toLocal().minute.toString().padLeft(2, '0')} ${d.toLocal().day.toString().padLeft(2, '0')}/${d.toLocal().month.toString().padLeft(2, '0')}/${d.toLocal().year}';
+      }
+    }
+
+    final note = (order['note'] ?? '').toString();
+    final utilities = <String>[];
+    for (final part in note.split('|')) {
+      final t = part.trim();
+      if (t.toLowerCase().startsWith('tiện ích:')) {
+        utilities.add(t.substring('tiện ích:'.length).trim());
+      }
+    }
+
+    String formatMoney(num val) => '${val.toStringAsFixed(0)} đ';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(ctx).size.height * 0.92,
+        ),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          children: [
+            Container(
+              margin: const EdgeInsets.only(top: 10, bottom: 6),
+              width: 44,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(Icons.receipt_long, color: Color(0xFF059669), size: 20),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Hóa Đơn Điện Tử Bán Lẻ',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: onSurface,
+                        ),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(ctx),
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 1),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFAFAFA),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.grey.shade200),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(
+                        child: Column(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: primaryColor.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.local_laundry_service, color: primaryColor, size: 14),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'WASHSMART 3T',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      color: primaryColor,
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 12,
+                                      letterSpacing: 1.2,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'HỆ THỐNG GIẶT SẤY & CHĂM SÓC TRANG PHỤC THÔNG MINH',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: onSurface,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '140 Lê Trọng Tấn, P. Tây Thạnh, TP.HCM • Hotline: 1900 3T3T',
+                              textAlign: TextAlign.center,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                color: outlineColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildDashedLine(),
+                      const SizedBox(height: 14),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'HÓA ĐƠN DỊCH VỤ',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: primaryColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  'Số HĐ: $invoiceCode',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: onSurface,
+                                  ),
+                                ),
+                                Text(
+                                  'Mã đơn: $orderCode',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    color: outlineColor,
+                                  ),
+                                ),
+                                Text(
+                                  'Thời gian: $paidDate',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    color: outlineColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              border: Border.all(color: const Color(0xFF059669), width: 1.5),
+                              borderRadius: BorderRadius.circular(8),
+                              color: const Color(0xFFECFDF5),
+                            ),
+                            child: Column(
+                              children: [
+                                const Icon(Icons.check_circle_outline, color: Color(0xFF059669), size: 18),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'ĐÃ THANH TOÁN',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: const Color(0xFF059669),
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                                Text(
+                                  'PAID',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 8,
+                                    fontWeight: FontWeight.bold,
+                                    color: const Color(0xFF059669),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      _buildDashedLine(),
+                      const SizedBox(height: 14),
+                      Text(
+                        'THÔNG TIN KHÁCH HÀNG & GIAO NHẬN',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF0369A1),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      _buildReceiptRow('Khách hàng:', customerName),
+                      _buildReceiptRow('Số điện thoại:', customerPhone),
+                      _buildReceiptRow('Địa chỉ nhận:', pickupAddress),
+                      _buildReceiptRow('Địa chỉ giao:', deliveryAddress),
+                      _buildReceiptRow('Mã Seal niêm phong:', sealCode, isHighlight: true),
+                      if (shipperName.isNotEmpty && shipperName != 'Đang điều phối')
+                        _buildReceiptRow('Shipper thực hiện:', '$shipperName ${shipperPhone.isNotEmpty ? "($shipperPhone)" : ""}'),
+                      const SizedBox(height: 14),
+                      _buildDashedLine(),
+                      const SizedBox(height: 14),
+                      Text(
+                        'BẢNG KÊ DỊCH VỤ CHI TIẾT',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF0369A1),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade200,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 5,
+                              child: Text(
+                                'Dịch vụ',
+                                style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text(
+                                'SL',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 3,
+                              child: Text(
+                                'Đơn giá',
+                                textAlign: TextAlign.right,
+                                style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 3,
+                              child: Text(
+                                'Thành tiền',
+                                textAlign: TextAlign.right,
+                                style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      if (items.isNotEmpty)
+                        ...items.map((item) {
+                          final name = (item['serviceName'] ?? 'Dịch vụ giặt').toString();
+                          final q = (item['quantity'] ?? 1);
+                          final unit = (item['unit'] ?? '').toString();
+                          final unitPrice = (item['unitPrice'] ?? 0) as num;
+                          final totalPrice = (item['totalPrice'] ?? (unitPrice * (q as num))) as num;
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  flex: 5,
+                                  child: Text(
+                                    name,
+                                    style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Text(
+                                    '$q ${unit.isNotEmpty ? unit : ""}',
+                                    textAlign: TextAlign.center,
+                                    style: GoogleFonts.plusJakartaSans(fontSize: 11),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 3,
+                                  child: Text(
+                                    formatMoney(unitPrice),
+                                    textAlign: TextAlign.right,
+                                    style: GoogleFonts.plusJakartaSans(fontSize: 11),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 3,
+                                  child: Text(
+                                    formatMoney(totalPrice),
+                                    textAlign: TextAlign.right,
+                                    style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        })
+                      else
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Text('Giặt sấy theo gói tiêu chuẩn 3T', style: GoogleFonts.plusJakartaSans(fontSize: 11)),
+                        ),
+
+                      if (utilities.isNotEmpty || addonFee > 0 || shippingFee > 0 || discountAmount > 0) ...[
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF8FAFC),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.grey.shade200),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Tiện ích & Phụ phí đi kèm:',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: outlineColor,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              for (final u in utilities)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 2),
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.check, size: 12, color: Color(0xFF059669)),
+                                      const SizedBox(width: 4),
+                                      Expanded(
+                                        child: Text(
+                                          u,
+                                          style: GoogleFonts.plusJakartaSans(fontSize: 10, color: onSurface),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              if (addonFee > 0 && utilities.isEmpty)
+                                _buildReceiptRow('Phụ phí tiện ích:', '+${formatMoney(addonFee)}'),
+                              if (shippingFee > 0)
+                                _buildReceiptRow('Phí giao nhận 2 chiều:', '+${formatMoney(shippingFee)}'),
+                              if (discountAmount > 0)
+                                _buildReceiptRow('Khuyến mãi / Giảm giá:', '-${formatMoney(discountAmount)}', isDiscount: true),
+                            ],
+                          ),
+                        ),
+                      ],
+
+                      const SizedBox(height: 14),
+                      _buildDashedLine(),
+                      const SizedBox(height: 14),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'TỔNG THANH TOÁN:',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: onSurface,
+                            ),
+                          ),
+                          Text(
+                            formatMoney(totalAmount),
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                              color: primaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Phương thức thanh toán:',
+                            style: GoogleFonts.plusJakartaSans(fontSize: 11, color: outlineColor),
+                          ),
+                          Text(
+                            paymentMethod,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF0369A1),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'Tích lũy WashPoints:',
+                            style: GoogleFonts.plusJakartaSans(fontSize: 11, color: outlineColor),
+                          ),
+                          Text(
+                            '+11 điểm (Đã cộng ví 3T)',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.amber.shade800,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEFF6FF),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFBFDBFE)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.shield_outlined, color: Color(0xFF2563EB), size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Đơn hàng được bảo hiểm bồi thường 100% trang phục bởi gói 3T Care.',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF1D4ED8),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Center(
+                        child: Text(
+                          'Cảm ơn Quý khách đã tin chọn WashSmart 3T! Hẹn gặp lại Quý khách.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10,
+                            fontStyle: FontStyle.italic,
+                            color: outlineColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 6,
+                    offset: const Offset(0, -2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _showProofPhotosSheet(order);
+                      },
+                      icon: const Icon(Icons.photo_library, size: 16, color: Color(0xFF0284C7)),
+                      label: Text(
+                        'Xem ảnh minh chứng',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: const Color(0xFF0284C7),
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Color(0xFFBAE6FD)),
+                        backgroundColor: const Color(0xFFF0F9FF),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('Đã lưu hóa đơn điện tử $invoiceCode thành công!'),
+                            backgroundColor: const Color(0xFF059669),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.download, size: 16, color: Colors.white),
+                      label: Text(
+                        'Tải hóa đơn',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF059669),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        elevation: 0,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildSupportBanner() {
     return Container(
       padding: const EdgeInsets.all(14),

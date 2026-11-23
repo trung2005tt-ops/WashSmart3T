@@ -139,9 +139,19 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-app.UseStaticFiles();
 
+// 🚀 BẬT CORS TRƯỚC STATIC FILES ĐỂ TRÌNH DUYỆT / FLUTTER WEB LOAD ĐƯỢC ẢNH MINH CHỨNG
 app.UseCors("FlutterPolicy");
+
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Origin", "*");
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Headers", "*");
+        ctx.Context.Response.Headers.Append("Access-Control-Allow-Methods", "GET, HEAD, OPTIONS");
+    }
+});
 
 app.UseAuthentication();
 app.UseAuthorization();
