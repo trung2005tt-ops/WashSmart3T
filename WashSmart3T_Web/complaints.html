@@ -345,7 +345,7 @@
             approvedAmount: item.approvedAmount != null ? Number(item.approvedAmount) : null,
             resolvedBy: item.resolvedBy || 'Nguyễn Kiều Như',
             resolvedAt: item.resolvedAt,
-            createdAt: item.createdAt ? new Date(item.createdAt).toLocaleString('vi-VN') : 'Hôm nay'
+            createdAt: item.createdAt ? formatDateTimeVN(item.createdAt) : 'Hôm nay'
           };
         });
 

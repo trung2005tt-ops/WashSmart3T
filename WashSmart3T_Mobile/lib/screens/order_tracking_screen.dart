@@ -98,16 +98,21 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       return 'Chưa có thông tin thời gian';
     }
 
-    final date = DateTime.tryParse(value.toString());
+    String str = value.toString().trim();
+    if (!str.endsWith('Z') && !str.contains('+')) {
+      str += 'Z';
+    }
+
+    final date = DateTime.tryParse(str);
     if (date == null) return 'Thời gian không hợp lệ';
 
     final local = date.toLocal();
 
-    return '${local.day.toString().padLeft(2, '0')}/'
+    return '${local.hour.toString().padLeft(2, '0')}:'
+        '${local.minute.toString().padLeft(2, '0')} '
+        '${local.day.toString().padLeft(2, '0')}/'
         '${local.month.toString().padLeft(2, '0')}/'
-        '${local.year} '
-        '${local.hour.toString().padLeft(2, '0')}:'
-        '${local.minute.toString().padLeft(2, '0')}';
+        '${local.year}';
   }
 
   String _formatMoney(dynamic value) {

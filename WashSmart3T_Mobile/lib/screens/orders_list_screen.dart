@@ -1300,7 +1300,11 @@ class _OrdersListScreenState extends State<OrdersListScreen>
   Widget _buildOrderCard(Map<String, dynamic> order) {
     final id = order['id'];
     final status = (order['status'] ?? '').toString();
-    final createdAt = DateTime.tryParse((order['createdAt'] ?? '').toString());
+    String createdRaw = (order['createdAt'] ?? '').toString().trim();
+    if (createdRaw.isNotEmpty && !createdRaw.endsWith('Z') && !createdRaw.contains('+')) {
+      createdRaw += 'Z';
+    }
+    final createdAt = DateTime.tryParse(createdRaw);
 
     final items = order['items'] is List ? order['items'] as List : <dynamic>[];
 
@@ -1424,9 +1428,7 @@ class _OrdersListScreenState extends State<OrdersListScreen>
                 Text(
                   createdAt == null
                       ? 'Chưa có ngày tạo'
-                      : 'Ngày tạo: ${createdAt.toLocal().day.toString().padLeft(2, '0')}/'
-                            '${createdAt.toLocal().month.toString().padLeft(2, '0')}/'
-                            '${createdAt.toLocal().year}',
+                      : 'Tạo lúc: ${createdAt.toLocal().hour.toString().padLeft(2, '0')}:${createdAt.toLocal().minute.toString().padLeft(2, '0')} ngày ${createdAt.toLocal().day.toString().padLeft(2, '0')}/${createdAt.toLocal().month.toString().padLeft(2, '0')}/${createdAt.toLocal().year}',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 11,
                     color: outlineColor,

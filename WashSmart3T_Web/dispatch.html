@@ -2221,7 +2221,7 @@
               </div>
               <div>
                 <h4 class="font-bold text-sm text-on-surface">${h.shipperName}</h4>
-                <p class="text-[11px] text-secondary">SĐT: ${h.shipperPhone || '---'} • Nộp lúc: ${new Date(h.createdAt).toLocaleTimeString('vi-VN')} ${new Date(h.createdAt).toLocaleDateString('vi-VN')}</p>
+                <p class="text-[11px] text-secondary">SĐT: ${h.shipperPhone || '---'} • Nộp lúc: ${formatDateTimeVN(h.createdAt)}</p>
               </div>
             </div>
             <span class="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 font-bold text-xs flex items-center gap-1">
@@ -2286,10 +2286,10 @@
           <td class="py-2.5 px-3 text-right font-bold text-red-700">${formatMoney(h.cashAmount)}</td>
           <td class="py-2.5 px-3 text-right font-semibold text-blue-700">${formatMoney(h.onlineAmount)}</td>
           <td class="py-2.5 px-3 text-center">${h.totalOrders} đơn (${h.cashOrdersCount} TM / ${h.onlineOrdersCount} CK)</td>
-          <td class="py-2.5 px-3 text-secondary">${new Date(h.createdAt).toLocaleTimeString('vi-VN')} ${new Date(h.createdAt).toLocaleDateString('vi-VN')}</td>
+          <td class="py-2.5 px-3 text-secondary">${formatDateTimeVN(h.createdAt)}</td>
           <td class="py-2.5 px-3">
             <span class="font-medium text-on-surface">${h.confirmedByName || 'Quản lý'}</span>
-            ${h.confirmedAt ? `<p class="text-[10px] text-secondary">${new Date(h.confirmedAt).toLocaleTimeString('vi-VN')}</p>` : ''}
+            ${h.confirmedAt ? `<p class="text-[10px] text-secondary">${formatDateTimeVN(h.confirmedAt)}</p>` : ''}
           </td>
           <td class="py-2.5 px-3">
             <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${h.status === 'Confirmed' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">

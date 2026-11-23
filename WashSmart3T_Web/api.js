@@ -524,3 +524,36 @@ function escapeHtml(str) {
 window.parseOrderNote = parseOrderNote;
 window.renderOrderNoteHtml = renderOrderNoteHtml;
 window.escapeHtml = escapeHtml;
+
+// ============================================================
+// CHUẨN HÓA THỜI GIAN THEO GIỜ VIỆT NAM (UTC+7, ASIA/HO_CHI_MINH)
+// Đảm bảo hiển thị đúng giờ thực tế của đơn hàng (không bị lệch 7 tiếng)
+// ============================================================
+function parseApiDate(value) {
+  if (!value) return null;
+  let str = String(value).trim();
+  if (!str) return null;
+  if (!str.endsWith('Z') && !/[+-]\d{2}:?\d{2}$/.test(str)) {
+    str += 'Z';
+  }
+  const d = new Date(str);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+function formatDateTimeVN(value, options = {}) {
+  const d = parseApiDate(value);
+  if (!d) return options.fallback || 'Chưa có thông tin';
+  const defaultOpts = {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+    timeZone: 'Asia/Ho_Chi_Minh'
+  };
+  return new Intl.DateTimeFormat('vi-VN', { ...defaultOpts, ...options }).format(d);
+}
+
+window.parseApiDate = parseApiDate;
+window.formatDateTimeVN = formatDateTimeVN;

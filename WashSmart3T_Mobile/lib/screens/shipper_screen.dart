@@ -296,12 +296,16 @@ class _ShipperScreenState extends State<ShipperScreen>
             .map((i) => '${i['type']} × ${i['kg']}')
             .join(' • ');
         final totalAmount = (o['totalAmount'] as num?)?.toDouble() ?? 0.0;
-        final createdAt = o['createdAt'] != null
-            ? DateTime.tryParse(o['createdAt'] as String) ?? DateTime.now()
-            : DateTime.now();
-        final updatedAt = o['updatedAt'] != null
-            ? DateTime.tryParse(o['updatedAt'] as String)
-            : null;
+        String createdRaw = (o['createdAt'] ?? '').toString().trim();
+        if (createdRaw.isNotEmpty && !createdRaw.endsWith('Z') && !createdRaw.contains('+')) {
+          createdRaw += 'Z';
+        }
+        final createdAt = (DateTime.tryParse(createdRaw) ?? DateTime.now()).toLocal();
+        String? updatedRaw = o['updatedAt']?.toString().trim();
+        if (updatedRaw != null && updatedRaw.isNotEmpty && !updatedRaw.endsWith('Z') && !updatedRaw.contains('+')) {
+          updatedRaw += 'Z';
+        }
+        final updatedAt = updatedRaw != null ? DateTime.tryParse(updatedRaw)?.toLocal() : null;
         final timeStr =
             '${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')} ngày ${createdAt.day}/${createdAt.month}';
 
