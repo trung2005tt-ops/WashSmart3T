@@ -199,18 +199,6 @@ var Auth = window.Auth = {
         }
       });
     }
-
-    // 3. Đồng bộ dropdown Lễ tân tiếp nhận nếu đang ở trang POS
-    const cashierSelect = document.getElementById('posCashierSelect');
-    if (cashierSelect && fullName) {
-      for (let i = 0; i < cashierSelect.options.length; i++) {
-        if (cashierSelect.options[i].value.trim().toLowerCase() === fullName.toLowerCase() ||
-            cashierSelect.options[i].text.toLowerCase().includes(fullName.toLowerCase())) {
-          cashierSelect.selectedIndex = i;
-          break;
-        }
-      }
-    }
   },
 };
 
