@@ -216,11 +216,11 @@
             <div class="flex items-center gap-1.5 text-secondary text-xs mt-0.5">
               <span>Lễ tân tiếp nhận:</span>
               <select id="posCashierSelect" onchange="onCashierChange(this.value)" class="bg-surface-container font-bold text-primary px-2 py-0.5 rounded border border-surface-container-high focus:outline-none text-xs">
-                <option value="Nguyễn Kiều Như" selected>Nguyễn Kiều Như (Quản lý)</option>
-                <option value="Trần Tuyết Mai">Trần Tuyết Mai (Lễ tân ca sáng)</option>
-                <option value="Lê Hoài Nam">Lê Hoài Nam (Lễ tân ca chiều)</option>
-                <option value="Đặng Thu Thảo">Đặng Thu Thảo (Thu ngân VIP)</option>
-                <option value="Đặng Thùy Dương">Đặng Thùy Dương (Nhân viên quầy)</option>
+                <option value="Đặng Thu Thảo">Đặng Thu Thảo (Lễ tân POS)</option>
+                <option value="Trần Tuyết Mai">Trần Tuyết Mai (Lễ tân POS)</option>
+                <option value="Lê Hoài Nam">Lê Hoài Nam (Lễ tân POS)</option>
+                <option value="Đặng Thùy Dương">Đặng Thùy Dương (Lễ tân POS)</option>
+                <option value="Nguyễn Kiều Như">Nguyễn Kiều Như (Quản lý)</option>
               </select>
               <span>· Cân USB RS-232 live</span>
             </div>
@@ -729,6 +729,56 @@
     function onCashierChange(name) {
       localStorage.setItem('ws_active_cashier', name);
       showToast(`Đã chuyển phiên làm việc sang lễ tân: ${name}`);
+      const receiptStaff = document.getElementById('receipt-staff-info');
+      if (receiptStaff) receiptStaff.textContent = name;
+    }
+
+    async function initCashierSelect() {
+      const select = document.getElementById('posCashierSelect');
+      if (!select) return;
+
+      const loggedInName = (window.Auth && Auth.getFullName()) ? Auth.getFullName().trim() : '';
+
+      try {
+        if (window.Api && Api.Users && typeof Api.Users.all === 'function') {
+          const users = await Api.Users.all();
+          const cashiers = (users || []).filter(u => u.roleName === 'Staff' || u.roleName === 'Admin');
+          if (cashiers.length > 0) {
+            select.innerHTML = cashiers.map(u => {
+              const roleLabel = u.roleName === 'Admin' ? 'Quản lý' : 'Lễ tân POS';
+              return `<option value="${u.fullName}">${u.fullName} (${roleLabel})</option>`;
+            }).join('');
+          }
+        }
+      } catch (err) {
+        console.warn('Không tải được danh sách nhân sự từ API, dùng danh sách dự phòng:', err);
+      }
+
+      // Tự động chọn đúng nhân viên đang đăng nhập
+      const targetName = loggedInName || 'Đặng Thu Thảo';
+
+      let matched = false;
+      for (let i = 0; i < select.options.length; i++) {
+        if (select.options[i].value.trim().toLowerCase() === targetName.toLowerCase() ||
+            select.options[i].text.toLowerCase().includes(targetName.toLowerCase())) {
+          select.selectedIndex = i;
+          matched = true;
+          break;
+        }
+      }
+
+      // Nếu tên nhân viên đang đăng nhập chưa có trong options (ví dụ tài khoản mới tạo), tự động thêm vào đầu
+      if (!matched && targetName) {
+        const opt = document.createElement('option');
+        opt.value = targetName;
+        opt.textContent = `${targetName} (Lễ tân POS)`;
+        opt.selected = true;
+        select.insertBefore(opt, select.firstChild);
+      }
+
+      localStorage.setItem('ws_active_cashier', select.value);
+      const receiptStaff = document.getElementById('receipt-staff-info');
+      if (receiptStaff) receiptStaff.textContent = select.value;
     }
 
     function handleLogout(e) { if (e) e.preventDefault(); if (window.Auth) Auth.logout(); else window.location.href = 'login.html'; }
@@ -1174,7 +1224,7 @@ document.querySelectorAll('input[name="returnMethod"]').forEach(el => el.addEven
         if (!orderId) throw new Error('Máy chủ không trả về mã đơn. Không thể xác nhận tạo đơn.');
         const now = new Date(); const dateTimeStr = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(now);
         const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
-        const savedCustomerName = newOrder.customerName ?? customerName; set('receipt-order-id', '#WS3T-' + String(orderId).padStart(4, '0')); set('receipt-seal-code', '#SEAL-3T-' + orderId); set('seal-header-code', '#SEAL-3T-' + orderId); set('receipt-date-time', dateTimeStr); set('receipt-cust-name', savedCustomerName); const curStaffName = (window.Auth && Auth.getFullName()) ? Auth.getFullName() : 'Đặng Thùy Dương'; set('receipt-staff-info', 'NV-0011 · ' + curStaffName); set('receipt-cust-phone', phone);
+        const savedCustomerName = newOrder.customerName ?? customerName; set('receipt-order-id', '#WS3T-' + String(orderId).padStart(4, '0')); set('receipt-seal-code', '#SEAL-3T-' + orderId); set('seal-header-code', '#SEAL-3T-' + orderId); set('receipt-date-time', dateTimeStr); set('receipt-cust-name', savedCustomerName); const curStaffName = document.getElementById('posCashierSelect')?.value || ((window.Auth && Auth.getFullName()) ? Auth.getFullName() : 'Lễ tân POS'); set('receipt-staff-info', curStaffName); set('receipt-cust-phone', phone);
         
         // Cập nhật mã VietQR động chuẩn EMVCo khóa theo mã đơn hàng vừa tạo
         try {
@@ -1264,22 +1314,8 @@ document.querySelectorAll('input[name="returnMethod"]').forEach(el => el.addEven
     }
 
     (async () => {
+      await initCashierSelect();
       await loadStoreBankConfig();
-      if (!localStorage.getItem('ws_token')) {
-        try {
-          const res = await fetch('http://localhost:5085/api/Auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone: '0900000000', password: '123456' })
-          });
-          if (res.ok) {
-            const data = await res.json();
-            localStorage.setItem('ws_token', data.token);
-            localStorage.setItem('ws_role', 'Admin');
-            localStorage.setItem('ws_fullname', 'Nguyễn Kiều Như');
-          }
-        } catch (e) {}
-      }
       await loadRealServicesFromApi();
       updateBillCalculations();
     })();
