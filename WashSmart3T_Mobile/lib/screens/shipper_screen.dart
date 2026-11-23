@@ -4102,182 +4102,235 @@ class _ShipperScreenState extends State<ShipperScreen>
                           setSheetState(() => selected = PaymentMethod.bank),
                     ),
                   ] else ...[
-                    // ===== Hiển thị mã QR minh họa =====
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: surfaceLow,
-                        borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: primaryColor.withValues(alpha: 0.15),
+                    // ===== Hiển thị mã QR thanh toán chuẩn quét được 100% =====
+                    () {
+                      final amountVal = order.codAmount > 0 ? order.codAmount : 50000.0;
+                      final cleanOrderTag = (order.id.isNotEmpty ? order.id : 'WS3T-${order.orderId ?? 0}').replaceAll('#', '');
+                      final emvCoData = VietQrHelper.generateEmvCo(
+                        bankBin: '970422',
+                        accountNo: '0818606505',
+                        accountHolder: 'TRAN DIEP MINH TRUNG',
+                        amount: amountVal,
+                        orderCode: cleanOrderTag,
+                      );
+                      // MoMo nhận tiền trực tiếp qua universal link hoặc EMVCo NAPAS 247
+                      final momoData = 'https://nhantien.momo.vn/0818606505/${amountVal.round()}';
+                      final qrData = selected == PaymentMethod.momo ? momoData : emvCoData;
+
+                      return Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: surfaceLow,
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color: primaryColor.withValues(alpha: 0.15),
+                          ),
                         ),
-                      ),
-                      child: Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                selected == PaymentMethod.momo
-                                    ? Icons.account_balance_wallet
-                                    : Icons.account_balance,
-                                size: 18,
-                                color: selected == PaymentMethod.momo
-                                    ? const Color(0xFFA50064)
-                                    : tertiaryColor,
-                              ),
-                              const SizedBox(width: 6),
-                              Text(
-                                selected == PaymentMethod.momo
-                                    ? 'Ví MoMo'
-                                    : 'Chuyển khoản ngân hàng',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                  color: onSurface,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 14),
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(14),
-                              border: Border.all(
-                                color: outlineColor.withValues(alpha: 0.3),
-                              ),
-                            ),
-                            child: ClipRRect(
-                              borderRadius: BorderRadius.circular(8),
-                              child: Image.network(
-                                'https://api.vietqr.io/image/970422-0818606505-compact2.jpg?amount=${order.codAmount.toInt() > 0 ? order.codAmount.toInt() : 50000}&addInfo=WS3T%20${order.id}&accountName=TRAN%20DIEP%20MINH%20TRUNG',
-                                width: 210,
-                                height: 210,
-                                fit: BoxFit.contain,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    Container(
-                                      width: 210,
-                                      height: 210,
-                                      color: Colors.white,
-                                      alignment: Alignment.center,
-                                      child: QrImageView(
-                                        data:
-                                            'https://img.vietqr.io/image/970422-0818606505-compact2.png?amount=${order.codAmount.toInt() > 0 ? order.codAmount.toInt() : 50000}&addInfo=WS3T%20${order.id}&accountName=TRAN%20DIEP%20MINH%20TRUNG',
-                                        version: QrVersions.auto,
-                                        size: 190.0,
-                                        gapless: true,
-                                      ),
-                                    ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(height: 10),
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(
-                                color: outlineColor.withOpacity(0.2),
-                              ),
-                            ),
-                            child: Column(
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'STK / Ví MoMo:',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 11,
-                                        color: outlineColor,
-                                      ),
-                                    ),
-                                    Text(
-                                      '0818606505',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                        color: primaryColor,
-                                      ),
-                                    ),
-                                  ],
+                                Icon(
+                                  selected == PaymentMethod.momo
+                                      ? Icons.account_balance_wallet
+                                      : Icons.account_balance,
+                                  size: 18,
+                                  color: selected == PaymentMethod.momo
+                                      ? const Color(0xFFA50064)
+                                      : tertiaryColor,
                                 ),
-                                const SizedBox(height: 3),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Chủ thụ hưởng:',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 11,
-                                        color: outlineColor,
-                                      ),
-                                    ),
-                                    Text(
-                                      'TRAN DIEP MINH TRUNG',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 3),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Ngân hàng:',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 11,
-                                        color: outlineColor,
-                                      ),
-                                    ),
-                                    Text(
-                                      'MBBank / Ví MoMo',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        color: tertiaryColor,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                const SizedBox(height: 3),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
-                                  children: [
-                                    Text(
-                                      'Số tiền:',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 11,
-                                        color: outlineColor,
-                                      ),
-                                    ),
-                                    Text(
-                                      '${order.codAmount.toStringAsFixed(0)} đ',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        color: primaryColor,
-                                      ),
-                                    ),
-                                  ],
+                                const SizedBox(width: 6),
+                                Text(
+                                  selected == PaymentMethod.momo
+                                      ? 'Ví MoMo (Chuyển tiền MoMo)'
+                                      : 'Chuyển khoản VietQR NAPAS 247',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: onSurface,
+                                  ),
                                 ),
                               ],
                             ),
-                          ),
-                        ],
-                      ),
-                    ),
+                            const SizedBox(height: 14),
+                            // Khung vẽ mã QR chuẩn canvas trực tiếp - Không phụ thuộc mạng/CORS
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.06),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                                border: Border.all(
+                                  color: outlineColor.withValues(alpha: 0.25),
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  QrImageView(
+                                    data: qrData,
+                                    version: QrVersions.auto,
+                                    size: 210.0,
+                                    gapless: true,
+                                    backgroundColor: Colors.white,
+                                    errorCorrectionLevel: QrErrorCorrectLevel.M,
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: (selected == PaymentMethod.momo
+                                              ? const Color(0xFFA50064)
+                                              : primaryColor)
+                                          .withOpacity(0.08),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      selected == PaymentMethod.momo
+                                          ? 'Quét qua App MoMo hoặc Camera điện thoại'
+                                          : 'Quét bằng bất kỳ App Ngân hàng nào (NAPAS 247)',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                        color: selected == PaymentMethod.momo
+                                            ? const Color(0xFFA50064)
+                                            : primaryColor,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: outlineColor.withOpacity(0.2),
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'STK / Ví MoMo:',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 11,
+                                          color: outlineColor,
+                                        ),
+                                      ),
+                                      Text(
+                                        '0818606505',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: primaryColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Chủ thụ hưởng:',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 11,
+                                          color: outlineColor,
+                                        ),
+                                      ),
+                                      Text(
+                                        'TRAN DIEP MINH TRUNG',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Ngân hàng / Ví:',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 11,
+                                          color: outlineColor,
+                                        ),
+                                      ),
+                                      Text(
+                                        selected == PaymentMethod.momo ? 'Ví điện tử MoMo' : 'MBBank (Ngân hàng Quân Đội)',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: tertiaryColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        'Số tiền:',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 11,
+                                          color: outlineColor,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${order.codAmount.toStringAsFixed(0)} đ',
+                                        style: GoogleFonts.plusJakartaSans(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                          color: primaryColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            TextButton.icon(
+                              onPressed: () {
+                                Clipboard.setData(const ClipboardData(text: '0818606505'));
+                                _showToast('Đã sao chép 0818606505 vào bộ nhớ tạm');
+                              },
+                              icon: const Icon(Icons.copy, size: 14),
+                              label: Text(
+                                selected == PaymentMethod.momo
+                                    ? 'Sao chép SĐT MoMo: 0818606505'
+                                    : 'Sao chép STK MBBank: 0818606505',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: primaryColor,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }(),
                     const SizedBox(height: 14),
                     // Nút đổi phương thức & xác nhận
                     Row(
@@ -5282,175 +5335,469 @@ class _ShipperScreenState extends State<ShipperScreen>
     );
   }
 
+  Future<bool> _submitDeliveryProof({
+    required ShipperOrderModel order,
+    String? photoUrl,
+    String? note,
+    bool confirmPaymentCollected = true,
+  }) async {
+    try {
+      final token = await AuthService.getToken();
+      if (token == null || token.isEmpty) {
+        _showToast('Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.', isSuccess: false);
+        return false;
+      }
+      final backendOrderId = order.orderId ?? int.tryParse(order.id.replaceAll(RegExp(r'\D'), '')) ?? 0;
+      if (backendOrderId <= 0) return false;
+
+      final res = await http.post(
+        Uri.parse('$_baseUrl/Orders/$backendOrderId/delivery-proof'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'photoUrl': photoUrl ?? '',
+          'proofPhotoUrl': photoUrl ?? '',
+          'note': note ?? 'Shipper đã giao hàng và thu tiền COD thành công.',
+          'confirmPaymentCollected': confirmPaymentCollected,
+        }),
+      );
+
+      if (res.statusCode == 200 || res.statusCode == 204) {
+        return true;
+      }
+
+      debugPrint('delivery-proof HTTP ${res.statusCode}: ${res.body}');
+      return await _pushStatusToApi(backendOrderId, 'Completed', note: note);
+    } catch (e) {
+      debugPrint('Lỗi nộp minh chứng giao hàng: $e');
+      final backendOrderId = order.orderId ?? int.tryParse(order.id.replaceAll(RegExp(r'\D'), '')) ?? 0;
+      if (backendOrderId > 0) {
+        return await _pushStatusToApi(backendOrderId, 'Completed', note: note);
+      }
+      return false;
+    }
+  }
+
   void _showProofPhotoDialog(
     ShipperOrderModel order, {
     required bool isPickup,
   }) {
+    Uint8List? proofPhotoBytes;
+    String? proofPhotoName;
+    String? uploadedPhotoUrl;
+    bool isSubmitting = false;
+    final picker = ImagePicker();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        padding: EdgeInsets.only(
-          top: 20,
-          left: 20,
-          right: 20,
-          bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-        ),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheetState) {
+          Future<void> pickPhoto(ImageSource source) async {
+            try {
+              final xfile = await picker.pickImage(
+                source: source,
+                maxWidth: 1600,
+                maxHeight: 1600,
+                imageQuality: 85,
+              );
+              if (xfile == null) return;
+              final bytes = await xfile.readAsBytes();
+              setSheetState(() {
+                proofPhotoBytes = bytes;
+                proofPhotoName = xfile.name;
+                uploadedPhotoUrl = null;
+              });
+            } catch (e) {
+              _showToast('Không thể chọn ảnh: $e', isSuccess: false);
+            }
+          }
+
+          void choosePhotoSource() {
+            showModalBottomSheet(
+              context: sheetContext,
+              backgroundColor: Colors.transparent,
+              builder: (ctx) => Container(
+                padding: const EdgeInsets.all(20),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.camera_alt, color: primaryColor),
-                    const SizedBox(width: 8),
                     Text(
-                      isPickup
-                          ? 'Chụp ảnh túi đồ niêm phong'
-                          : 'Chụp ảnh giao hàng thành công',
+                      'Chọn nguồn ảnh minh chứng',
                       style: GoogleFonts.plusJakartaSans(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                         color: onSurface,
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor: Color(0xFFEFF6FF),
+                        child: Icon(Icons.camera_alt, color: primaryColor),
+                      ),
+                      title: Text(
+                        'Chụp ảnh từ Camera',
+                        style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text(
+                        'Mở máy ảnh chụp trực tiếp',
+                        style: GoogleFonts.plusJakartaSans(fontSize: 12, color: outlineColor),
+                      ),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        pickPhoto(ImageSource.camera);
+                      },
+                    ),
+                    ListTile(
+                      leading: const CircleAvatar(
+                        backgroundColor: Color(0xFFF3F4F6),
+                        child: Icon(Icons.photo_library, color: tertiaryColor),
+                      ),
+                      title: Text(
+                        'Chọn từ Thư viện ảnh',
+                        style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
+                      ),
+                      subtitle: Text(
+                        'Tải ảnh có sẵn từ máy',
+                        style: GoogleFonts.plusJakartaSans(fontSize: 12, color: outlineColor),
+                      ),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        pickPhoto(ImageSource.gallery);
+                      },
+                    ),
                   ],
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Container(
-              height: 160,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: surfaceLow,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: primaryColor.withValues(alpha: 0.3),
-                  style: BorderStyle.solid,
-                ),
               ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.add_a_photo_outlined,
-                    size: 42,
-                    color: primaryColor,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Nhấn để chụp ảnh minh chứng',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: primaryColor,
-                    ),
-                  ),
-                  Text(
-                    isPickup
-                        ? '(Hình ảnh túi quần áo có dán mã seal 3T)'
-                        : '(Hình ảnh khách nhận túi giặt sạch)',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11,
-                      color: outlineColor,
-                    ),
-                  ),
-                ],
-              ),
+            );
+          }
+
+          return Container(
+            padding: EdgeInsets.only(
+              top: 20,
+              left: 20,
+              right: 20,
+              bottom: MediaQuery.of(sheetContext).viewInsets.bottom + 20,
             ),
-            const SizedBox(height: 16),
-            if (!isPickup && !order.isPaidOnline && order.codAmount > 0) ...[
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Icon(Icons.payments, color: Color(0xFFD97706)),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                    Row(
+                      children: [
+                        const Icon(Icons.camera_alt, color: primaryColor),
+                        const SizedBox(width: 8),
+                        Text(
+                          isPickup
+                              ? 'Chụp ảnh túi đồ niêm phong'
+                              : 'Chụp ảnh giao hàng thành công',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: onSurface,
+                          ),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: isSubmitting ? null : () => Navigator.pop(sheetContext),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Vùng hiển thị hoặc chụp ảnh minh chứng
+                if (proofPhotoBytes != null)
+                  GestureDetector(
+                    onTap: isSubmitting ? null : choosePhotoSource,
+                    child: Container(
+                      height: 170,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: surfaceLow,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: primaryColor, width: 2),
+                      ),
+                      child: Stack(
+                        fit: StackFit.expand,
                         children: [
-                          Text(
-                            'Số tiền COD cần thu mặt:',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 11,
-                              color: const Color(0xFF92400E),
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(14),
+                            child: Image.memory(
+                              proofPhotoBytes!,
+                              fit: BoxFit.cover,
                             ),
                           ),
-                          Text(
-                            '${order.codAmount.toStringAsFixed(0)} đ',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF92400E),
+                          Positioned(
+                            top: 8,
+                            right: 8,
+                            child: CircleAvatar(
+                              radius: 16,
+                              backgroundColor: Colors.black.withOpacity(0.6),
+                              child: IconButton(
+                                padding: EdgeInsets.zero,
+                                icon: const Icon(Icons.close, color: Colors.white, size: 18),
+                                onPressed: isSubmitting
+                                    ? null
+                                    : () {
+                                        setSheetState(() {
+                                          proofPhotoBytes = null;
+                                          proofPhotoName = null;
+                                          uploadedPhotoUrl = null;
+                                        });
+                                      },
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 8,
+                            left: 8,
+                            right: 8,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withOpacity(0.65),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(Icons.refresh, color: Colors.white, size: 14),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Đã tải ảnh • Nhấn để chụp/chọn ảnh khác',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 11,
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const Icon(
-                      Icons.check_box_outlined,
-                      color: Color(0xFFD97706),
+                  )
+                else
+                  InkWell(
+                    onTap: isSubmitting ? null : choosePhotoSource,
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      height: 160,
+                      width: double.infinity,
+                      decoration: BoxDecoration(
+                        color: surfaceLow,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: primaryColor.withValues(alpha: 0.4),
+                          width: 1.5,
+                        ),
+                      ),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.add_a_photo_outlined,
+                            size: 42,
+                            color: primaryColor,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Nhấn để chụp ảnh minh chứng',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: primaryColor,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            isPickup
+                                ? '(Hình ảnh túi quần áo có dán mã seal 3T)'
+                                : '(Hình ảnh khách nhận túi giặt sạch)',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: outlineColor,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: () async {
-                  final dialogContext = context;
-                  if (isPickup) {
-                    Navigator.pop(dialogContext);
-                    _showPickupWeighingDialog(order);
-                    return;
-                  }
-                  final ok = await _updateOrderStatus(
-                    order,
-                    ShipperOrderStatus.completed,
-                  );
-                  if (ok && dialogContext.mounted) Navigator.pop(dialogContext);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: successColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                  ),
+
+                const SizedBox(height: 16),
+                if (!isPickup && !order.isPaidOnline && order.codAmount > 0) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.payments, color: Color(0xFFD97706)),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Số tiền COD cần thu mặt:',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  color: const Color(0xFF92400E),
+                                ),
+                              ),
+                              Text(
+                                '${order.codAmount.toStringAsFixed(0)} đ',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: const Color(0xFF92400E),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const Icon(
+                          Icons.check_box_outlined,
+                          color: Color(0xFFD97706),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: isSubmitting
+                        ? null
+                        : () async {
+                            if (isPickup) {
+                              Navigator.pop(sheetContext);
+                              _showPickupWeighingDialog(order);
+                              return;
+                            }
+
+                            setSheetState(() => isSubmitting = true);
+                            try {
+                              // Tải ảnh lên server nếu đã chọn ảnh
+                              if (proofPhotoBytes != null && (uploadedPhotoUrl == null || uploadedPhotoUrl!.isEmpty)) {
+                                final url = await _uploadSinglePhoto(
+                                  proofPhotoBytes!,
+                                  proofPhotoName ?? 'delivery_${order.id}.jpg',
+                                );
+                                if (url != null && url.isNotEmpty) {
+                                  uploadedPhotoUrl = url;
+                                }
+                              }
+
+                              // Nộp minh chứng giao hàng lên backend
+                              final backendOrderId = order.orderId ?? int.tryParse(order.id.replaceAll(RegExp(r'\D'), ''));
+                              if (backendOrderId != null && backendOrderId > 0) {
+                                final submitOk = await _submitDeliveryProof(
+                                  order: order,
+                                  photoUrl: uploadedPhotoUrl,
+                                  confirmPaymentCollected: true,
+                                );
+                                if (!submitOk) {
+                                  setSheetState(() => isSubmitting = false);
+                                  return;
+                                }
+                              } else {
+                                final ok = await _updateOrderStatus(
+                                  order,
+                                  ShipperOrderStatus.completed,
+                                );
+                                if (!ok) {
+                                  setSheetState(() => isSubmitting = false);
+                                  return;
+                                }
+                              }
+
+                              if (mounted) {
+                                setState(() {
+                                  order.status = ShipperOrderStatus.completed;
+                                  _todayCompletedCount += 1;
+                                });
+                                _showToast('Đã hoàn tất giao đơn #${order.id} và thu tiền thành công!');
+                                await _loadOrdersFromApi();
+                              }
+                              if (sheetContext.mounted) {
+                                Navigator.pop(sheetContext);
+                              }
+                            } catch (e) {
+                              _showToast('Lỗi khi hoàn tất đơn: $e', isSuccess: false);
+                              setSheetState(() => isSubmitting = false);
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: successColor,
+                      disabledBackgroundColor: successColor.withOpacity(0.6),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: isSubmitting
+                        ? const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              ),
+                              SizedBox(width: 10),
+                              Text(
+                                'Đang tải ảnh & hoàn tất...',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          )
+                        : Text(
+                            isPickup
+                                ? 'Xác nhận đã nhận đồ & Niêm phong'
+                                : 'Xác nhận đã giao & Thu tiền',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
                 ),
-                child: Text(
-                  isPickup
-                      ? 'Xác nhận đã nhận đồ & Niêm phong'
-                      : 'Xác nhận đã giao & Thu tiền',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -5940,3 +6287,70 @@ class _ShipperScreenState extends State<ShipperScreen>
 
 // ==================== Phương thức thanh toán ====================
 enum PaymentMethod { momo, bank }
+
+// ==================== Tiện ích VietQR EMVCo chuẩn NAPAS 247 ====================
+class VietQrHelper {
+  static String formatTlv(String tag, String value) {
+    if (value.isEmpty) return '';
+    final bytes = utf8.encode(value);
+    final lenStr = bytes.length.toString().padLeft(2, '0');
+    return '$tag$lenStr$value';
+  }
+
+  static String calculateCrc16(String data) {
+    final bytes = utf8.encode(data);
+    int crc = 0xFFFF;
+    const int polynomial = 0x1021;
+
+    for (final b in bytes) {
+      crc ^= (b << 8) & 0xFFFF;
+      for (var i = 0; i < 8; i++) {
+        if ((crc & 0x8000) != 0) {
+          crc = ((crc << 1) ^ polynomial) & 0xFFFF;
+        } else {
+          crc = (crc << 1) & 0xFFFF;
+        }
+      }
+    }
+    return crc.toRadixString(16).toUpperCase().padLeft(4, '0');
+  }
+
+  /// Sinh chuỗi VietQR chuẩn EMVCo khóa cứng số tiền và mã đơn hàng
+  static String generateEmvCo({
+    required String bankBin,
+    required String accountNo,
+    required String accountHolder,
+    required double amount,
+    required String orderCode,
+  }) {
+    final cleanBin = bankBin.trim().isEmpty ? '970422' : bankBin.trim();
+    final cleanAccount = accountNo.trim().isEmpty ? '0818606505' : accountNo.trim();
+    final cleanHolder = accountHolder.trim().isEmpty ? 'TRAN DIEP MINH TRUNG' : accountHolder.trim().toUpperCase();
+    final cleanOrderCode = orderCode.trim().isEmpty ? 'WS3T' : orderCode.trim();
+
+    // 1. Tag 38: Thông tin người thụ hưởng NAPAS
+    final subTag00 = formatTlv('00', cleanBin);
+    final subTag01 = formatTlv('01', cleanAccount);
+    final subNapasOrg = formatTlv('00', 'A000000727') + formatTlv('01', subTag00 + subTag01);
+    final tag38 = formatTlv('38', subNapasOrg + formatTlv('02', 'QRIBFTTA'));
+
+    // 2. Các tag tiêu chuẩn EMVCo
+    final tag00 = formatTlv('00', '01'); // Payload Format Indicator
+    final tag01 = formatTlv('01', '12'); // 12: Dynamic QR (có số tiền cố định)
+    final tag53 = formatTlv('53', '704'); // VND
+    final intAmount = amount.round().toString();
+    final tag54 = formatTlv('54', intAmount); // Số tiền
+    final tag58 = formatTlv('58', 'VN'); // Quốc gia
+    final tag59 = formatTlv('59', cleanHolder); // Tên người thụ hưởng
+    final tag60 = formatTlv('60', 'HO CHI MINH'); // Thành phố
+
+    // 3. Tag 62: Mã đơn hàng khóa nội dung thanh toán #WS3T-XXXX
+    final tag62Sub08 = formatTlv('08', cleanOrderCode);
+    final tag62 = formatTlv('62', tag62Sub08);
+
+    // 4. Ghép toàn bộ chuỗi trước khi tính CRC (bắt đầu bằng 6304)
+    final rawPayload = '$tag00$tag01$tag38$tag53$tag54$tag58$tag59$tag60$tag62' '6304';
+    final crc = calculateCrc16(rawPayload);
+    return '$rawPayload$crc';
+  }
+}

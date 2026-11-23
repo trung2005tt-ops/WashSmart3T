@@ -92,3 +92,8 @@ yarn-error.log*
 WashSmart3T_Backend/appsettings.Development.json
 WashSmart3T_Backend/appsettings.Local.json
 *.local.json
+
+# User uploads
+WashSmart3T_Backend/wwwroot/uploads/*
+!WashSmart3T_Backend/wwwroot/uploads/.gitkeep
+

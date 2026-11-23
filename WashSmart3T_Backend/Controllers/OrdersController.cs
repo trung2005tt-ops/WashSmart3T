@@ -1438,15 +1438,19 @@ public class OrdersController : ControllerBase
             return Forbid();
         }
 
-        if (order.Status != OrderStatus.Delivering)
+        if (order.Status != OrderStatus.Delivering && order.Status != OrderStatus.Ready)
         {
-            return BadRequest(new { message = $"Chỉ có thể nộp minh chứng khi đơn đang ở trạng thái Delivering. Trạng thái hiện tại: {order.Status}." });
+            return BadRequest(new { message = $"Chỉ có thể nộp minh chứng khi đơn đang ở trạng thái Delivering hoặc Ready. Trạng thái hiện tại: {order.Status}." });
         }
 
         using var tx = await _context.Database.BeginTransactionAsync();
         try
         {
-            order.DeliveryProofPhotoUrl = request.PhotoUrl?.Trim();
+            var effectivePhotoUrl = request.GetEffectivePhotoUrl();
+            if (!string.IsNullOrWhiteSpace(effectivePhotoUrl))
+            {
+                order.DeliveryProofPhotoUrl = effectivePhotoUrl;
+            }
             order.Status = OrderStatus.Completed;
             order.UpdatedAt = DateTime.UtcNow;
 

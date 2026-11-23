@@ -45,8 +45,15 @@ public class CreateOrderDetailRequest
 
 public class DeliveryProofRequest
 {
-    [Required(ErrorMessage = "Vui lòng cung cấp link hoặc ảnh minh chứng giao hàng.")]
-    public string PhotoUrl { get; set; } = string.Empty;
+    public string? PhotoUrl { get; set; }
+    public string? ProofPhotoUrl { get; set; }
     public string? Note { get; set; }
     public bool ConfirmPaymentCollected { get; set; } = true;
+
+    public string GetEffectivePhotoUrl()
+    {
+        if (!string.IsNullOrWhiteSpace(PhotoUrl)) return PhotoUrl.Trim();
+        if (!string.IsNullOrWhiteSpace(ProofPhotoUrl)) return ProofPhotoUrl.Trim();
+        return string.Empty;
+    }
 }
