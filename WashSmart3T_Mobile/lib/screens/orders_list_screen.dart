@@ -1519,19 +1519,22 @@ class _OrdersListScreenState extends State<OrdersListScreen>
                       if (status.toLowerCase() == 'completed' || (order['paymentStatus'] ?? '').toString().toLowerCase() == 'paid')
                         TextButton.icon(
                           onPressed: () => _showInvoiceDetailsSheet(order),
-                          icon: const Icon(Icons.receipt_long, size: 14, color: Color(0xFF059669)),
+                          icon: Icon(Icons.receipt_long, size: 14, color: primaryColor),
                           label: Text(
                             'Xem hóa đơn điện tử',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
-                              color: const Color(0xFF059669),
+                              color: primaryColor,
                             ),
                           ),
                           style: TextButton.styleFrom(
-                            backgroundColor: const Color(0xFFECFDF5),
+                            backgroundColor: surfaceLow,
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              side: BorderSide(color: surfaceHigh),
+                            ),
                             visualDensity: VisualDensity.compact,
                           ),
                         ),
@@ -1999,10 +2002,10 @@ class _OrdersListScreenState extends State<OrdersListScreen>
                       Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                          color: primaryColor.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(Icons.receipt_long, color: Color(0xFF059669), size: 20),
+                        child: Icon(Icons.receipt_long, color: primaryColor, size: 20),
                       ),
                       const SizedBox(width: 8),
                       Text(
@@ -2488,7 +2491,7 @@ class _OrdersListScreenState extends State<OrdersListScreen>
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('Đã lưu hóa đơn điện tử $invoiceCode thành công!'),
-                            backgroundColor: const Color(0xFF059669),
+                            backgroundColor: primaryColor,
                             duration: const Duration(seconds: 2),
                           ),
                         );
@@ -2503,7 +2506,7 @@ class _OrdersListScreenState extends State<OrdersListScreen>
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF059669),
+                        backgroundColor: primaryColor,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                         elevation: 0,
