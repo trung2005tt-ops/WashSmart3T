@@ -484,7 +484,11 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     final orderCode = 'WS3T-${id.toString().padLeft(4, '0')}';
     final sealCode = (order['sealCode'] ?? 'WS-SEAL-${id.toString().padLeft(4, '0')}').toString();
     final pickupProofPhotoUrl = (order['pickupProofPhotoUrl'] ?? '').toString();
-    final proofList = pickupProofPhotoUrl
+    final deliveryProofPhotoUrl = (order['deliveryProofPhotoUrl'] ?? '').toString();
+    final allProofs = [pickupProofPhotoUrl, deliveryProofPhotoUrl]
+        .where((s) => s.trim().isNotEmpty)
+        .join(',');
+    final proofList = allProofs
         .split(',')
         .map((s) => s.trim())
         .where((s) => s.isNotEmpty)

@@ -613,6 +613,49 @@
           </div>
         </section>
         <section><h3 class="font-bold text-sm mb-2">Dịch vụ khách đã chọn</h3><div class="space-y-2">${itemRows}</div></section>
+        ${(order.pickupProofPhotoUrl || order.deliveryProofPhotoUrl) ? `
+          <section class="p-4 rounded-xl border border-sky-200 bg-sky-50/50 space-y-3">
+            <div class="flex items-center justify-between border-b border-sky-200/60 pb-2">
+              <h3 class="font-bold text-xs text-sky-900 flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-base text-sky-600">photo_library</span>
+                <span>Ảnh Minh Chứng Giao Nhận Thực Tế (Do Shipper Chụp)</span>
+              </h3>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-sky-100 text-sky-800 font-bold">Đối soát 3T</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              ${order.pickupProofPhotoUrl ? `
+                <div class="space-y-1.5">
+                  <p class="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                    <span>1. Ảnh lúc lấy đồ & niêm phong Seal 3T:</span>
+                  </p>
+                  <div class="flex gap-2 flex-wrap">
+                    ${order.pickupProofPhotoUrl.split(',').map(u => u.trim()).filter(Boolean).map(url => `
+                      <a href="${url.startsWith('http') ? url : 'http://localhost:5085' + (url.startsWith('/') ? url : '/' + url)}" target="_blank" title="Bấm để xem ảnh phóng to" class="block w-24 h-24 rounded-lg overflow-hidden border border-slate-200 shadow-xs hover:opacity-90 transition-opacity">
+                        <img src="${url.startsWith('http') ? url : 'http://localhost:5085' + (url.startsWith('/') ? url : '/' + url)}" alt="Ảnh lấy đồ" class="w-full h-full object-cover">
+                      </a>
+                    `).join('')}
+                  </div>
+                </div>
+              ` : ''}
+              ${order.deliveryProofPhotoUrl ? `
+                <div class="space-y-1.5">
+                  <p class="text-[11px] font-bold text-slate-700 flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    <span>2. Ảnh giao hàng thành công cho khách:</span>
+                  </p>
+                  <div class="flex gap-2 flex-wrap">
+                    ${order.deliveryProofPhotoUrl.split(',').map(u => u.trim()).filter(Boolean).map(url => `
+                      <a href="${url.startsWith('http') ? url : 'http://localhost:5085' + (url.startsWith('/') ? url : '/' + url)}" target="_blank" title="Bấm để xem ảnh phóng to" class="block w-24 h-24 rounded-lg overflow-hidden border border-slate-200 shadow-xs hover:opacity-90 transition-opacity">
+                        <img src="${url.startsWith('http') ? url : 'http://localhost:5085' + (url.startsWith('/') ? url : '/' + url)}" alt="Ảnh giao đồ" class="w-full h-full object-cover">
+                      </a>
+                    `).join('')}
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+          </section>
+        ` : ''}
         ${window.renderOrderNoteHtml ? window.renderOrderNoteHtml(note) : `<section class="p-4 rounded-lg border border-primary/20 bg-primary/5"><h3 class="font-bold text-sm mb-2">Thông tin phân loại & Dịch vụ</h3><div class="text-sm whitespace-pre-wrap break-words">${note.trim() ? escapeHtml(note) : "Chưa có ghi chú"}</div></section>`}
         <section class="flex items-center justify-between p-4 rounded-lg bg-surface-container-low"><span class="font-bold text-sm">Tổng tiền hiện tại</span><span class="font-bold text-lg text-primary">${formatMoney(Number(order.totalAmount ?? order.TotalAmount ?? 0))}</span></section>
         <p class="text-xs text-secondary">Tổng tiền đã được đồng bộ chuẩn xác từ app (gồm tiền giặt dự kiến, phụ phí tiện ích và cước giao nhận theo cự ly). Shipper sẽ đối soát khi cân đồ thực tế.</p>`;

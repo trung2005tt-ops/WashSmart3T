@@ -509,6 +509,17 @@ class _ShipperScreenState extends State<ShipperScreen>
           'note': note ?? 'Shipper cập nhật từ ứng dụng',
         }),
       );
+      if (res.statusCode == 401) {
+        _showToast('Phiên làm việc đã hết hạn. Đang chuyển về màn hình đăng nhập...', isSuccess: false);
+        await AuthService.logout();
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+          );
+        }
+        return false;
+      }
       if (res.statusCode != 200) {
         String message = 'HTTP ${res.statusCode}';
         try {
@@ -2412,10 +2423,7 @@ class _ShipperScreenState extends State<ShipperScreen>
                            (order.pickupProofPhotoUrl != null && order.pickupProofPhotoUrl!.isNotEmpty))) ...[
                         const SizedBox(width: 4),
                         IconButton.filledTonal(
-                          onPressed: () => _showProofPhotoDialog(
-                            order,
-                            isPickup: order.type == OrderType.pickup,
-                          ),
+                          onPressed: () => _showProofPhotoViewerDialog(order),
                           icon: const Icon(Icons.photo_library_outlined, color: secondaryColor),
                           style: IconButton.styleFrom(
                             backgroundColor: secondaryColor.withValues(alpha: 0.1),
@@ -2809,6 +2817,62 @@ class _ShipperScreenState extends State<ShipperScreen>
                         ],
                       ),
                     ),
+
+                    if ((order.pickupProofPhotoUrl != null && order.pickupProofPhotoUrl!.isNotEmpty) ||
+                        (order.proofPhotoUrl != null && order.proofPhotoUrl!.isNotEmpty)) ...[
+                      const SizedBox(height: 14),
+                      InkWell(
+                        onTap: () {
+                          Navigator.pop(context);
+                          _showProofPhotoViewerDialog(order);
+                        },
+                        borderRadius: BorderRadius.circular(14),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEFF6FF),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: const Color(0xFFBFDBFE)),
+                          ),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFDBEAFE),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(Icons.photo_library, color: Color(0xFF1D4ED8), size: 18),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Xem ảnh minh chứng giao nhận',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: const Color(0xFF1D4ED8),
+                                      ),
+                                    ),
+                                    Text(
+                                      'Ảnh túi niêm phong seal 3T & Ảnh giao hàng',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11,
+                                        color: const Color(0xFF3B82F6),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.arrow_forward_ios, size: 14, color: Color(0xFF1D4ED8)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -5276,7 +5340,7 @@ class _ShipperScreenState extends State<ShipperScreen>
                     TextButton.icon(
                       onPressed: () {
                         Navigator.pop(ctx);
-                        _showProofPhotoDialog(o, isPickup: isPickup);
+                        _showProofPhotoViewerDialog(o);
                       },
                       icon: const Icon(
                         Icons.photo_library,
@@ -5513,6 +5577,18 @@ class _ShipperScreenState extends State<ShipperScreen>
         return true;
       }
 
+      if (res.statusCode == 401) {
+        _showToast('Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.', isSuccess: false);
+        await AuthService.logout();
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+          );
+        }
+        return false;
+      }
+
       debugPrint('delivery-proof HTTP ${res.statusCode}: ${res.body}');
       return await _pushStatusToApi(backendOrderId, 'Completed', note: note);
     } catch (e) {
@@ -5523,6 +5599,309 @@ class _ShipperScreenState extends State<ShipperScreen>
       }
       return false;
     }
+  }
+
+  // ============================================================
+  // 🔍 MODAL XEM LẠI ẢNH MINH CHỨNG (PROOF PHOTO VIEWER)
+  // Cho phép Shipper xem lại ảnh túi niêm phong khi lấy đồ và ảnh giao hàng thành công
+  // ============================================================
+  void _showProofPhotoViewerDialog(ShipperOrderModel order) {
+    String formatFullUrl(String raw) {
+      if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+      final clean = raw.startsWith('/') ? raw : '/$raw';
+      return 'http://localhost:5085$clean';
+    }
+
+    final pickupUrls = (order.pickupProofPhotoUrl ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+
+    final deliveryUrls = (order.proofPhotoUrl ?? '')
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+
+    final hasAny = pickupUrls.isNotEmpty || deliveryUrls.isNotEmpty;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.of(ctx).size.height * 0.85,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Tiêu đề modal
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: primaryColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.photo_library, color: primaryColor, size: 20),
+                    ),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Ảnh Minh Chứng • #${order.id}',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: onSurface,
+                          ),
+                        ),
+                        Text(
+                          'Khách: ${order.customerName} • ${order.customerPhone}',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            color: outlineColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            if (!hasAny)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: surfaceLow,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: outlineColor.withValues(alpha: 0.2)),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.image_not_supported_outlined, size: 48, color: outlineColor),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Đơn hàng chưa có ảnh minh chứng được lưu.',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: outlineColor,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Ảnh sẽ xuất hiện sau khi shipper nộp ảnh lấy đồ hoặc giao hàng.',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        color: outlineColor,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+              )
+            else
+              Expanded(
+                child: ListView(
+                  children: [
+                    // Mục 1: Ảnh lấy đồ & niêm phong Seal 3T
+                    if (pickupUrls.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          const Icon(Icons.lock_clock, size: 16, color: Color(0xFF0284C7)),
+                          const SizedBox(width: 6),
+                          Text(
+                            '1. Ảnh Lấy Đồ & Bấm Seal 3T Tại Nhà Khách (${pickupUrls.length})',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF0284C7),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 140,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: pickupUrls.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 10),
+                          itemBuilder: (ctx, i) {
+                            final imgUrl = formatFullUrl(pickupUrls[i]);
+                            return GestureDetector(
+                              onTap: () => _openFullScreenImage(ctx, imgUrl, 'Ảnh Lấy Đồ #${order.id}'),
+                              child: Container(
+                                width: 140,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color(0xFFBAE6FD)),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.network(
+                                    imgUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const Center(
+                                      child: Icon(Icons.broken_image, color: Colors.grey),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                    ],
+
+                    // Mục 2: Ảnh giao hàng thành công
+                    if (deliveryUrls.isNotEmpty) ...[
+                      Row(
+                        children: [
+                          const Icon(Icons.check_circle, size: 16, color: Color(0xFF16A34A)),
+                          const SizedBox(width: 6),
+                          Text(
+                            '2. Ảnh Giao Hàng Thành Công (${deliveryUrls.length})',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF16A34A),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 140,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: deliveryUrls.length,
+                          separatorBuilder: (_, __) => const SizedBox(width: 10),
+                          itemBuilder: (ctx, i) {
+                            final imgUrl = formatFullUrl(deliveryUrls[i]);
+                            return GestureDetector(
+                              onTap: () => _openFullScreenImage(ctx, imgUrl, 'Ảnh Giao Hàng #${order.id}'),
+                              child: Container(
+                                width: 140,
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: const Color(0xFFBBF7D0)),
+                                ),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.network(
+                                    imgUrl,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, __, ___) => const Center(
+                                      child: Icon(Icons.broken_image, color: Colors.grey),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                    ],
+                  ],
+                ),
+              ),
+
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: OutlinedButton.icon(
+                onPressed: () => Navigator.pop(ctx),
+                icon: const Icon(Icons.check, size: 18),
+                label: const Text('Đóng'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: primaryColor,
+                  side: const BorderSide(color: primaryColor),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Xem ảnh phóng to toàn màn hình
+  void _openFullScreenImage(BuildContext context, String imageUrl, String title) {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(12),
+        child: Stack(
+          alignment: Alignment.topRight,
+          children: [
+            Container(
+              constraints: const BoxConstraints(maxHeight: 600, maxWidth: 600),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: InteractiveViewer(
+                  panEnabled: true,
+                  minScale: 0.5,
+                  maxScale: 3.5,
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => Container(
+                      height: 200,
+                      color: Colors.white,
+                      alignment: Alignment.center,
+                      child: const Text('Không tải được ảnh từ máy chủ.'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 10,
+              right: 10,
+              child: CircleAvatar(
+                backgroundColor: Colors.black54,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   void _showProofPhotoDialog(

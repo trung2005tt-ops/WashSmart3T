@@ -1450,6 +1450,11 @@ public class OrdersController : ControllerBase
         var order = await _context.Orders.FirstOrDefaultAsync(o => o.Id == id);
         if (order == null) return NotFound(new { message = "Không tìm thấy đơn hàng." });
 
+        if (order.Status == OrderStatus.Completed)
+        {
+            return Ok(new { message = "Đơn hàng này đã được xác nhận hoàn tất trước đó.", orderId = order.Id, status = order.Status.ToString() });
+        }
+
         if (role == "Shipper" && order.ShipperId != currentUserId)
         {
             return Forbid();
@@ -1546,7 +1551,7 @@ public class OrdersController : ControllerBase
         var currentStatus = order.Status;
         if (currentStatus == newStatus)
         {
-            return BadRequest(new { message = "Đơn hàng đã ở trạng thái này." });
+            return Ok(new { message = $"Đơn hàng đã ở trạng thái {newStatus}.", status = newStatus.ToString() });
         }
 
         var currentUserRole = User.FindFirst(ClaimTypes.Role)?.Value;

@@ -511,12 +511,12 @@ public class AuthController : ControllerBase
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey));
         var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
-        // JWT token thời hạn 2 giờ (thay vì 8 giờ vô hạn định) để hạn chế rủi ro token bị đánh cắp
+        // JWT token thời hạn 7 ngày cho ca làm việc của Shipper & Quản lý vận hành
         var token = new JwtSecurityToken(
             issuer: _configuration["Jwt:Issuer"] ?? "WashSmart.API",
             audience: _configuration["Jwt:Audience"] ?? "WashSmart.Client",
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(2),
+            expires: DateTime.UtcNow.AddDays(7),
             signingCredentials: credentials
         );
 
