@@ -152,24 +152,33 @@
         </div>
 
         <div class="flex items-center gap-2">
+          <button onclick="openAddCareModal()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors text-xs font-semibold border border-surface-container shadow-xs">
+            <span class="material-symbols-outlined text-primary text-base">auto_awesome</span>
+            <span>+ Thêm Tiện Ích Phụ Phí</span>
+          </button>
           <button id="open-add-service-modal" class="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary-container transition-colors text-xs font-semibold shadow-sm">
             <span class="material-symbols-outlined text-base">add_circle</span>
-            <span id="btn-add-label">Thêm Dịch Vụ Mới</span>
+            <span id="btn-add-label">+ Thêm Dịch Vụ Mới</span>
           </button>
         </div>
       </div>
 
-      <!-- Main Navigation Tabs: Dịch Vụ Giặt Ủi vs Gói Chăm Sóc Nâng Cao -->
+      <!-- Main Navigation Tabs: Tất cả vs Dịch Vụ Giặt Ủi vs Tiện Ích Phụ Phí -->
       <div class="flex border-b border-surface-container gap-4">
-        <button id="tab-btn-services" onclick="switchMainTab('services')" class="pb-3 text-xs font-bold border-b-2 border-primary text-primary flex items-center gap-2 transition-all">
+        <button id="tab-btn-all" onclick="switchMainTab('all')" class="pb-3 text-xs font-bold border-b-2 border-primary text-primary flex items-center gap-2 transition-all">
+          <span class="material-symbols-outlined text-lg">dashboard_customize</span>
+          <span>Tất Cả Bảng Giá (Dịch Vụ & Tiện Ích)</span>
+          <span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold" id="badge-all-count">0</span>
+        </button>
+        <button id="tab-btn-services" onclick="switchMainTab('services')" class="pb-3 text-xs font-semibold border-b-2 border-transparent text-secondary hover:text-on-surface flex items-center gap-2 transition-all">
           <span class="material-symbols-outlined text-lg">sell</span>
-          <span>Dịch Vụ Giặt Ủi & Giá Cước</span>
-          <span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold" id="badge-services-count">0</span>
+          <span>Dịch Vụ Giặt Ủi Chính</span>
+          <span class="px-2 py-0.5 rounded-full bg-secondary/10 text-secondary text-[10px] font-bold" id="badge-services-count">0</span>
         </button>
         <button id="tab-btn-care" onclick="switchMainTab('care')" class="pb-3 text-xs font-semibold border-b-2 border-transparent text-secondary hover:text-on-surface flex items-center gap-2 transition-all">
-          <span class="material-symbols-outlined text-lg">auto_awesome</span>
-          <span>Gói Chăm Sóc Nâng Cao & Đóng Gói</span>
-          <span class="px-2 py-0.5 rounded-full bg-secondary/10 text-secondary text-[10px] font-bold" id="badge-care-count">0</span>
+          <span class="material-symbols-outlined text-lg">add_task</span>
+          <span>Dịch Vụ & Tiện Ích Phụ Phí (+VNĐ)</span>
+          <span class="px-2 py-0.5 rounded-full bg-rose-100 text-primary text-[10px] font-bold" id="badge-care-count">0</span>
         </button>
       </div>
 
@@ -177,11 +186,11 @@
       <!-- TAB 1: DỊCH VỤ GIẶT ỦI CHÍNH (THEO KG & THEO CÁI/MÓN)     -->
       <!-- ======================================================== -->
       <div id="section-services" class="space-y-4">
-        <!-- KPI Summary Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <!-- KPI Summary Cards (Đầy đủ cả Dịch vụ chính và Tiện ích phụ phí) -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between shadow-xs">
             <div>
-              <p class="text-xs text-secondary font-medium">Tổng số dịch vụ</p>
+              <p class="text-xs text-secondary font-medium">Tổng dịch vụ giặt chính</p>
               <p class="text-2xl font-bold text-on-surface mt-1" id="kpi-total-services">0 <span class="text-xs font-normal text-secondary">dịch vụ</span></p>
             </div>
             <div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center">
@@ -208,18 +217,34 @@
               <span class="material-symbols-outlined">checkroom</span>
             </div>
           </div>
+
+          <div class="p-4 rounded-xl bg-surface-card border border-rose-200 bg-rose-50/40 flex items-center justify-between shadow-xs cursor-pointer hover:border-primary transition-all" onclick="switchMainTab('care')">
+            <div>
+              <p class="text-xs text-primary font-bold">Tiện ích phụ phí có tính phí</p>
+              <p class="text-2xl font-bold text-primary mt-1" id="kpi-addon-paid">0 <span class="text-xs font-normal text-primary">gói</span></p>
+              <p class="text-[10px] text-secondary mt-0.5" id="kpi-addon-subtext">Comfort, Túi giặt, Khử khuẩn UV...</p>
+            </div>
+            <div class="w-10 h-10 rounded-lg bg-primary text-white flex items-center justify-center shadow-xs">
+              <span class="material-symbols-outlined">add_task</span>
+            </div>
+          </div>
         </div>
 
         <!-- Category Filters -->
         <div class="p-2 rounded-xl bg-surface-card border border-surface-container flex items-center gap-2 overflow-x-auto" id="category-filters">
           <button class="cat-btn active px-3.5 py-1.5 rounded-lg bg-primary text-white text-xs font-semibold whitespace-nowrap" data-cat="all">
-            Tất cả dịch vụ
+            Tất cả danh mục & bảng giá
           </button>
           <button class="cat-btn px-3.5 py-1.5 rounded-lg text-secondary hover:bg-surface-container transition-colors text-xs font-semibold whitespace-nowrap" data-cat="kg">
             Giặt ký (Theo kg)
           </button>
           <button class="cat-btn px-3.5 py-1.5 rounded-lg text-secondary hover:bg-surface-container transition-colors text-xs font-semibold whitespace-nowrap" data-cat="item">
             Giặt món (Theo cái / bộ / đôi)
+          </button>
+          <button class="cat-btn px-3.5 py-1.5 rounded-lg text-secondary hover:bg-surface-container transition-colors text-xs font-semibold whitespace-nowrap flex items-center gap-1.5" data-cat="addon">
+            <span class="material-symbols-outlined text-sm text-primary">add_task</span>
+            <span>Tiện ích & Phụ phí có tính phí (+VNĐ)</span>
+            <span class="px-1.5 py-0.2 rounded-full bg-primary/10 text-primary text-[10px] font-bold" id="badge-cat-addon-count">0</span>
           </button>
         </div>
 
@@ -245,40 +270,27 @@
       </div>
 
       <!-- ======================================================== -->
-      <!-- TAB 2: GÓI CHĂM SÓC NÂNG CAO & ĐÓNG GÓI (CARE OPTIONS)     -->
+      <!-- SECTION: DỊCH VỤ & TIỆN ÍCH PHỤ PHÍ (CARE OPTIONS)        -->
       <!-- ======================================================== -->
-      <div id="section-care-options" class="space-y-4 hidden">
-        <!-- KPI Care Cards -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between shadow-xs">
-            <div>
-              <p class="text-xs text-secondary font-medium">Tổng gói chăm sóc</p>
-              <p class="text-2xl font-bold text-on-surface mt-1" id="kpi-total-care">0 <span class="text-xs font-normal text-secondary">gói</span></p>
+      <div id="section-care-options" class="space-y-4 pt-4 border-t border-surface-container">
+        <!-- Tiêu đề phân nhóm Tiện Ích Phụ Phí -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+              <span class="material-symbols-outlined text-2xl">add_task</span>
             </div>
-            <div class="w-10 h-10 rounded-lg bg-surface-container text-primary flex items-center justify-center">
-              <span class="material-symbols-outlined">auto_awesome</span>
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="font-bold text-base text-on-surface">Bảng Giá Dịch Vụ & Tiện Ích Phụ Phí</h2>
+                <span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold" id="badge-care-table-count">Đang tải...</span>
+              </div>
+              <p class="text-secondary text-xs mt-0.5">Các tiện ích như Nước xả vải Comfort, Túi giặt bảo vệ sợi vải, Khử khuẩn UV... được đồng bộ trực tiếp với POS quầy và App khách hàng.</p>
             </div>
           </div>
-
-          <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between shadow-xs">
-            <div>
-              <p class="text-xs text-secondary font-medium">Gói tính phí (+VNĐ)</p>
-              <p class="text-2xl font-bold text-primary mt-1" id="kpi-paid-care">0 <span class="text-xs font-normal text-secondary">gói</span></p>
-            </div>
-            <div class="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-              <span class="material-symbols-outlined">payments</span>
-            </div>
-          </div>
-
-          <div class="p-4 rounded-xl bg-surface-card border border-surface-container flex items-center justify-between shadow-xs">
-            <div>
-              <p class="text-xs text-secondary font-medium">Tiện ích miễn phí (0 đ)</p>
-              <p class="text-2xl font-bold text-green-700 mt-1" id="kpi-free-care">0 <span class="text-xs font-normal text-secondary">tiện ích</span></p>
-            </div>
-            <div class="w-10 h-10 rounded-lg bg-green-50 text-green-700 flex items-center justify-center">
-              <span class="material-symbols-outlined">card_giftcard</span>
-            </div>
-          </div>
+          <button onclick="openAddCareModal()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary-container shadow-xs self-start sm:self-auto transition-colors">
+            <span class="material-symbols-outlined text-base">add_circle</span>
+            <span>+ Thêm Tiện Ích Phụ Phí Mới</span>
+          </button>
         </div>
 
         <!-- Banner Info -->
@@ -288,8 +300,8 @@
               <span class="material-symbols-outlined text-xl">verified</span>
             </div>
             <div>
-              <h3 class="font-bold text-xs text-on-surface">Quy định Gói Chăm Sóc Nâng Cao & Đóng Gói</h3>
-              <p class="text-secondary text-[11px] mt-0.5">Các gói này sẽ xuất hiện trên App đặt hàng. Khách hàng chủ động tick chọn (không bắt buộc). Bạn có thể thêm, sửa, chỉnh giá hoặc bật/tắt trực tiếp.</p>
+              <h3 class="font-bold text-xs text-on-surface">Quy định Dịch Vụ & Tiện Ích Phụ Phí (+VNĐ)</h3>
+              <p class="text-secondary text-[11px] mt-0.5">Khách hàng có thể chủ động tick chọn tiện ích khi đặt lịch trên App Mobile hoặc yêu cầu tại quầy POS. Bạn có thể tự do thêm, sửa đơn giá hoặc bật/tắt kích hoạt.</p>
             </div>
           </div>
         </div>
@@ -433,7 +445,7 @@
     }
 
     // State Variables
-    let currentMainTab = 'services';
+    let currentMainTab = 'all';
     let serviceCache = [];
     let careOptionsCache = [];
     let editingServiceId = null;
@@ -453,43 +465,48 @@
     // Tab Switcher
     function switchMainTab(tab) {
       currentMainTab = tab;
+      const bAll = document.getElementById('tab-btn-all');
       const bSvc = document.getElementById('tab-btn-services');
       const bCare = document.getElementById('tab-btn-care');
       const sSvc = document.getElementById('section-services');
       const sCare = document.getElementById('section-care-options');
       const btnAddLabel = document.getElementById('btn-add-label');
 
-      if (tab === 'services') {
-        bSvc.className = 'pb-3 text-xs font-bold border-b-2 border-primary text-primary flex items-center gap-2 transition-all';
-        bCare.className = 'pb-3 text-xs font-semibold border-b-2 border-transparent text-secondary hover:text-on-surface flex items-center gap-2 transition-all';
-        sSvc.classList.remove('hidden');
-        sCare.classList.add('hidden');
-        btnAddLabel.textContent = 'Thêm Dịch Vụ Mới';
+      const activeClass = 'pb-3 text-xs font-bold border-b-2 border-primary text-primary flex items-center gap-2 transition-all';
+      const inactiveClass = 'pb-3 text-xs font-semibold border-b-2 border-transparent text-secondary hover:text-on-surface flex items-center gap-2 transition-all';
+
+      if (bAll) bAll.className = (tab === 'all') ? activeClass : inactiveClass;
+      if (bSvc) bSvc.className = (tab === 'services') ? activeClass : inactiveClass;
+      if (bCare) bCare.className = (tab === 'care') ? activeClass : inactiveClass;
+
+      if (tab === 'all') {
+        sSvc?.classList.remove('hidden');
+        sCare?.classList.remove('hidden');
+        if (btnAddLabel) btnAddLabel.textContent = '+ Thêm Dịch Vụ Mới';
+      } else if (tab === 'services') {
+        sSvc?.classList.remove('hidden');
+        sCare?.classList.add('hidden');
+        if (btnAddLabel) btnAddLabel.textContent = '+ Thêm Dịch Vụ Mới';
       } else {
-        bCare.className = 'pb-3 text-xs font-bold border-b-2 border-primary text-primary flex items-center gap-2 transition-all';
-        bSvc.className = 'pb-3 text-xs font-semibold border-b-2 border-transparent text-secondary hover:text-on-surface flex items-center gap-2 transition-all';
-        sCare.classList.remove('hidden');
-        sSvc.classList.add('hidden');
-        btnAddLabel.textContent = 'Thêm Gói Chăm Sóc Mới';
-        if (careOptionsCache.length === 0) loadCareOptionsFromApi();
+        sCare?.classList.remove('hidden');
+        sSvc?.classList.add('hidden');
+        if (btnAddLabel) btnAddLabel.textContent = '+ Thêm Dịch Vụ Mới';
       }
+      renderServices();
+      renderCareOptions();
     }
 
     // Main Add Button Handlers
     document.getElementById('open-add-service-modal')?.addEventListener('click', () => {
-      if (currentMainTab === 'services') {
-        editingServiceId = null;
-        document.getElementById('modal-service-title').textContent = 'Thêm Dịch Vụ Mới';
-        document.getElementById('input-service-name').value = '';
-        document.getElementById('input-service-desc').value = '';
-        document.getElementById('input-service-price').value = '';
-        document.getElementById('input-service-unit').value = 'kg';
-        document.getElementById('input-service-type').value = 'kg';
-        const modal = document.getElementById('service-modal');
-        modal.classList.remove('hidden'); modal.classList.add('flex');
-      } else {
-        openAddCareModal();
-      }
+      editingServiceId = null;
+      document.getElementById('modal-service-title').textContent = 'Thêm Dịch Vụ Mới';
+      document.getElementById('input-service-name').value = '';
+      document.getElementById('input-service-desc').value = '';
+      document.getElementById('input-service-price').value = '';
+      document.getElementById('input-service-unit').value = 'kg';
+      document.getElementById('input-service-type').value = 'kg';
+      const modal = document.getElementById('service-modal');
+      modal.classList.remove('hidden'); modal.classList.add('flex');
     });
 
     // ============================================================
@@ -497,12 +514,15 @@
     // ============================================================
     function renderServices() {
       const tbody = document.getElementById('services-table-body');
+      if (!tbody) return;
       const query = (document.getElementById('service-search-input')?.value || '').trim().toLowerCase();
       const visible = serviceCache.filter(s => {
         const unit = serviceUnit(s);
         const categoryOk = activeCategory === 'all' || serviceCategory(unit) === activeCategory;
-        const text = `${serviceName(s)} ${unit} ${servicePrice(s)}`.toLowerCase();
-        return categoryOk && (currentMainTab !== 'services' || text.includes(query));
+        if (!categoryOk) return false;
+        if (!query) return true;
+        const text = `${serviceName(s)} ${unit} ${servicePrice(s)} ${s.description || ''}`.toLowerCase();
+        return text.includes(query);
       });
 
       if (!visible.length) {
@@ -565,10 +585,16 @@
 
       const totalKg = serviceCache.filter(s => serviceCategory(serviceUnit(s)) === 'kg').length;
       const totalItem = serviceCache.filter(s => serviceCategory(serviceUnit(s)) !== 'kg').length;
-      document.getElementById('kpi-total-services').innerHTML = `${serviceCache.length} <span class="text-xs font-normal text-secondary">dịch vụ</span>`;
-      document.getElementById('kpi-kg-services').innerHTML = `${totalKg} <span class="text-xs font-normal text-secondary">mục</span>`;
-      document.getElementById('kpi-item-services').innerHTML = `${totalItem} <span class="text-xs font-normal text-secondary">mục</span>`;
-      document.getElementById('badge-services-count').textContent = serviceCache.length;
+      const kpiTotalSvc = document.getElementById('kpi-total-services');
+      if (kpiTotalSvc) kpiTotalSvc.innerHTML = `${serviceCache.length} <span class="text-xs font-normal text-secondary">dịch vụ</span>`;
+      const kpiKgSvc = document.getElementById('kpi-kg-services');
+      if (kpiKgSvc) kpiKgSvc.innerHTML = `${totalKg} <span class="text-xs font-normal text-secondary">mục</span>`;
+      const kpiItemSvc = document.getElementById('kpi-item-services');
+      if (kpiItemSvc) kpiItemSvc.innerHTML = `${totalItem} <span class="text-xs font-normal text-secondary">mục</span>`;
+      const badgeSvc = document.getElementById('badge-services-count');
+      if (badgeSvc) badgeSvc.textContent = serviceCache.length;
+      const badgeAll = document.getElementById('badge-all-count');
+      if (badgeAll) badgeAll.textContent = (serviceCache.length + careOptionsCache.length);
 
       tbody.querySelectorAll('[data-edit-service]').forEach(btn => btn.addEventListener('click', () => {
         const item = serviceCache.find(s => String(serviceId(s)) === btn.dataset.editService);
@@ -609,7 +635,16 @@
     document.querySelectorAll('.cat-btn').forEach(btn => btn.addEventListener('click', () => {
       document.querySelectorAll('.cat-btn').forEach(b => { b.classList.remove('active','bg-primary','text-white'); b.classList.add('text-secondary'); });
       btn.classList.add('active','bg-primary','text-white'); btn.classList.remove('text-secondary');
-      activeCategory = btn.dataset.cat || 'all'; renderServices();
+      activeCategory = btn.dataset.cat || 'all';
+      if (activeCategory === 'addon') {
+        switchMainTab('care');
+      } else if (activeCategory === 'all') {
+        switchMainTab('all');
+      } else {
+        switchMainTab('services');
+      }
+      renderServices();
+      renderCareOptions();
     }));
 
     function editService(id, name, price, unit, desc = '') {
@@ -672,10 +707,12 @@
     // ============================================================
     function renderCareOptions() {
       const tbody = document.getElementById('care-options-table-body');
+      if (!tbody) return;
       const query = (document.getElementById('service-search-input')?.value || '').trim().toLowerCase();
       const visible = careOptionsCache.filter(c => {
-        const text = `${c.name} ${c.description} ${c.badgeText || ''} ${c.price}`.toLowerCase();
-        return currentMainTab !== 'care' || text.includes(query);
+        if (!query) return true;
+        const text = `${c.name} ${c.description || ''} ${c.badgeText || ''} ${c.price}`.toLowerCase();
+        return text.includes(query);
       });
 
       if (!visible.length) {
@@ -731,10 +768,22 @@
       const paidCare = careOptionsCache.filter(c => Number(c.price || 0) > 0).length;
       const freeCare = careOptionsCache.filter(c => Number(c.price || 0) === 0).length;
 
-      document.getElementById('kpi-total-care').innerHTML = `${totalCare} <span class="text-xs font-normal text-secondary">gói</span>`;
-      document.getElementById('kpi-paid-care').innerHTML = `${paidCare} <span class="text-xs font-normal text-secondary">gói</span>`;
-      document.getElementById('kpi-free-care').innerHTML = `${freeCare} <span class="text-xs font-normal text-secondary">tiện ích</span>`;
-      document.getElementById('badge-care-count').textContent = totalCare;
+      const kpiTotalCare = document.getElementById('kpi-total-care');
+      if (kpiTotalCare) kpiTotalCare.innerHTML = `${totalCare} <span class="text-xs font-normal text-secondary">gói</span>`;
+      const kpiPaidCare = document.getElementById('kpi-paid-care');
+      if (kpiPaidCare) kpiPaidCare.innerHTML = `${paidCare} <span class="text-xs font-normal text-secondary">gói</span>`;
+      const kpiFreeCare = document.getElementById('kpi-free-care');
+      if (kpiFreeCare) kpiFreeCare.innerHTML = `${freeCare} <span class="text-xs font-normal text-secondary">tiện ích</span>`;
+      const badgeCare = document.getElementById('badge-care-count');
+      if (badgeCare) badgeCare.textContent = totalCare;
+      const badgeCareTable = document.getElementById('badge-care-table-count');
+      if (badgeCareTable) badgeCareTable.textContent = `${totalCare} tiện ích (${paidCare} gói có tính phí)`;
+      const kpiAddonPaid = document.getElementById('kpi-addon-paid');
+      if (kpiAddonPaid) kpiAddonPaid.innerHTML = `${paidCare} <span class="text-xs font-normal text-primary">gói có phí</span>`;
+      const badgeCatAddon = document.getElementById('badge-cat-addon-count');
+      if (badgeCatAddon) badgeCatAddon.textContent = paidCare;
+      const badgeAll = document.getElementById('badge-all-count');
+      if (badgeAll) badgeAll.textContent = (serviceCache.length + totalCare);
     }
 
     async function loadCareOptionsFromApi() {
@@ -841,8 +890,8 @@
 
     // Search input listener
     document.getElementById('service-search-input')?.addEventListener('input', () => {
-      if (currentMainTab === 'services') renderServices();
-      else renderCareOptions();
+      renderServices();
+      renderCareOptions();
     });
 
     // Initial Load
