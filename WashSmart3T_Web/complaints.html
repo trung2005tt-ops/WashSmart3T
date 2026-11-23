@@ -330,6 +330,7 @@
             incidentType: item.incidentType || 'Sự cố đồ giặt',
             severity: item.severity || 'Medium',
             itemDescription: item.itemDescription || '',
+            photoUrl: item.photoUrl || item.PhotoUrl || '',
             customerNote: item.customerNote || '',
             requestedRefund: Number(item.requestedRefund || 0),
             desiredPlan: desired,
@@ -582,23 +583,7 @@
               <div>Shipper: <strong class="text-on-surface font-bold">${item.shipperName}</strong></div>
             </div>
             <!-- Anh minh chung su co tu khach hang -->
-            <div class="pt-1 pb-1">
-              <p class="text-[11px] text-secondary font-medium mb-1.5">Hình ảnh minh chứng sự cố từ khách hàng & tem seal niêm phong (2 ảnh):</p>
-              <div class="flex items-center gap-3">
-                <div class="relative group cursor-pointer">
-                  <img src="https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=200&auto=format&fit=crop" class="w-14 h-14 object-cover rounded-lg border border-surface-container shadow-xs">
-                  <span class="absolute bottom-1 left-1 bg-black/70 text-white text-[8px] px-1 rounded">Vết ố cổ áo</span>
-                </div>
-                <div class="relative group cursor-pointer">
-                  <img src="https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?q=80&w=200&auto=format&fit=crop" class="w-14 h-14 object-cover rounded-lg border border-surface-container shadow-xs">
-                  <span class="absolute bottom-1 left-1 bg-black/70 text-white text-[8px] px-1 rounded">Tem Seal 3T</span>
-                </div>
-                <div class="text-[11px] text-secondary space-y-0.5">
-                  <p class="text-emerald-800 font-semibold">✓ Thời điểm khiếu nại: Trong 24h sau khi nhận hàng (✓ Hợp lệ)</p>
-                  <p class="text-secondary text-[10px]">(Quy định 3T Care: Khiếu nại có hiệu lực trong vòng 48h sau khi giao hàng)</p>
-                </div>
-              </div>
-            </div>
+            ${renderComplaintEvidence(item)}
             <p class="text-[11px] text-emerald-800 font-medium bg-emerald-50 p-2 rounded border border-emerald-200">
               🛡️ <strong>Chính sách 3T Care:</strong> Áp dụng cam kết bồi thường lên tới 100% giá trị trang phục hoặc giặt phục hồi lại miễn phí trong vòng 24 giờ.
             </p>
@@ -790,6 +775,101 @@
       searchQuery = e.target.value.toLowerCase().trim();
       renderUI();
     });
+
+    function renderComplaintEvidence(item) {
+      const photoUrl = (item.photoUrl || '').trim();
+      const photos = photoUrl ? photoUrl.split(',').map(s => s.trim()).filter(Boolean) : [];
+      
+      if (photos.length === 0) {
+        return `
+          <div class="pt-1 pb-1">
+            <p class="text-[11px] text-secondary font-medium mb-1.5 flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm text-outline">image_not_supported</span>
+              <span>Hình ảnh minh chứng sự cố từ khách hàng:</span>
+            </p>
+            <div class="p-3 bg-white rounded-lg border border-dashed border-outline-variant text-[11px] text-secondary flex items-center gap-2">
+              <span class="material-symbols-outlined text-base text-outline">info</span>
+              <span>Hồ sơ khiếu nại này được tiếp nhận qua tổng đài/quầy trực tiếp (chưa đính kèm file ảnh chụp từ app di động).</span>
+            </div>
+          </div>
+        `;
+      }
+
+      const photosHtml = photos.map((url, idx) => {
+        const fullUrl = url.startsWith('http') ? url : `http://localhost:5085${url.startsWith('/') ? url : '/' + url}`;
+        return `
+          <div class="relative group cursor-pointer" onclick="openPhotoModal('${fullUrl}', 'Ảnh minh chứng #${idx + 1} (${item.ticketCode})')">
+            <img src="${fullUrl}" class="w-16 h-16 object-cover rounded-lg border-2 border-primary/20 shadow-xs transition-transform group-hover:scale-105" alt="Ảnh minh chứng ${idx + 1}" onerror="this.onerror=null;this.parentElement.innerHTML='<div class=\\'w-16 h-16 bg-zinc-100 rounded-lg flex items-center justify-center text-secondary text-[9px] font-bold text-center p-1\\'>Lỗi ảnh</div>';">
+            <span class="absolute bottom-1 left-1 bg-black/80 text-white text-[8px] px-1 py-0.5 rounded font-bold">Ảnh #${idx + 1}</span>
+            <div class="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center rounded-lg transition-opacity">
+              <span class="material-symbols-outlined text-white text-base">zoom_in</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      return `
+        <div class="pt-1 pb-1">
+          <p class="text-[11px] text-secondary font-medium mb-1.5 flex items-center gap-1">
+            <span class="material-symbols-outlined text-sm text-primary">photo_camera</span>
+            <span>Hình ảnh minh chứng hàng hỏng thật do khách hàng tải lên từ di động (${photos.length} ảnh):</span>
+          </p>
+          <div class="flex items-center gap-3 flex-wrap bg-white p-2.5 rounded-lg border border-surface-container">
+            ${photosHtml}
+            <div class="text-[11px] text-secondary space-y-0.5">
+              <p class="text-emerald-800 font-semibold flex items-center gap-1">
+                <span class="material-symbols-outlined text-xs">verified</span>
+                <span>Ảnh chụp thực tế từ điện thoại khách hàng</span>
+              </p>
+              <p class="text-secondary text-[10px]">Nhấp vào ảnh để phóng to đối soát chi tiết vết bẩn / tem seal niêm phong</p>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function openPhotoModal(src, title) {
+      let modal = document.getElementById('photo-modal');
+      if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'photo-modal';
+        modal.className = 'fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-xs transition-opacity';
+        modal.onclick = (e) => { if (e.target === modal) closePhotoModal(); };
+        document.body.appendChild(modal);
+      }
+      modal.innerHTML = `
+        <div class="bg-white rounded-2xl max-w-2xl w-full overflow-hidden shadow-2xl relative animate-in fade-in zoom-in-95 duration-200">
+          <div class="p-3 bg-zinc-900 text-white flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-base">photo_library</span>
+              <span class="font-bold text-xs">${title || 'Xem ảnh minh chứng thực tế'}</span>
+            </div>
+            <button onclick="closePhotoModal()" class="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white cursor-pointer transition-colors">
+              <span class="material-symbols-outlined text-base">close</span>
+            </button>
+          </div>
+          <div class="p-4 bg-zinc-950 flex items-center justify-center max-h-[75vh] overflow-hidden">
+            <img src="${src}" class="max-h-[70vh] max-w-full object-contain rounded-lg shadow-md" alt="Ảnh minh chứng">
+          </div>
+          <div class="p-3 bg-zinc-50 border-t border-zinc-200 text-xs text-secondary flex items-center justify-between">
+            <span class="font-medium text-emerald-800 flex items-center gap-1">
+              <span class="material-symbols-outlined text-sm">verified_user</span>
+              <span>Ảnh gốc được chụp từ camera/thư viện của khách hàng</span>
+            </span>
+            <a href="${src}" target="_blank" class="text-primary font-bold hover:underline flex items-center gap-1">
+              <span>Mở ảnh gốc</span>
+              <span class="material-symbols-outlined text-xs">open_in_new</span>
+            </a>
+          </div>
+        </div>
+      `;
+      modal.classList.remove('hidden');
+    }
+
+    function closePhotoModal() {
+      const modal = document.getElementById('photo-modal');
+      if (modal) modal.remove();
+    }
 
     // 8. Khởi chạy với Auto-seed Authentication và Tải Dữ Liệu
     (async () => {

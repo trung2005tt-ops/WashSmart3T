@@ -1387,6 +1387,9 @@ public class OrdersController : ControllerBase
         }
 
         var payment = await _context.Payments.FirstOrDefaultAsync(p => p.OrderId == order.Id);
+        var complaint = await _context.Complaints
+            .OrderByDescending(c => c.CreatedAt)
+            .FirstOrDefaultAsync(c => c.OrderId == order.Id);
 
         return Ok(new
         {
@@ -1419,6 +1422,24 @@ public class OrdersController : ControllerBase
             paymentStatus = payment?.Status.ToString() ?? "Pending",
             paidAt = payment?.PaidAt,
             refundedAmount = payment?.RefundedAmount,
+            complaint = complaint == null ? null : new
+            {
+                complaint.Id,
+                complaint.TicketCode,
+                complaint.IncidentType,
+                complaint.Severity,
+                complaint.ItemDescription,
+                complaint.PhotoUrl,
+                complaint.CustomerNote,
+                complaint.RequestedRefund,
+                complaint.ApprovedAmount,
+                complaint.Status,
+                complaint.Resolution,
+                complaint.StaffNote,
+                complaint.ResolvedBy,
+                complaint.ResolvedAt,
+                complaint.CreatedAt
+            },
             items = order.OrderDetails.Select(d => new
             {
                 d.ServiceId,

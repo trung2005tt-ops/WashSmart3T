@@ -1796,12 +1796,14 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
             ),
           ],
           const SizedBox(height: 12),
-          if (isPaidOrCompleted && !isClaimExpired)
+          if (order['complaint'] != null)
+            _buildSubmittedComplaintCard(Map<String, dynamic>.from(order['complaint'] as Map))
+          else if (isPaidOrCompleted && !isClaimExpired)
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
-                onPressed: () {
-                  Navigator.push(
+                onPressed: () async {
+                  final res = await Navigator.push(
                     context,
                     MaterialPageRoute(
                       builder: (_) => SubmitClaimScreen(
@@ -1812,6 +1814,9 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                       ),
                     ),
                   );
+                  if (res == true) {
+                    _loadData();
+                  }
                 },
                 icon: const Icon(Icons.report_problem_outlined, size: 16, color: primary),
                 label: Text(
@@ -1883,6 +1888,150 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                 ],
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSubmittedComplaintCard(Map<String, dynamic> complaint) {
+    final ticketCode = (complaint['ticketCode'] ?? 'KN-WS3T').toString();
+    final status = (complaint['status'] ?? 'Pending').toString();
+    final isDone = status.toLowerCase() == 'completed';
+    final incidentType = (complaint['incidentType'] ?? 'Sự cố đồ giặt').toString();
+    final itemDesc = (complaint['itemDescription'] ?? '').toString();
+    final photoRaw = (complaint['photoUrl'] ?? complaint['PhotoUrl'] ?? '').toString();
+    final claimPhotos = photoRaw
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: isDone ? const Color(0xFF10B981) : primary.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    isDone ? Icons.check_circle : Icons.pending_actions,
+                    color: isDone ? const Color(0xFF059669) : primary,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Hồ sơ #$ticketCode',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isDone ? const Color(0xFFECFDF5) : const Color(0xFFFEF3C7),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  isDone ? 'Đã giải quyết bồi thường' : 'Đang xử lý tiếp nhận',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: isDone ? const Color(0xFF047857) : const Color(0xFFB45309),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            '$incidentType: $itemDesc',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              color: textColor,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          if (claimPhotos.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Text(
+              'Ảnh minh chứng hàng hỏng tải từ di động (${claimPhotos.length} ảnh):',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                color: textColor,
+              ),
+            ),
+            const SizedBox(height: 6),
+            SizedBox(
+              height: 65,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: claimPhotos.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (ctx, idx) {
+                  final fullUrl = _formatFullUrl(claimPhotos[idx]);
+                  return GestureDetector(
+                    onTap: () {
+                      showDialog(
+                        context: context,
+                        builder: (_) => Dialog(
+                          backgroundColor: Colors.transparent,
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: Image.network(
+                              fullUrl,
+                              fit: BoxFit.contain,
+                              errorBuilder: (_, __, ___) => const ColoredBox(
+                                color: Colors.white,
+                                child: Padding(
+                                  padding: EdgeInsets.all(24),
+                                  child: Text('Không tải được ảnh.'),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        fullUrl,
+                        width: 65,
+                        height: 65,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 65,
+                          height: 65,
+                          color: Colors.grey.shade200,
+                          child: const Icon(Icons.broken_image, size: 20, color: Colors.grey),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         ],
       ),
     );

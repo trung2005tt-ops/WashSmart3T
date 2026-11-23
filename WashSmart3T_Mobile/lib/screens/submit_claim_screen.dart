@@ -60,8 +60,13 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
   ];
 
   // 📸 Ảnh bằng chứng tải lên từ di động / camera (Bắt đầu rỗng, không dùng ảnh mẫu giả lập)
-  final List<String> _proofPhotos = [];
+  final List<Map<String, dynamic>> _proofPhotoItems = [];
   bool _isUploadingPhoto = false;
+
+  List<String> get _proofPhotos => _proofPhotoItems
+      .map((e) => (e['url'] ?? '').toString())
+      .where((u) => u.isNotEmpty)
+      .toList();
 
   // ⏱️ Giới hạn 60 phút sau khi giao hàng thành công
   bool _isClaimExpired = false;
@@ -229,7 +234,10 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
       if (token != null && token.isNotEmpty) {
         request.headers['Authorization'] = 'Bearer $token';
       }
-      final safeName = fileName.isNotEmpty ? fileName : 'claim_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      var safeName = fileName.isNotEmpty ? fileName : 'claim_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      if (!safeName.contains('.')) {
+        safeName += '.jpg';
+      }
       request.files.add(
         http.MultipartFile.fromBytes(
           'file',
@@ -253,7 +261,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
   }
 
   Future<void> _pickAndUploadPhoto({required ImageSource source}) async {
-    if (_proofPhotos.length >= 5) {
+    if (_proofPhotoItems.length >= 5) {
       _showToast('Bạn chỉ có thể tải lên tối đa 5 hình ảnh bằng chứng.');
       return;
     }
@@ -267,20 +275,35 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
       );
       if (xfile == null) return;
 
-      setState(() => _isUploadingPhoto = true);
-      _showToast('Đang tải ảnh bằng chứng lên máy chủ...');
-
       final bytes = await xfile.readAsBytes();
+      final tempItem = <String, dynamic>{
+        'bytes': bytes,
+        'url': '',
+        'name': xfile.name,
+        'isUploading': true,
+      };
+
+      setState(() {
+        _proofPhotoItems.add(tempItem);
+        _isUploadingPhoto = true;
+      });
+      _showToast('Đang tải ảnh chụp thực tế lên máy chủ...');
+
       final uploadedUrl = await _uploadSinglePhoto(bytes, xfile.name);
 
       if (!mounted) return;
-      setState(() => _isUploadingPhoto = false);
+      setState(() {
+        _isUploadingPhoto = false;
+        if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
+          tempItem['url'] = uploadedUrl;
+          tempItem['isUploading'] = false;
+        } else {
+          _proofPhotoItems.remove(tempItem);
+        }
+      });
 
       if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
-        setState(() {
-          _proofPhotos.add(uploadedUrl);
-        });
-        _showToast('Tải ảnh bằng chứng #${_proofPhotos.length} thành công!');
+        _showToast('Tải ảnh bằng chứng #${_proofPhotoItems.length} thành công!');
       } else {
         _showToast('Không tải được ảnh lên máy chủ. Vui lòng thử lại!');
       }
@@ -1004,7 +1027,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
               ],
             ),
             Text(
-              '${_proofPhotos.length} / 5 hình',
+              '${_proofPhotoItems.length} / 5 hình',
               style: GoogleFonts.plusJakartaSans(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
@@ -1023,43 +1046,72 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              ...List.generate(_proofPhotos.length, (idx) {
+              ...List.generate(_proofPhotoItems.length, (idx) {
+                final item = _proofPhotoItems[idx];
+                final Uint8List? bytes = item['bytes'] as Uint8List?;
+                final String url = (item['url'] ?? '').toString();
+                final bool isUploading = item['isUploading'] == true;
+                final fullUrl = url.startsWith('http')
+                    ? url
+                    : 'http://localhost:5085${url.startsWith('/') ? url : '/$url'}';
+
                 return Padding(
                   padding: const EdgeInsets.only(right: 10.0),
                   child: Stack(
                     children: [
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
-                        child: Image.network(
-                          _proofPhotos[idx].startsWith('http')
-                              ? _proofPhotos[idx]
-                              : 'http://localhost:5085${_proofPhotos[idx].startsWith('/') ? _proofPhotos[idx] : '/${_proofPhotos[idx]}'}',
-                          width: 85,
-                          height: 85,
-                          fit: BoxFit.cover,
-                          loadingBuilder: (ctx, child, progress) {
-                            if (progress == null) return child;
-                            return Container(
-                              width: 85,
-                              height: 85,
-                              color: surfaceLow,
-                              child: const Center(
-                                child: SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: primaryColor),
+                        child: bytes != null
+                            ? Image.memory(
+                                bytes,
+                                width: 85,
+                                height: 85,
+                                fit: BoxFit.cover,
+                              )
+                            : Image.network(
+                                fullUrl,
+                                width: 85,
+                                height: 85,
+                                fit: BoxFit.cover,
+                                loadingBuilder: (ctx, child, progress) {
+                                  if (progress == null) return child;
+                                  return Container(
+                                    width: 85,
+                                    height: 85,
+                                    color: surfaceLow,
+                                    child: const Center(
+                                      child: SizedBox(
+                                        width: 18,
+                                        height: 18,
+                                        child: CircularProgressIndicator(strokeWidth: 2, color: primaryColor),
+                                      ),
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (_, __, ___) => Container(
+                                  width: 85,
+                                  height: 85,
+                                  color: Colors.grey.shade200,
+                                  child: const Icon(Icons.broken_image, color: Colors.grey),
                                 ),
                               ),
-                            );
-                          },
-                          errorBuilder: (_, __, ___) => Container(
-                            width: 85,
-                            height: 85,
-                            color: Colors.grey.shade200,
-                            child: const Icon(Icons.broken_image, color: Colors.grey),
+                      ),
+                      if (isUploading)
+                        Container(
+                          width: 85,
+                          height: 85,
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.45),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Center(
+                            child: SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            ),
                           ),
                         ),
-                      ),
                       Positioned(
                         bottom: 4,
                         left: 4,
@@ -1079,7 +1131,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                         top: 4,
                         right: 4,
                         child: GestureDetector(
-                          onTap: () => setState(() => _proofPhotos.removeAt(idx)),
+                          onTap: () => setState(() => _proofPhotoItems.removeAt(idx)),
                           child: const CircleAvatar(
                             radius: 10,
                             backgroundColor: Color(0xFFBA1A1A),
@@ -1119,7 +1171,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                     ),
                   ),
                 ),
-              if (_proofPhotos.length < 5 && !_isUploadingPhoto)
+              if (_proofPhotoItems.length < 5 && !_isUploadingPhoto)
                 Padding(
                   padding: const EdgeInsets.only(right: 10.0),
                   child: InkWell(

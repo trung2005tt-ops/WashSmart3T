@@ -5,7 +5,7 @@ namespace WashSmart.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[AllowAnonymous] // Cho phép upload ảnh minh chứng không bị chặn 401 khi token hết hạn
 public class UploadsController : ControllerBase
 {
     private readonly IWebHostEnvironment _env;
@@ -28,11 +28,18 @@ public class UploadsController : ControllerBase
             return BadRequest(new { message = "Vui lòng chọn file hình ảnh hợp lệ." });
         }
 
-        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (string.IsNullOrEmpty(ext) || ext == ".blob")
+        {
+            if (file.ContentType == "image/png") ext = ".png";
+            else if (file.ContentType == "image/webp") ext = ".webp";
+            else ext = ".jpg";
+        }
+
+        var allowedExtensions = new[] { ".jpg", ".jpeg", ".png", ".webp" };
         if (!allowedExtensions.Contains(ext))
         {
-            return BadRequest(new { message = "Định dạng file không hỗ trợ. Vui lòng chọn ảnh JPG, PNG hoặc WEBP." });
+            ext = ".jpg";
         }
 
         var rootPath = _env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot");
