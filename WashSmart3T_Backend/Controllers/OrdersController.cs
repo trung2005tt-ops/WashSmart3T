@@ -504,6 +504,10 @@ public class OrdersController : ControllerBase
                 bool isByItem = !unitStr.Contains("kg") && !unitStr.Contains("ký") && !unitStr.Contains("kí");
                 if (isByItem)
                 {
+                    if (item.Quantity % 1 != 0)
+                    {
+                        return BadRequest(new { message = $"Dịch vụ '{service.Name}' tính theo {currentPrice.Unit} (đồ cái/đồ bộ) phải là số nguyên (ví dụ: 1, 2, 3...), không thể là số thập phân." });
+                    }
                     item.Quantity = Math.Round(item.Quantity);
                     if (item.Quantity <= 0) item.Quantity = 1;
                 }
@@ -757,6 +761,18 @@ public class OrdersController : ControllerBase
                     .OrderByDescending(p => p.EffectiveFrom).FirstOrDefault();
 
                 if (price == null) return BadRequest(new { message = $"Dịch vụ '{service.Name}' chưa có giá." });
+
+                var unitStr = (price.Unit ?? "").Trim().ToLower();
+                bool isByItem = !unitStr.Contains("kg") && !unitStr.Contains("ký") && !unitStr.Contains("kí");
+                if (isByItem)
+                {
+                    if (item.Quantity % 1 != 0)
+                    {
+                        return BadRequest(new { message = $"Dịch vụ '{service.Name}' tính theo {price.Unit} (đồ cái/đồ bộ) phải là số nguyên (ví dụ: 1, 2, 3...), không thể là số thập phân." });
+                    }
+                    item.Quantity = Math.Round(item.Quantity);
+                    if (item.Quantity <= 0) item.Quantity = 1;
+                }
 
                 var lineTotal = item.Quantity * price.Price;
                 if (price.MinimumPrice.HasValue) lineTotal = Math.Max(lineTotal, price.MinimumPrice.Value);
@@ -1077,6 +1093,10 @@ public class OrdersController : ControllerBase
                 bool isByItem = !unitStr.Contains("kg") && !unitStr.Contains("ký") && !unitStr.Contains("kí");
                 if (isByItem)
                 {
+                    if (input.Quantity % 1 != 0)
+                    {
+                        return BadRequest(new { message = $"Dịch vụ '{service.Name}' tính theo {currentPrice.Unit} (đồ cái/đồ bộ) phải là số nguyên (ví dụ: 1, 2, 3...), không thể là số thập phân." });
+                    }
                     input.Quantity = Math.Round(input.Quantity);
                     if (input.Quantity <= 0) input.Quantity = 1;
                 }

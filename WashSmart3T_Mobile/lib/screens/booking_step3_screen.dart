@@ -345,9 +345,9 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
         .map((it) {
           final isByItem = it['isByItem'] == true;
           final num rawQty = (it['quantity'] as num?) ?? 0;
-          final double finalQty = rawQty > 0
-              ? rawQty.toDouble()
-              : (isByItem ? 1.0 : widget.estimatedWeight);
+          final num finalQty = rawQty > 0
+              ? (isByItem ? rawQty.round() : rawQty.toDouble())
+              : (isByItem ? 1 : widget.estimatedWeight);
           return {
             'serviceId': (it['serviceId'] as num?)?.toInt() ?? 7,
             'quantity': finalQty,

@@ -707,10 +707,16 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
 
           final item = Map<String, dynamic>.from(rawItem);
           final name = (item['serviceName'] ?? '').toString();
-          final quantity = item['quantity'] ?? item['Quantity'] ?? '';
+          final rawQty = item['quantity'] ?? item['Quantity'] ?? '';
           final unit = (item['unit'] ?? item['Unit'] ?? '').toString();
           final unitPrice = item['unitPrice'] ?? item['UnitPrice'];
           final totalPrice = item['totalPrice'] ?? item['TotalPrice'];
+
+          final isKg = unit.toLowerCase().contains('kg') || unit.toLowerCase().contains('ký') || unit.toLowerCase().contains('kí');
+          final num? numQty = rawQty is num ? rawQty : num.tryParse(rawQty.toString());
+          final String displayQty = numQty != null
+              ? (isKg ? numQty.toStringAsFixed(1) : numQty.round().toString())
+              : rawQty.toString();
 
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 10),
@@ -735,7 +741,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Khối lượng/số lượng: $quantity ${unit.isEmpty ? '' : unit}',
+                        'Khối lượng/số lượng: $displayQty ${unit.isEmpty ? '' : unit}',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 12,
                           color: secondaryText,

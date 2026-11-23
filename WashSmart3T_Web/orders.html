@@ -542,8 +542,10 @@
       const quantityRaw = item.quantity ?? item.Quantity;
       const quantity = Number(quantityRaw);
       const unit = item.unit || item.Unit || '';
+      const isKg = unit.toLowerCase().includes('kg') || unit.toLowerCase().includes('ký') || unit.toLowerCase().includes('kí');
+      const formattedQty = isKg ? quantity : Math.round(quantity);
       const qtyLabel = Number.isFinite(quantity) && quantity > 0
-        ? `${quantity} ${unit}`.trim()
+        ? `${formattedQty} ${unit}`.trim()
         : 'Chờ cân/đếm thực tế';
       return { name, qtyLabel, price: item.totalPrice ?? item.TotalPrice, unitPrice: item.unitPrice ?? item.UnitPrice, unit };
     }
