@@ -797,8 +797,9 @@ public class OrdersController : ControllerBase
                 return BadRequest(new { message = "Tiền mặt khách đưa chưa đủ tổng thanh toán." });
             }
 
-            // Với đơn nhận tại quầy (StorePickup), quần áo đã nằm tại cửa hàng => trạng thái là Received!
-            var initialStatus = request.DeliveryMethod == "StorePickup" ? OrderStatus.Received : OrderStatus.Pending;
+            // Với mọi đơn tạo tại quầy POS, quần áo đã được khách mang trực tiếp đến tiệm => Trạng thái ban đầu luôn là Received!
+            // Dù khách chọn tự lấy (StorePickup) hay giao tận nhà (HomeDelivery), chặng lấy đồ (pickup) không cần shipper thực hiện.
+            var initialStatus = OrderStatus.Received;
 
             var order = new Order
             {
@@ -825,7 +826,9 @@ public class OrdersController : ControllerBase
             {
                 OrderId = order.Id,
                 Status = initialStatus,
-                Note = request.DeliveryMethod == "StorePickup" ? "Đơn quầy: Khách gửi đồ trực tiếp tại tiệm (Đã tiếp nhận)" : "Đơn POS tạo chờ xử lý giao nhận",
+                Note = request.DeliveryMethod == "StorePickup"
+                    ? "Đơn quầy: Khách gửi đồ trực tiếp tại tiệm (Khách tự đến nhận sau khi giặt)"
+                    : "Đơn quầy: Khách gửi đồ trực tiếp tại tiệm (Sẽ giao tận nhà sau khi giặt xong)",
                 ChangedByUserId = staffId,
                 ChangedAt = DateTime.UtcNow
             });
@@ -1302,6 +1305,20 @@ public class OrdersController : ControllerBase
 
         order.Status = OrderStatus.Cancelled;
         order.UpdatedAt = DateTime.UtcNow;
+
+        // Xử lý hoàn tiền bồi hoàn nếu đơn hàng đã được thanh toán trước
+        var payment = await _context.Payments.FirstOrDefaultAsync(p => p.OrderId == order.Id);
+        if (payment != null && payment.Status == PaymentStatus.Paid)
+        {
+            var adminOrStaffName = User.FindFirstValue(ClaimTypes.Name) ?? (role == "Customer" ? "Khách hàng hủy đơn" : "Nhân viên");
+            payment.Status = PaymentStatus.Refunded;
+            payment.RefundedAmount = payment.Amount;
+            payment.RefundReason = !string.IsNullOrWhiteSpace(request?.Reason)
+                ? $"Hoàn tiền do hủy đơn #{order.Id:D4}: {request.Reason.Trim()}"
+                : $"Hoàn tiền do hủy đơn #{order.Id:D4}";
+            payment.RefundedAt = DateTime.UtcNow;
+            payment.RefundedBy = adminOrStaffName;
+        }
 
         var cancelNote = !string.IsNullOrWhiteSpace(request?.Reason)
             ? $"Đơn hàng đã được hủy ({request.Reason.Trim()})"

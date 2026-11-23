@@ -103,7 +103,7 @@ public class ShiftHandoverController : ControllerBase
                 o.DeliveryAddress,
                 o.TotalAmount,
                 o.PaymentMethod,
-                isCash = o.PaymentMethod == "Cash" || o.PaymentMethod == "COD",
+                isPaidOnline = _context.Payments.Any(p => p.OrderId == o.Id && p.Status == PaymentStatus.Paid && p.Method != PaymentMethod.Cash),
                 o.CreatedAt,
                 o.UpdatedAt
             })
@@ -111,8 +111,8 @@ public class ShiftHandoverController : ControllerBase
 
         var completedOrders = allCompletedOrders.Where(o => !handedOverSet.Contains(o.Id)).ToList();
 
-        var cashOrders = completedOrders.Where(x => x.isCash).ToList();
-        var onlineOrders = completedOrders.Where(x => !x.isCash).ToList();
+        var cashOrders = completedOrders.Where(x => !x.isPaidOnline && (x.PaymentMethod == "Cash" || x.PaymentMethod == "COD")).ToList();
+        var onlineOrders = completedOrders.Where(x => x.isPaidOnline || (x.PaymentMethod != "Cash" && x.PaymentMethod != "COD")).ToList();
 
         decimal cashTotal = cashOrders.Sum(x => x.TotalAmount);
         decimal onlineTotal = onlineOrders.Sum(x => x.TotalAmount);
@@ -210,8 +210,14 @@ public class ShiftHandoverController : ControllerBase
             return BadRequest(new { message = "Ca làm việc hiện tại chưa có đơn hàng nào hoàn tất để bàn giao." });
         }
 
-        var cashOrders = completedOrders.Where(o => o.PaymentMethod == "Cash" || o.PaymentMethod == "COD").ToList();
-        var onlineOrders = completedOrders.Where(o => o.PaymentMethod != "Cash" && o.PaymentMethod != "COD").ToList();
+        var completedOrderIds = completedOrders.Select(o => o.Id).ToList();
+        var onlinePaidOrderIds = (await _context.Payments
+            .Where(p => completedOrderIds.Contains(p.OrderId) && p.Status == PaymentStatus.Paid && p.Method != PaymentMethod.Cash)
+            .Select(p => p.OrderId)
+            .ToListAsync()).ToHashSet();
+
+        var cashOrders = completedOrders.Where(o => !onlinePaidOrderIds.Contains(o.Id) && (o.PaymentMethod == "Cash" || o.PaymentMethod == "COD")).ToList();
+        var onlineOrders = completedOrders.Where(o => onlinePaidOrderIds.Contains(o.Id) || (o.PaymentMethod != "Cash" && o.PaymentMethod != "COD")).ToList();
 
         decimal cashAmount = cashOrders.Sum(o => o.TotalAmount);
         decimal onlineAmount = onlineOrders.Sum(o => o.TotalAmount);

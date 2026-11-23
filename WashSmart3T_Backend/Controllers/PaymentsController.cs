@@ -219,6 +219,8 @@ public class PaymentsController : ControllerBase
                 else if (request.Method.Equals("Cash", StringComparison.OrdinalIgnoreCase)) method = PaymentMethod.Cash;
             }
 
+            order.PaymentMethod = method.ToString(); // ĐỒNG BỘ NGUỒN SỰ THẬT TÀI CHÍNH BẢNG ORDERS
+
             payment = new Payment
             {
                 OrderId = order.Id,
@@ -260,6 +262,11 @@ public class PaymentsController : ControllerBase
             if (request.Method.Equals("MoMo", StringComparison.OrdinalIgnoreCase)) payment.Method = PaymentMethod.MoMo;
             else if (request.Method.Equals("BankTransfer", StringComparison.OrdinalIgnoreCase)) payment.Method = PaymentMethod.BankTransfer;
             else if (request.Method.Equals("Cash", StringComparison.OrdinalIgnoreCase)) payment.Method = PaymentMethod.Cash;
+        }
+
+        if (payment.Order != null)
+        {
+            payment.Order.PaymentMethod = payment.Method.ToString(); // ĐỒNG BỘ NGUỒN SỰ THẬT TÀI CHÍNH BẢNG ORDERS
         }
 
         payment.Status = PaymentStatus.Paid;
