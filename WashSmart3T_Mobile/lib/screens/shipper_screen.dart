@@ -227,11 +227,25 @@ class _ShipperScreenState extends State<ShipperScreen>
         },
       );
 
+      if (res.statusCode == 401) {
+        await AuthService.logout();
+        if (mounted) {
+          setState(() {
+            _loadError = 'Phiên làm việc đã hết hạn (HTTP 401). Vui lòng đăng nhập lại.';
+            _isLoading = false;
+          });
+          _showSessionExpiredDialog();
+        }
+        return;
+      }
+
       if (res.statusCode != 200) {
-        setState(() {
-          _loadError = 'Lỗi tải đơn hàng (HTTP ${res.statusCode})';
-          _isLoading = false;
-        });
+        if (mounted) {
+          setState(() {
+            _loadError = 'Lỗi tải đơn hàng (HTTP ${res.statusCode})';
+            _isLoading = false;
+          });
+        }
         return;
       }
 
@@ -509,6 +523,17 @@ class _ShipperScreenState extends State<ShipperScreen>
           'note': note ?? 'Shipper cập nhật từ ứng dụng',
         }),
       );
+      if (res.statusCode == 401) {
+        _showToast('Phiên làm việc đã hết hạn. Đang chuyển về màn hình đăng nhập...', isSuccess: false);
+        await AuthService.logout();
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+          );
+        }
+        return false;
+      }
       if (res.statusCode == 401) {
         _showToast('Phiên làm việc đã hết hạn. Đang chuyển về màn hình đăng nhập...', isSuccess: false);
         await AuthService.logout();
@@ -1014,19 +1039,20 @@ class _ShipperScreenState extends State<ShipperScreen>
               )
             else if (_loadError != null)
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFDADB),
                   borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
                     const Icon(
                       Icons.error_outline,
                       color: primaryColor,
-                      size: 20,
+                      size: 22,
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Text(
                         _loadError!,
@@ -1037,16 +1063,47 @@ class _ShipperScreenState extends State<ShipperScreen>
                         ),
                       ),
                     ),
-                    TextButton(
-                      onPressed: _loadOrdersFromApi,
-                      child: Text(
-                        'Thử lại',
-                        style: GoogleFonts.plusJakartaSans(
-                          color: primaryColor,
-                          fontWeight: FontWeight.bold,
+                    const SizedBox(width: 8),
+                    if (_loadError!.contains('401') ||
+                        _loadError!.contains('hết hạn') ||
+                        _loadError!.contains('chưa đăng nhập') ||
+                        _loadError!.contains('kết thúc'))
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: primaryColor,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        onPressed: () async {
+                          await AuthService.logout();
+                          if (context.mounted) {
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(builder: (_) => const LoginScreen()),
+                              (route) => false,
+                            );
+                          }
+                        },
+                        icon: const Icon(Icons.login, color: Colors.white, size: 16),
+                        label: Text(
+                          'Đăng nhập lại ngay',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      )
+                    else
+                      TextButton(
+                        onPressed: _loadOrdersFromApi,
+                        child: Text(
+                          'Thử lại',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: primaryColor,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
-                    ),
                   ],
                 ),
               )
@@ -1129,6 +1186,62 @@ class _ShipperScreenState extends State<ShipperScreen>
       context,
       MaterialPageRoute(builder: (context) => const LoginScreen()),
       (route) => false,
+    );
+  }
+
+  /// Hiển thị thông báo phiên làm việc đã hết hạn và chuyển hướng đăng nhập
+  void _showSessionExpiredDialog() {
+    if (!mounted) return;
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.lock_clock_outlined, color: Colors.orange, size: 26),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'Phiên đăng nhập hết hạn',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 17,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Phiên làm việc của bạn đã hết hạn bảo mật (HTTP 401). Vui lòng đăng nhập lại để tiếp tục nhận và cập nhật trạng thái đơn hàng.',
+          style: GoogleFonts.plusJakartaSans(fontSize: 14, color: outlineColor, height: 1.4),
+        ),
+        actions: [
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+            icon: const Icon(Icons.login, color: Colors.white, size: 18),
+            label: Text(
+              'Đăng nhập lại ngay',
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+                fontSize: 14,
+              ),
+            ),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              Navigator.of(context).pushAndRemoveUntil(
+                MaterialPageRoute(builder: (_) => const LoginScreen()),
+                (route) => false,
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -3205,6 +3318,17 @@ class _ShipperScreenState extends State<ShipperScreen>
         },
         body: jsonEncode(payload),
       );
+      if (res.statusCode == 401) {
+        _showToast('Phiên làm việc đã hết hạn. Đang chuyển về màn hình đăng nhập...', isSuccess: false);
+        await AuthService.logout();
+        if (mounted) {
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (_) => const LoginScreen()),
+            (route) => false,
+          );
+        }
+        return false;
+      }
       if (res.statusCode != 200) {
         var message = 'HTTP ${res.statusCode}';
         try {

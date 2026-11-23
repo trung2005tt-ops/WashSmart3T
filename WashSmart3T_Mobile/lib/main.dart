@@ -56,7 +56,7 @@ class _SessionGateState extends State<SessionGate> {
           final res = await http.post(
             Uri.parse('http://localhost:5085/api/Auth/login'),
             headers: {'Content-Type': 'application/json'},
-            body: jsonEncode({'phone': '0922222222', 'password': '123456'}),
+            body: jsonEncode({'phone': '0818605505', 'password': '123456'}),
           );
           if (res.statusCode == 200) {
             final data = jsonDecode(res.body);
