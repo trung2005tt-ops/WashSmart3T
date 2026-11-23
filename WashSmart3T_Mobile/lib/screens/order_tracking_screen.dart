@@ -347,6 +347,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         children: [
           _buildOrderSummary(order, status),
           const SizedBox(height: 16),
+          _buildProofPhotosCard(order),
+          const SizedBox(height: 16),
           _buildInsuranceSupportCard(order),
           const SizedBox(height: 16),
           _buildSectionTitle('Chi tiết dịch vụ'),
@@ -475,6 +477,248 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
             ),
           ],
         ],
+      ),
+    );
+  }
+
+  // --- WIDGET KHỐI ẢNH MINH CHỨNG GIAO NHẬN CHO KHÁCH HÀNG ---
+  Widget _buildProofPhotosCard(Map<String, dynamic> order) {
+    String formatFullUrl(String raw) {
+      if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
+      final clean = raw.startsWith('/') ? raw : '/$raw';
+      return 'http://localhost:5085$clean';
+    }
+
+    final pickupUrls = (order['pickupProofPhotoUrl'] ?? '')
+        .toString()
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+
+    final deliveryUrls = (order['deliveryProofPhotoUrl'] ?? '')
+        .toString()
+        .split(',')
+        .map((s) => s.trim())
+        .where((s) => s.isNotEmpty)
+        .toList();
+
+    if (pickupUrls.isEmpty && deliveryUrls.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final totalCount = pickupUrls.length + deliveryUrls.length;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0F9FF),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFBAE6FD)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0284C7).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.photo_library, color: Color(0xFF0284C7), size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Ảnh Xác Nhận Minh Chứng ($totalCount ảnh)',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                      ),
+                    ),
+                    Text(
+                      'Hình ảnh đối soát niêm phong seal & nhận đồ sạch',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        color: secondaryText,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE0F2FE),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.verified, size: 12, color: Color(0xFF0284C7)),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Đã chụp',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF0284C7),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // 1. Ảnh lấy đồ
+          if (pickupUrls.isNotEmpty) ...[
+            Text(
+              'Ảnh niêm phong mã Seal khi lấy đồ:',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF0369A1),
+              ),
+            ),
+            const SizedBox(height: 6),
+            SizedBox(
+              height: 90,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: pickupUrls.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (ctx, idx) {
+                  final imgUrl = formatFullUrl(pickupUrls[idx]);
+                  return GestureDetector(
+                    onTap: () => _openZoomProofImage(imgUrl),
+                    child: Container(
+                      width: 90,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFBAE6FD)),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          imgUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Center(
+                            child: Icon(Icons.broken_image, color: Colors.grey),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+
+          // 2. Ảnh giao đồ
+          if (deliveryUrls.isNotEmpty) ...[
+            Text(
+              'Ảnh giao hàng hoàn tất (Khách nhận túi giặt sạch):',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF15803D),
+              ),
+            ),
+            const SizedBox(height: 6),
+            SizedBox(
+              height: 90,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: deliveryUrls.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (ctx, idx) {
+                  final imgUrl = formatFullUrl(deliveryUrls[idx]);
+                  return GestureDetector(
+                    onTap: () => _openZoomProofImage(imgUrl),
+                    child: Container(
+                      width: 90,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFBBF7D0)),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: Image.network(
+                          imgUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => const Center(
+                            child: Icon(Icons.broken_image, color: Colors.grey),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _openZoomProofImage(String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (_) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(12),
+        child: Stack(
+          alignment: Alignment.topRight,
+          children: [
+            Container(
+              constraints: const BoxConstraints(maxHeight: 600, maxWidth: 600),
+              decoration: BoxDecoration(
+                color: Colors.black,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: InteractiveViewer(
+                  panEnabled: true,
+                  minScale: 0.5,
+                  maxScale: 3.5,
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => Container(
+                      height: 200,
+                      color: Colors.white,
+                      alignment: Alignment.center,
+                      child: const Text('Không tải được ảnh.'),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 10,
+              right: 10,
+              child: CircleAvatar(
+                backgroundColor: Colors.black54,
+                child: IconButton(
+                  icon: const Icon(Icons.close, color: Colors.white),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

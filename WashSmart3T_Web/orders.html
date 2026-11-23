@@ -403,6 +403,41 @@
     </div>
   </div>
 
+  <!-- MODAL: Xem Ảnh Minh Chứng Giao Nhận Nhanh -->
+  <div id="proofPhotosModal"
+    class="fixed inset-0 z-[70] bg-black/50 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div
+      class="bg-white rounded-2xl max-w-2xl w-full p-6 border border-surface-container shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center justify-between border-b border-surface-container pb-3">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center">
+            <span class="material-symbols-outlined text-xl">photo_library</span>
+          </div>
+          <div>
+            <h3 class="font-bold text-sm text-on-surface flex items-center gap-2">
+              <span>Ảnh Minh Chứng Giao Nhận</span>
+              <span id="proofModalOrderCode" class="font-mono text-primary font-bold">#WS3T-0000</span>
+            </h3>
+            <p id="proofModalCustomerInfo" class="text-xs text-secondary">Khách hàng: ...</p>
+          </div>
+        </div>
+        <button onclick="closeProofPhotosModal()"
+          class="text-secondary hover:text-on-surface p-1 rounded-lg hover:bg-surface-container">
+          <span class="material-symbols-outlined text-xl">close</span>
+        </button>
+      </div>
+
+      <div id="proofModalContent" class="space-y-4">
+        <!-- Render động ảnh lấy đồ & giao đồ -->
+      </div>
+
+      <div class="flex justify-end pt-2 border-t border-surface-container">
+        <button onclick="closeProofPhotosModal()"
+          class="px-5 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-xs font-bold text-on-surface">Đóng</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: In Phiếu Tag Áo Vải 3T -->
   <div id="printTagModal"
     class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm hidden items-center justify-center p-4">
@@ -776,6 +811,7 @@
           <p class="text-[11px] text-secondary truncate flex items-center gap-1">
             <span class="material-symbols-outlined text-xs text-primary">location_on</span> ${escapeHtml(order.pickupAddress || order.PickupAddress || 'Nhận tại quầy')}
           </p>
+          ${(order.pickupProofPhotoUrl || order.deliveryProofPhotoUrl) ? `<button type="button" onclick="openProofPhotosModal(${Number(order.id || order.Id)})" class="w-full py-1.5 rounded-lg border border-sky-300 bg-sky-50 hover:bg-sky-100 text-sky-800 text-[11px] font-bold flex items-center justify-center gap-1 transition-colors"><span class="material-symbols-outlined text-sm text-sky-600">photo_library</span> <span>Xem ảnh xác nhận giao nhận</span></button>` : ''}
           ${st === 'Pending' ? '' : `<button type="button" onclick="openOrderDetails(${Number(order.id || order.Id)})" class="w-full py-1.5 rounded-lg border border-surface-container bg-white hover:bg-surface-container-low text-on-surface text-[11px] font-bold flex items-center justify-center gap-1"><span class="material-symbols-outlined text-sm">description</span> Xem chi tiết đơn</button>`}
           <div class="pt-1 mt-auto">${buttons}</div>
         </div>`;
@@ -951,6 +987,72 @@
     }
 
     function dispatchShipper(orderId) { window.location.href = 'dispatch.html?order=' + orderId; }
+
+    function openProofPhotosModal(orderId) {
+      const order = findOrderById(orderId);
+      if (!order) return;
+      const code = orderCode(order.id || order.Id);
+      document.getElementById('proofModalOrderCode').textContent = '#WS3T-' + code;
+      const custName = order.customerName || order.CustomerName || 'Khách vãng lai';
+      const custPhone = order.customerPhone || order.CustomerPhone || order.contactPhone || '';
+      document.getElementById('proofModalCustomerInfo').textContent = `Khách hàng: ${custName} • SĐT: ${custPhone}`;
+
+      const content = document.getElementById('proofModalContent');
+      const pickupUrls = (order.pickupProofPhotoUrl || '').split(',').map(s => s.trim()).filter(Boolean);
+      const deliveryUrls = (order.deliveryProofPhotoUrl || '').split(',').map(s => s.trim()).filter(Boolean);
+
+      const formatUrl = u => u.startsWith('http') ? u : 'http://localhost:5085' + (u.startsWith('/') ? u : '/' + u);
+
+      let html = '';
+      if (pickupUrls.length > 0) {
+        html += `
+          <div class="p-3.5 rounded-xl border border-sky-200 bg-sky-50/50 space-y-2">
+            <p class="text-xs font-bold text-sky-900 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-blue-600"></span>
+              <span>1. Ảnh lúc lấy đồ & niêm phong Seal 3T (${pickupUrls.length} ảnh):</span>
+            </p>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              ${pickupUrls.map(u => `
+                <a href="${formatUrl(u)}" target="_blank" class="block aspect-square rounded-xl overflow-hidden border border-slate-200 shadow-xs hover:scale-105 transition-transform" title="Nhấp để xem ảnh to">
+                  <img src="${formatUrl(u)}" alt="Ảnh lấy đồ" class="w-full h-full object-cover">
+                </a>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      if (deliveryUrls.length > 0) {
+        html += `
+          <div class="p-3.5 rounded-xl border border-emerald-200 bg-emerald-50/50 space-y-2">
+            <p class="text-xs font-bold text-emerald-900 flex items-center gap-1.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-600"></span>
+              <span>2. Ảnh giao hàng thành công cho khách (${deliveryUrls.length} ảnh):</span>
+            </p>
+            <div class="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              ${deliveryUrls.map(u => `
+                <a href="${formatUrl(u)}" target="_blank" class="block aspect-square rounded-xl overflow-hidden border border-slate-200 shadow-xs hover:scale-105 transition-transform" title="Nhấp để xem ảnh to">
+                  <img src="${formatUrl(u)}" alt="Ảnh giao đồ" class="w-full h-full object-cover">
+                </a>
+              `).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      if (!html) {
+        html = '<p class="text-center py-8 text-xs text-secondary font-medium">Đơn hàng này chưa có ảnh minh chứng được tải lên.</p>';
+      }
+
+      content.innerHTML = html;
+      document.getElementById('proofPhotosModal')?.classList.remove('hidden');
+      document.getElementById('proofPhotosModal')?.classList.add('flex');
+    }
+
+    function closeProofPhotosModal() {
+      document.getElementById('proofPhotosModal')?.classList.add('hidden');
+      document.getElementById('proofPhotosModal')?.classList.remove('flex');
+    }
 
     function openCancelModal(orderId) {
       activeTargetOrderId = orderId;
