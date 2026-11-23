@@ -317,6 +317,12 @@ var Api = window.Api = {
       if (!res.ok) throw new Error(data.message || `Lỗi ${res.status}`);
       return data;
     },
+    async toggle(id) {
+      return Api.post(`/Services/${id}/toggle`, {});
+    },
+    async delete(id) {
+      return Api.delete(`/Services/${id}`);
+    },
   },
 
   // Gói chăm sóc nâng cao & đóng gói

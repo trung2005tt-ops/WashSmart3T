@@ -398,37 +398,18 @@
             </div>
           </div>
 
-          <!-- 4. Add-on Services -->
+          <!-- 4. Add-on Services (Tải động từ CSDL API CareOptions) -->
           <div class="p-5 rounded-xl bg-surface-card border border-surface-container space-y-3">
-            <h2 class="font-bold text-sm text-on-surface flex items-center gap-2">
-              <span class="material-symbols-outlined text-primary text-lg">add_task</span>
-              Dịch Vụ & Tiện Ích Phụ Phí
-            </h2>
+            <div class="flex items-center justify-between">
+              <h2 class="font-bold text-sm text-on-surface flex items-center gap-2">
+                <span class="material-symbols-outlined text-primary text-lg">add_task</span>
+                Dịch Vụ & Tiện Ích Phụ Phí
+              </h2>
+              <span id="pos-care-count-hint" class="text-[11px] text-secondary font-medium">Đang tải tiện ích...</span>
+            </div>
 
-            <div class="space-y-2 text-xs">
-              
-
-              <label class="flex items-center justify-between p-2.5 bg-surface-container-low rounded-lg cursor-pointer">
-                <div class="flex items-center gap-2">
-                  <input id="addonComfort" type="checkbox" class="accent-primary w-4 h-4">
-                  <div>
-                    <p class="font-semibold text-on-surface">Nước xả vải Comfort Tinh Tươm</p>
-                    <p class="text-[10px] text-secondary">Hương hoa dịu nhẹ lưu hương 7 ngày</p>
-                  </div>
-                </div>
-                <span class="font-bold text-on-surface">+10,000 đ</span>
-              </label>
-
-              <label class="flex items-center justify-between p-2.5 bg-surface-container-low rounded-lg cursor-pointer">
-                <div class="flex items-center gap-2">
-                  <input id="addonBag" type="checkbox" class="accent-primary w-4 h-4">
-                  <div>
-                    <p class="font-semibold text-on-surface">Túi giặt bảo vệ vải sợi cao cấp</p>
-                    <p class="text-[10px] text-secondary">Chống bai dão, sờn vải sợi mỏng</p>
-                  </div>
-                </div>
-                <span class="font-bold text-on-surface">+5,000 đ</span>
-              </label>
+            <div id="posCareOptionsContainer" class="space-y-2 text-xs">
+              <p class="text-xs text-secondary py-2">Đang tải danh sách tiện ích từ hệ thống...</p>
             </div>
           </div>
 
@@ -459,20 +440,8 @@
               </div>
             </div>
 
-            <div class="flex justify-between items-center text-secondary">
-              <span>Khử khuẩn UV kháng nấm</span>
-              <span class="text-primary font-bold">0 đ</span>
-            </div>
-
-            <div id="summaryComfortRow" class="hidden justify-between items-center text-secondary">
-              <span>Nước xả Comfort Tinh Tươm</span>
-              <span class="font-bold text-on-surface">+10,000 đ</span>
-            </div>
-
-            <div id="summaryBagRow" class="hidden justify-between items-center text-secondary">
-              <span>Túi giặt chuyên dụng 3T</span>
-              <span class="font-bold text-on-surface">+5,000 đ</span>
-            </div>
+            <!-- Tiện ích phụ phí được chọn (render động) -->
+            <div id="summaryCareOptionsContainer" class="space-y-1"></div>
 
             <div class="pt-2 border-t border-surface-container space-y-1">
               <div class="flex justify-between items-center">
@@ -707,6 +676,8 @@
   <script>
     let currentCustomer = { name: '', phone: '', tier: 'Khách hàng', points: 0, discount: 0, avatar: 'KH' };
     let availableServices = [];
+    let availableCareOptions = []; // Danh sách tiện ích phụ phí tải động từ CSDL qua Api.CareOptions
+    let selectedCareOptionIds = new Set(); // Bộ ID các tiện ích được nhân viên chọn
     // Hỗ trợ chọn nhiều dịch vụ khác nhau trong 1 đơn hàng (Ví dụ: Giặt thường 3 kg + Áo lụa 2 cái + Comple 1 bộ)
     let selectedCart = []; 
     let activeServiceId = null; 
@@ -757,6 +728,80 @@
         console.error(error); availableServices = []; selectedCart = []; activeServiceId = null;
         group.innerHTML = '<p class="col-span-full text-xs text-red-700 py-4">Không tải được dịch vụ từ API. Kiểm tra backend và nhấn tải lại trang.</p>';
         hint.textContent = 'Lỗi kết nối API'; showToast('Không tải được dịch vụ từ máy chủ.', true);
+      }
+      updateBillCalculations();
+    }
+
+    function safeText(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // ============================================================
+    // TẢI & ĐỒNG BỘ TIỆN ÍCH PHỤ PHÍ TỪ CSDL QUA API CareOptions
+    // ============================================================
+    async function loadRealCareOptionsFromApi() {
+      const container = document.getElementById('posCareOptionsContainer');
+      const hint = document.getElementById('pos-care-count-hint');
+      if (!container) return;
+
+      try {
+        if (!window.Api?.CareOptions?.all) throw new Error('Không tìm thấy API CareOptions');
+        const options = await Api.CareOptions.all(false); // Chỉ lấy tiện ích đang active
+        availableCareOptions = Array.isArray(options) ? options : [];
+
+        if (hint) hint.textContent = `${availableCareOptions.length} tiện ích có sẵn`;
+
+        if (!availableCareOptions.length) {
+          container.innerHTML = '<p class="text-xs text-secondary py-2 italic">Chưa có tiện ích phụ phí nào đang hoạt động.</p>';
+          selectedCareOptionIds.clear();
+          updateBillCalculations();
+          return;
+        }
+
+        container.innerHTML = availableCareOptions.map(opt => {
+          const id = opt.id;
+          const isChecked = selectedCareOptionIds.has(id);
+          const price = Number(opt.price || 0);
+          const priceText = price > 0 ? `+${formatCurrency(price)}` : '<span class="text-emerald-700 font-bold">Miễn phí</span>';
+          const badgeHtml = opt.badgeText ? `<span class="px-1.5 py-0.5 rounded bg-primary/10 text-primary text-[9px] font-bold">${safeText(opt.badgeText)}</span>` : '';
+
+          return `
+            <label class="flex items-center justify-between p-2.5 bg-surface-container-low hover:bg-surface-container rounded-lg cursor-pointer transition-colors border border-transparent hover:border-surface-container">
+              <div class="flex items-center gap-2.5">
+                <input type="checkbox" value="${id}" ${isChecked ? 'checked' : ''} onchange="onTogglePosCareOption(${id}, this.checked)" class="pos-care-checkbox accent-primary w-4 h-4 cursor-pointer">
+                <div>
+                  <div class="flex items-center gap-1.5">
+                    <p class="font-semibold text-on-surface">${safeText(opt.name)}</p>
+                    ${badgeHtml}
+                  </div>
+                  <p class="text-[10px] text-secondary mt-0.5">${safeText(opt.description || '')}</p>
+                </div>
+              </div>
+              <span class="font-bold text-on-surface text-xs whitespace-nowrap ml-2">${priceText}</span>
+            </label>
+          `;
+        }).join('');
+
+      } catch (e) {
+        console.error('Lỗi tải CareOptions cho POS:', e);
+        if (hint) hint.textContent = 'Lỗi kết nối';
+        container.innerHTML = '<p class="text-xs text-red-600 py-2">Không tải được tiện ích phụ phí từ máy chủ.</p>';
+      }
+
+      updateBillCalculations();
+    }
+
+    function onTogglePosCareOption(id, isChecked) {
+      if (isChecked) {
+        selectedCareOptionIds.add(id);
+      } else {
+        selectedCareOptionIds.delete(id);
       }
       updateBillCalculations();
     }
@@ -961,12 +1006,37 @@
       const cartBadge = document.getElementById('cartCountBadge');
       if (cartBadge) cartBadge.textContent = selectedCart.length;
 
-      // 3. Phụ phí & Giao nhận (Tính phí ship theo địa chỉ giao tận nhà thực tế)
-      const addonUV = document.getElementById('addonUV')?.checked ? 0 : 0;
-      const addonComfort = document.getElementById('addonComfort')?.checked ? 10000 : 0;
-      const addonBag = document.getElementById('addonBag')?.checked ? 5000 : 0;
+      // 3. Phụ phí Tiện ích & Gói chăm sóc động từ CSDL
+      let totalAddonFee = 0;
+      const selectedCareItems = [];
+      const summaryCareContainer = document.getElementById('summaryCareOptionsContainer');
+
+      selectedCareOptionIds.forEach(id => {
+        const opt = availableCareOptions.find(c => c.id === id);
+        if (opt) {
+          const price = Number(opt.price || 0);
+          totalAddonFee += price;
+          selectedCareItems.push({ id: opt.id, name: opt.name, price: price });
+        }
+      });
+
+      if (summaryCareContainer) {
+        if (selectedCareItems.length === 0) {
+          summaryCareContainer.innerHTML = '';
+        } else {
+          summaryCareContainer.innerHTML = selectedCareItems.map(c => `
+            <div class="flex justify-between items-center text-secondary">
+              <span class="truncate pr-2">• ${safeText(c.name)}</span>
+              <span class="font-bold ${c.price > 0 ? 'text-on-surface' : 'text-primary'} whitespace-nowrap">
+                ${c.price > 0 ? '+' + formatCurrency(c.price) : '0 đ'}
+              </span>
+            </div>
+          `).join('');
+        }
+      }
+
       const deliveryFee = isHomeDelivery() ? currentDeliveryFee : 0;
-      const subtotal = serviceTotal + addonComfort + addonBag + deliveryFee;
+      const subtotal = serviceTotal + totalAddonFee + deliveryFee;
       const discount = 0, grandTotal = subtotal;
 
       const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
@@ -975,8 +1045,6 @@
       set('summaryGrandTotal', formatCurrency(grandTotal).replace('đ', 'VNĐ'));
       set('vip-discount-label', 'Ưu đãi thành viên');
 
-      const cr = document.getElementById('summaryComfortRow'); if (cr) cr.style.display = addonComfort ? 'flex' : 'none';
-      const br = document.getElementById('summaryBagRow'); if (br) br.style.display = addonBag ? 'flex' : 'none';
       let deliveryRow = document.getElementById('summaryDeliveryRow');
       if (!deliveryRow) { 
         const parent = document.getElementById('summarySubtotal')?.parentElement?.parentElement; 
@@ -1008,7 +1076,7 @@
         if (qrContainer) qrContainer.classList.add('hidden');
         if (qrEmpty) qrEmpty.classList.remove('hidden');
       }
-      return { subtotal, discount, grandTotal, serviceTotal, addonUV, addonComfort, addonBag, deliveryFee };
+      return { subtotal, discount, grandTotal, serviceTotal, addonFee: totalAddonFee, selectedCareItems, deliveryFee };
     }
     async function lookupCustomer() {
       const phone = document.getElementById('customerPhoneInput').value.replace(/\D/g, '');
@@ -1058,8 +1126,7 @@
         setServiceQuantityManual(activeItem.serviceId, input.trim());
       }
     });
-    document.getElementById('addonComfort')?.addEventListener('change', updateBillCalculations);
-    document.getElementById('addonBag')?.addEventListener('change', updateBillCalculations);
+    // Phụ phí tiện ích giờ được quản lý động qua API CareOptions và onTogglePosCareOption
     
     async function recalculateDeliveryFeeFromAddress(address) {
       const addr = (address || '').trim();
@@ -1156,8 +1223,35 @@ document.querySelectorAll('input[name="returnMethod"]').forEach(el => el.addEven
           quantity: item.quantity
         }));
         const servicesSummaryText = selectedCart.map(item => `${item.name}: ${item.quantity} ${item.unit}`).join(', ');
-        const notes = [`Nguồn: POS quầy`, `Họ tên khách: ${customerName}`, `Chi tiết dịch vụ: ${servicesSummaryText}`, `Hình thức nhận đồ sau giặt: ${isHomeDelivery() ? 'Giao tận nhà' : 'Khách tự đến cửa hàng lấy'}`, `Phương thức thanh toán: ${selectedPaymentMethod}`, `Thời điểm thu tiền: ${isPayNow ? 'Tại quầy khi tiếp nhận' : 'COD khi giao đồ'}`, `Tiện ích: ${[document.getElementById('addonUV').checked ? 'Khử khuẩn UV' : null, calc.addonComfort ? 'Nước xả Comfort (+10.000đ)' : null, calc.addonBag ? 'Túi giặt bảo vệ (+5.000đ)' : null].filter(Boolean).join(', ') || 'Không có'}`, `Phụ phí tiện ích: ${calc.addonComfort + calc.addonBag}đ`, `Phí giao hàng: ${calc.deliveryFee}đ`];
-        const newOrder = await Api.post('/Orders/pos', { customerName, contactPhone: phone, pickupAddress: STORE_ADDRESS, deliveryAddress: isHomeDelivery() ? address : STORE_ADDRESS, deliveryMethod: isHomeDelivery() ? 'HomeDelivery' : 'StorePickup', deliveryFee: calc.deliveryFee, addonFee: calc.addonComfort + calc.addonBag, cashReceived, paymentMethod: selectedPaymentMethod, paymentTiming: isPayNow ? 'PayNow' : 'COD', note: notes.join('\n'), items: orderItemsPayload, distanceKm: currentDistanceKm });
+        const careSummaryText = (calc.selectedCareItems && calc.selectedCareItems.length)
+          ? calc.selectedCareItems.map(c => `${c.name} (${c.price > 0 ? '+' + formatCurrency(c.price) : 'Miễn phí'})`).join(', ')
+          : 'Không có';
+        const notes = [
+          `Nguồn: POS quầy`,
+          `Họ tên khách: ${customerName}`,
+          `Chi tiết dịch vụ: ${servicesSummaryText}`,
+          `Hình thức nhận đồ sau giặt: ${isHomeDelivery() ? 'Giao tận nhà' : 'Khách tự đến cửa hàng lấy'}`,
+          `Phương thức thanh toán: ${selectedPaymentMethod}`,
+          `Thời điểm thu tiền: ${isPayNow ? 'Tại quầy khi tiếp nhận' : 'COD khi giao đồ'}`,
+          `Tiện ích: ${careSummaryText}`,
+          `Phụ phí tiện ích: ${calc.addonFee}đ`,
+          `Phí giao hàng: ${calc.deliveryFee}đ`
+        ];
+        const newOrder = await Api.post('/Orders/pos', {
+          customerName,
+          contactPhone: phone,
+          pickupAddress: STORE_ADDRESS,
+          deliveryAddress: isHomeDelivery() ? address : STORE_ADDRESS,
+          deliveryMethod: isHomeDelivery() ? 'HomeDelivery' : 'StorePickup',
+          deliveryFee: calc.deliveryFee,
+          addonFee: calc.addonFee,
+          cashReceived,
+          paymentMethod: selectedPaymentMethod,
+          paymentTiming: isPayNow ? 'PayNow' : 'COD',
+          note: notes.join('\n'),
+          items: orderItemsPayload,
+          distanceKm: currentDistanceKm
+        });
         const orderId = newOrder.orderId ?? newOrder.id ?? newOrder.Id;
         if (!orderId) throw new Error('Máy chủ không trả về mã đơn. Không thể xác nhận tạo đơn.');
         const now = new Date(); const dateTimeStr = new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(now);
@@ -1194,9 +1288,24 @@ document.querySelectorAll('input[name="returnMethod"]').forEach(el => el.addEven
           });
         }
         
-        const addonList = document.getElementById('receipt-addon-list'); addonList.replaceChildren();
-        const rows = [['Khử khuẩn UV', document.getElementById('addonUV').checked ? 0 : null], ['Nước xả Comfort', calc.addonComfort || null], ['Túi giặt bảo vệ', calc.addonBag || null], ['Phí giao tận nhà (' + currentDistanceKm + ' km)', calc.deliveryFee || null]].filter(x => x[1] !== null);
-        rows.forEach(([name, amount]) => { const row = document.createElement('div'); row.className = 'flex justify-between'; const left = document.createElement('span'); left.textContent = '• ' + name; const right = document.createElement('span'); right.textContent = formatCurrency(amount); row.append(left, right); addonList.appendChild(row); });
+        const addonList = document.getElementById('receipt-addon-list');
+        if (addonList) {
+          addonList.replaceChildren();
+          const rows = [
+            ...(calc.selectedCareItems || []).map(c => [c.name, c.price]),
+            ...(calc.deliveryFee ? [['Phí giao tận nhà (' + currentDistanceKm + ' km)', calc.deliveryFee]] : [])
+          ];
+          rows.forEach(([name, amount]) => {
+            const row = document.createElement('div');
+            row.className = 'flex justify-between';
+            const left = document.createElement('span');
+            left.textContent = '• ' + name;
+            const right = document.createElement('span');
+            right.textContent = (amount > 0) ? formatCurrency(amount) : '0 đ';
+            row.append(left, right);
+            addonList.appendChild(row);
+          });
+        }
         set('receipt-subtotal', formatCurrency(calc.grandTotal)); set('receipt-vip-title', 'Ưu đãi thành viên:'); set('receipt-vip-discount', formatCurrency(0)); set('receipt-grand-total', formatCurrency(newOrder.totalAmount ?? newOrder.TotalAmount ?? calc.grandTotal).replace('đ', 'VNĐ')); set('receipt-pay-method', `${selectedPaymentMethod} · ${isPayNow ? 'Thu tại quầy' : 'COD khi giao đồ'}`);
         receiptModal.classList.remove('hidden'); receiptModal.classList.add('flex'); showToast(`Đã tạo đơn #WS3T-${orderId}. ${newOrder.paymentStatus === 'Pending' ? 'Thanh toán đang chờ xác nhận.' : 'Đã ghi nhận thanh toán tiền mặt tại quầy.'}`);
       } catch (err) { showToast('Không tạo được đơn: ' + (err.message || 'Lỗi API'), true); }
@@ -1254,6 +1363,7 @@ document.querySelectorAll('input[name="returnMethod"]').forEach(el => el.addEven
     (async () => {
       await loadStoreBankConfig();
       await loadRealServicesFromApi();
+      await loadRealCareOptionsFromApi();
       updateBillCalculations();
     })();
   </script>

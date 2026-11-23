@@ -332,6 +332,11 @@
           <input id="input-service-name" type="text" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary font-medium" placeholder="Ví dụ: Giặt Chăn Dày Extra">
         </div>
 
+        <div>
+          <label class="block font-semibold text-secondary mb-1">Mô tả dịch vụ</label>
+          <textarea id="input-service-desc" rows="2" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary font-medium resize-none" placeholder="Quy trình xử lý, máy giặt riêng, sấy thơm..."></textarea>
+        </div>
+
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block font-semibold text-secondary mb-1">Loại dịch vụ</label>
@@ -476,6 +481,7 @@
         editingServiceId = null;
         document.getElementById('modal-service-title').textContent = 'Thêm Dịch Vụ Mới';
         document.getElementById('input-service-name').value = '';
+        document.getElementById('input-service-desc').value = '';
         document.getElementById('input-service-price').value = '';
         document.getElementById('input-service-unit').value = 'kg';
         document.getElementById('input-service-type').value = 'kg';
@@ -509,6 +515,11 @@
           const icon = cat === 'kg' ? 'local_laundry_service' : 'checkroom';
           const typeLabel = cat === 'kg' ? 'Giặt ký (kg)' : 'Giặt món (' + unit + ')';
           const ruleLabel = cat === 'kg' ? 'Shipper cân kg thực tế' : 'Số lượng nguyên (1, 2, 3...)';
+          const isActive = s.isActive ?? s.IsActive ?? true;
+
+          const statusBadge = isActive 
+            ? `<span class="px-2 py-0.5 rounded bg-green-100 text-green-800 text-[10px] font-bold">Đang kinh doanh</span>`
+            : `<span class="px-2 py-0.5 rounded bg-gray-100 text-gray-600 text-[10px] font-medium">Tạm ngừng</span>`;
 
           return `<tr class="hover:bg-surface-container-low transition-colors">
             <td class="py-3 px-4">
@@ -533,12 +544,20 @@
               <span class="text-[11px] text-secondary font-medium">${ruleLabel}</span>
             </td>
             <td class="py-3 px-3 text-center">
-              <span class="px-2 py-0.5 rounded bg-green-100 text-green-800 text-[10px] font-bold">Đang kinh doanh</span>
+              ${statusBadge}
             </td>
             <td class="py-3 px-4 text-center">
-              <button class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold text-[11px] transition-colors" data-edit-service="${safeText(id)}">
-                Chỉnh sửa
-              </button>
+              <div class="flex items-center justify-center gap-1.5">
+                <button class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold text-[11px] transition-colors" data-edit-service="${safeText(id)}">
+                  Sửa giá
+                </button>
+                <button class="px-2 py-1 rounded ${isActive ? 'text-amber-700 hover:bg-amber-50' : 'text-green-700 hover:bg-green-50'} text-[11px] font-medium transition-colors" data-toggle-service="${safeText(id)}">
+                  ${isActive ? 'Tạm ngưng' : 'Kích hoạt'}
+                </button>
+                <button class="px-2 py-1 rounded text-red-700 hover:bg-red-50 text-[11px] font-medium transition-colors" data-delete-service="${safeText(id)}">
+                  Xóa
+                </button>
+              </div>
             </td>
           </tr>`;
         }).join('');
@@ -553,8 +572,38 @@
 
       tbody.querySelectorAll('[data-edit-service]').forEach(btn => btn.addEventListener('click', () => {
         const item = serviceCache.find(s => String(serviceId(s)) === btn.dataset.editService);
-        if (item) editService(serviceId(item), serviceName(item), servicePrice(item), serviceUnit(item));
+        if (item) editService(serviceId(item), serviceName(item), servicePrice(item), serviceUnit(item), item.description || item.Description || '');
       }));
+      tbody.querySelectorAll('[data-toggle-service]').forEach(btn => btn.addEventListener('click', () => {
+        toggleService(Number(btn.dataset.toggleService));
+      }));
+      tbody.querySelectorAll('[data-delete-service]').forEach(btn => btn.addEventListener('click', () => {
+        deleteService(Number(btn.dataset.deleteService));
+      }));
+    }
+
+    async function toggleService(id) {
+      const item = serviceCache.find(s => serviceId(s) === id);
+      try {
+        await Api.Services.toggle(id);
+        await loadServicesFromApi();
+        showToast(`Đã thay đổi trạng thái dịch vụ "${serviceName(item)}" thành công.`);
+      } catch (e) {
+        showToast('Không thể thay đổi trạng thái dịch vụ: ' + e.message, true);
+      }
+    }
+
+    async function deleteService(id) {
+      const item = serviceCache.find(s => serviceId(s) === id);
+      const name = serviceName(item);
+      if (!confirm(`Bạn có chắc chắn muốn xóa dịch vụ "${name}" không?`)) return;
+      try {
+        const res = await Api.Services.delete(id);
+        await loadServicesFromApi();
+        showToast(res.message || `Đã xóa dịch vụ "${name}" thành công.`);
+      } catch (e) {
+        showToast('Không thể xóa dịch vụ: ' + e.message, true);
+      }
     }
 
     document.querySelectorAll('.cat-btn').forEach(btn => btn.addEventListener('click', () => {
@@ -563,10 +612,11 @@
       activeCategory = btn.dataset.cat || 'all'; renderServices();
     }));
 
-    function editService(id, name, price, unit) {
+    function editService(id, name, price, unit, desc = '') {
       editingServiceId = id;
       document.getElementById('modal-service-title').textContent = 'Chỉnh Sửa Dịch Vụ #' + id;
       document.getElementById('input-service-name').value = name;
+      document.getElementById('input-service-desc').value = desc;
       document.getElementById('input-service-price').value = price;
       document.getElementById('input-service-unit').value = unit;
       document.getElementById('input-service-type').value = serviceCategory(unit);
@@ -583,6 +633,7 @@
 
     document.getElementById('confirm-save-service')?.addEventListener('click', async () => {
       const name = document.getElementById('input-service-name').value.trim();
+      const desc = document.getElementById('input-service-desc').value.trim() || name;
       const price = Number(document.getElementById('input-service-price').value);
       const unit = document.getElementById('input-service-unit').value.trim() || (document.getElementById('input-service-type').value === 'kg' ? 'kg' : 'món');
       const btn = document.getElementById('confirm-save-service');
@@ -592,16 +643,15 @@
       try {
         if (!window.Api?.Services) throw new Error('Không tìm thấy module API.');
         if (editingServiceId == null) {
-          await Api.Services.create({ name, description: name, price, unit, minimumPrice: null });
+          await Api.Services.create({ name, description: desc, price, unit, minimumPrice: null });
+          showToast(`Đã thêm dịch vụ "${name}" (${money(price)}/${unit}) thành công!`);
         } else {
-          const current = serviceCache.find(s => String(serviceId(s)) === String(editingServiceId));
-          const description = current?.description ?? current?.Description ?? name;
-          await Api.Services.update(editingServiceId, { name, description, price, unit, minimumPrice: null });
+          await Api.Services.update(editingServiceId, { name, description: desc, price, unit, minimumPrice: null });
           await Api.Services.updatePrice(editingServiceId, { price, unit, minimumPrice: null });
+          showToast(`Đã cập nhật đơn giá dịch vụ "${name}" thành ${money(price)}/${unit}!`);
         }
         hideServiceModal();
         await loadServicesFromApi();
-        showToast(`Đã lưu dịch vụ "${name}" thành công.`);
       } catch (e) {
         showToast('Không thể lưu dịch vụ: ' + (e.message || 'Lỗi API'), true);
       } finally { btn.disabled = false; btn.textContent = 'Lưu dịch vụ'; }

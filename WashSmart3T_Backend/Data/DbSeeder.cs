@@ -450,10 +450,37 @@ public static class DbSeeder
                 context.CareOptions.AddRange(
                     new CareOption
                     {
+                        Name = "Nước xả vải Comfort Tinh Tươm",
+                        Description = "Hương hoa dịu nhẹ lưu hương 7 ngày",
+                        Price = 10000,
+                        BadgeText = "Lưu hương 7 ngày",
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    },
+                    new CareOption
+                    {
+                        Name = "Túi giặt bảo vệ vải sợi cao cấp",
+                        Description = "Chống bai dão, sờn vải sợi mỏng và đồ cao cấp",
+                        Price = 5000,
+                        BadgeText = "Chống dão",
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    },
+                    new CareOption
+                    {
+                        Name = "Khử khuẩn UV & Kháng nấm mốc",
+                        Description = "Công nghệ khử trùng tia cực tím diệt 99.9% vi khuẩn",
+                        Price = 15000,
+                        BadgeText = "Khử khuẩn 99.9%",
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    },
+                    new CareOption
+                    {
                         Name = "Ủi hơi nước chống nhăn form",
                         Description = "Ủi đứng áp suất nhiệt, giữ phom áo sơ mi & quần âu",
                         Price = 20000,
-                        BadgeText = null,
+                        BadgeText = "Phẳng phiu",
                         IsActive = true,
                         CreatedAt = DateTime.UtcNow
                     },
@@ -468,7 +495,7 @@ public static class DbSeeder
                     },
                     new CareOption
                     {
-                        Name = "Túi vải niêm phong chống nước",
+                        Name = "Túi vải niêm phong chống nước 3T",
                         Description = "Khóa seal an toàn chống ẩm bụi, mở seal tại nhà khách",
                         Price = 0,
                         BadgeText = "#SEAL-3T",

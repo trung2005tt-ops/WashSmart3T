@@ -283,4 +283,66 @@ public class ServicesController : ControllerBase
             unit = request.Unit
         });
     }
+
+    // =========================
+    // POST: api/Services/{id}/toggle
+    // ADMIN: Bật / Tắt trạng thái kinh doanh dịch vụ
+    // =========================
+    [Authorize(Roles = "Admin,Staff")]
+    [HttpPost("{id}/toggle")]
+    public async Task<IActionResult> ToggleService(int id)
+    {
+        var service = await _context.Services.FirstOrDefaultAsync(x => x.Id == id);
+        if (service == null)
+        {
+            return NotFound(new { message = "Không tìm thấy dịch vụ." });
+        }
+
+        service.IsActive = !service.IsActive;
+        service.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = $"Đã {(service.IsActive ? "kích hoạt kinh doanh" : "tạm dừng kinh doanh")} dịch vụ: {service.Name}",
+            isActive = service.IsActive
+        });
+    }
+
+    // =========================
+    // DELETE: api/Services/{id}
+    // ADMIN: Xóa dịch vụ
+    // =========================
+    [Authorize(Roles = "Admin")]
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteService(int id)
+    {
+        var service = await _context.Services
+            .Include(x => x.Prices)
+            .FirstOrDefaultAsync(x => x.Id == id);
+
+        if (service == null)
+        {
+            return NotFound(new { message = "Không tìm thấy dịch vụ." });
+        }
+
+        var hasOrders = await _context.OrderDetails.AnyAsync(x => x.ServiceId == id);
+        if (hasOrders)
+        {
+            service.IsActive = false;
+            service.UpdatedAt = DateTime.UtcNow;
+            await _context.SaveChangesAsync();
+            return Ok(new { message = $"Dịch vụ '{service.Name}' đã có đơn hàng trong quá khứ nên đã được chuyển sang trạng thái tạm ngưng kinh doanh." });
+        }
+
+        if (service.Prices != null && service.Prices.Any())
+        {
+            _context.ServicePrices.RemoveRange(service.Prices);
+        }
+
+        _context.Services.Remove(service);
+        await _context.SaveChangesAsync();
+
+        return Ok(new { message = $"Đã xóa dịch vụ '{service.Name}' thành công." });
+    }
 }
