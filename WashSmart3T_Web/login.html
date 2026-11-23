@@ -159,7 +159,12 @@
 
     // Tự động chuyển hướng nếu đã đăng nhập
     if (window.Auth && Auth.getToken()) {
-      window.location.href = 'index.html';
+      const savedRole = (Auth.getRole() || '').toLowerCase();
+      if (savedRole === 'staff') {
+        window.location.href = 'pos.html';
+      } else {
+        window.location.href = 'index.html';
+      }
     }
 
     form.addEventListener('submit', async (e) => {
@@ -206,13 +211,26 @@
               } else {
                 localStorage.clear();
               }
+              if (roleStr.toLowerCase().includes('shipper')) {
+                throw new Error("Tài khoản Shipper vui lòng đăng nhập trên ứng dụng Mobile chuyên dụng dành cho tài xế giao nhận, không truy cập trang quản trị web.");
+              }
+              if (roleStr.toLowerCase().includes('customer')) {
+                throw new Error("Tài khoản Khách hàng vui lòng đăng nhập trên ứng dụng Mobile WashSmart 3T.");
+              }
               throw new Error("Tài khoản này không có quyền truy cập hệ thống quản lý.");
             }
           }
         }
 
-        // 3. Đăng nhập thành công -> Vào Dashboard
-        window.location.href = 'index.html';
+        // 3. Đăng nhập thành công -> Điều hướng theo vai trò (RBAC)
+        const userRole = (Auth.getRole() || '').toLowerCase();
+        if (userRole === 'staff') {
+          // Nhân viên POS chỉ thao tác: POS quầy, Quản lý đơn hàng, Điều phối shipper, Xử lý khiếu nại -> Mặc định vào POS Quầy
+          window.location.href = 'pos.html';
+        } else {
+          // Admin có toàn quyền -> Vào Dashboard
+          window.location.href = 'index.html';
+        }
 
       } catch (err) {
         const errorMsg = err.message ? err.message.replace('Exception: ', '') : 'Số điện thoại hoặc mật khẩu không chính xác.';

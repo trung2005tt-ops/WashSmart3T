@@ -36,7 +36,11 @@ var Auth = window.Auth = {
 
     // Shipper phải đăng nhập qua API riêng
     if (data.user?.role === 'Shipper') {
-      throw new Error('Tài khoản Shipper không được đăng nhập trang quản lý. Vui lòng dùng App Shipper.');
+      throw new Error('Tài khoản Shipper vui lòng đăng nhập trên ứng dụng Mobile chuyên dụng dành cho tài xế giao nhận, không truy cập trang quản trị web.');
+    }
+
+    if (data.user?.role === 'Customer') {
+      throw new Error('Tài khoản Khách hàng vui lòng đăng nhập trên ứng dụng Mobile WashSmart 3T.');
     }
 
     // Chỉ Admin/Staff được vào trang quản lý
@@ -89,6 +93,16 @@ var Auth = window.Auth = {
 
       const canonicalRole = role === 'admin' ? 'Admin' : 'Staff';
       Auth.save(token, canonicalRole, fullName);
+
+      // Nếu là Staff nhưng lại đang ở trang quản trị Admin-only -> chặn ngay lập tức
+      const page = Auth.getCurrentPage();
+      if (canonicalRole === 'Staff' && Auth.ADMIN_ONLY_PAGES.some(p => page.endsWith(p))) {
+        console.warn(`[RBAC] Staff không được truy cập ${page}, chuyển hướng về pos.html`);
+        alert('Tài khoản Nhân viên POS chỉ được phép thao tác 4 màn hình: POS Quầy, Quản lý đơn hàng, Điều phối shipper, Xử lý khiếu nại.');
+        window.location.replace('pos.html');
+        return null;
+      }
+
       return { ...me, role: canonicalRole, fullName };
     } catch (e) {
       if (savedRole === 'admin' || savedRole === 'staff') {
@@ -99,7 +113,110 @@ var Auth = window.Auth = {
       return null;
     }
   },
+
+  // ============================================================
+  // RBAC: PHÂN QUYỀN MÀN HÌNH THEO VAI TRÒ (Staff vs Admin)
+  // Staff: chỉ được thao tác POS Quầy, Quản lý đơn hàng, Điều phối shipper, Xử lý khiếu nại.
+  // Admin: toàn quyền truy cập tất cả màn hình.
+  // ============================================================
+  STAFF_ALLOWED_PAGES: ['pos.html', 'orders.html', 'dispatch.html', 'complaints.html'],
+  ADMIN_ONLY_PAGES: ['index.html', 'accounts.html', 'services.html', 'store-settings.html', 'customers.html'],
+
+  getCurrentPage() {
+    if (typeof window === 'undefined' || !window.location) return '';
+    const file = window.location.pathname.split('/').pop().toLowerCase();
+    return file || 'index.html';
+  },
+
+  enforcePagePermissions() {
+    const page = Auth.getCurrentPage();
+    if (!page || page === 'login.html') return true;
+
+    const token = Auth.getToken();
+    if (!token) {
+      window.location.href = 'login.html';
+      return false;
+    }
+
+    const role = (Auth.getRole() || '').trim().toLowerCase();
+
+    // Nếu là Staff (Nhân viên POS quầy)
+    if (role === 'staff') {
+      const isAllowed = Auth.STAFF_ALLOWED_PAGES.some(p => page.endsWith(p));
+      if (!isAllowed) {
+        console.warn(`[RBAC] Trang "${page}" bị chặn đối với Nhân viên POS. Tự động điều hướng về pos.html`);
+        alert('Tài khoản Nhân viên POS chỉ được phép thao tác 4 màn hình: POS Quầy, Quản lý đơn hàng, Điều phối shipper, Xử lý khiếu nại.');
+        window.location.replace('pos.html');
+        return false;
+      }
+    }
+    return true;
+  },
+
+  applySidebarPermissions() {
+    const role = (Auth.getRole() || '').trim().toLowerCase();
+    const fullName = Auth.getFullName() || '';
+    const isStaff = role === 'staff';
+
+    // 1. Lọc các link sidebar menu
+    const links = document.querySelectorAll('aside nav a, aside a, nav a');
+    links.forEach(a => {
+      const href = (a.getAttribute('href') || '').toLowerCase();
+      if (isStaff) {
+        // Nếu là Staff, ẩn các mục quản trị Admin
+        if (Auth.ADMIN_ONLY_PAGES.some(p => href.includes(p))) {
+          a.style.display = 'none';
+        }
+      }
+    });
+
+    // 2. Cập nhật thông tin nhân viên hiển thị trên Header / Sidebar
+    if (fullName) {
+      const nameEls = document.querySelectorAll('.user-fullname, header p.font-bold, aside p.font-bold');
+      nameEls.forEach(el => {
+        if (el.textContent.includes('Nguyễn Kiều Như') && fullName !== 'Nguyễn Kiều Như') {
+          el.textContent = fullName;
+        }
+      });
+
+      // Cập nhật Avatar initials (2 chữ cái)
+      const initials = fullName.trim().split(/\s+/).map(w => w[0]).slice(-2).join('').toUpperCase();
+      if (initials) {
+        const avatarEls = document.querySelectorAll('header div.rounded-full, aside div.rounded-full');
+        avatarEls.forEach(el => {
+          if (el.textContent.trim() === 'KN' && initials !== 'KN') {
+            el.textContent = initials;
+          }
+        });
+      }
+    }
+
+    if (isStaff) {
+      const roleEls = document.querySelectorAll('.user-role, header p.text-secondary, aside p.text-secondary');
+      roleEls.forEach(el => {
+        if (el.textContent.includes('Quản lý')) {
+          el.textContent = 'Lễ tân POS Quầy';
+        }
+      });
+    }
+  },
 };
+
+// Tự động kích hoạt kiểm tra RBAC khi nạp trang
+if (typeof window !== 'undefined' && window.location) {
+  const currentPage = (window.location.pathname.split('/').pop() || '').toLowerCase();
+  if (currentPage && currentPage !== 'login.html') {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', () => {
+        Auth.enforcePagePermissions();
+        Auth.applySidebarPermissions();
+      });
+    } else {
+      Auth.enforcePagePermissions();
+      Auth.applySidebarPermissions();
+    }
+  }
+}
 
 var Api = window.Api = {
   headers() {

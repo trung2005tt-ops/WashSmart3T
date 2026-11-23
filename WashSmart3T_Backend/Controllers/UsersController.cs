@@ -14,6 +14,7 @@ public class CreateUserRequest
     public string? Email { get; set; }
     public string? Password { get; set; }
     public string Role { get; set; } = "Staff"; // Staff, Shipper, Customer, Admin
+    public string? RoleName { get; set; }
     public string? Branch { get; set; }
 }
 
@@ -23,8 +24,10 @@ public class UpdateUserRequest
     public string? Phone { get; set; }
     public string? Email { get; set; }
     public string? Role { get; set; }
+    public string? RoleName { get; set; }
     public bool? IsActive { get; set; }
     public string? Branch { get; set; }
+    public string? Password { get; set; }
 }
 
 public class ResetPasswordRequest
@@ -234,7 +237,13 @@ public class UsersController : ControllerBase
             return BadRequest(new { message = "Số điện thoại này đã được đăng ký tài khoản khác." });
         }
 
-        var targetRoleName = string.IsNullOrWhiteSpace(request.Role) ? "Staff" : request.Role.Trim();
+        var inputRole = !string.IsNullOrWhiteSpace(request.RoleName) ? request.RoleName : request.Role;
+        var targetRoleName = string.IsNullOrWhiteSpace(inputRole) ? "Staff" : inputRole.Trim();
+        if (targetRoleName.Contains("Shipper", StringComparison.OrdinalIgnoreCase)) targetRoleName = "Shipper";
+        else if (targetRoleName.Contains("Admin", StringComparison.OrdinalIgnoreCase)) targetRoleName = "Admin";
+        else if (targetRoleName.Contains("Staff", StringComparison.OrdinalIgnoreCase) || targetRoleName.Contains("POS", StringComparison.OrdinalIgnoreCase) || targetRoleName.Contains("Lễ tân", StringComparison.OrdinalIgnoreCase)) targetRoleName = "Staff";
+        else if (targetRoleName.Contains("Tech", StringComparison.OrdinalIgnoreCase) || targetRoleName.Contains("Kỹ thuật", StringComparison.OrdinalIgnoreCase)) targetRoleName = "Technician";
+
         var role = await _context.Roles.FirstOrDefaultAsync(r => r.Name.ToLower() == targetRoleName.ToLower());
         if (role == null)
         {
@@ -308,11 +317,23 @@ public class UsersController : ControllerBase
         if (request.IsActive.HasValue)
             user.IsActive = request.IsActive.Value;
 
-        if (!string.IsNullOrWhiteSpace(request.Role))
+        var inputRole = !string.IsNullOrWhiteSpace(request.RoleName) ? request.RoleName : request.Role;
+        if (!string.IsNullOrWhiteSpace(inputRole))
         {
-            var role = await _context.Roles.FirstOrDefaultAsync(r => r.Name.ToLower() == request.Role.Trim().ToLower());
+            var targetRoleName = inputRole.Trim();
+            if (targetRoleName.Contains("Shipper", StringComparison.OrdinalIgnoreCase)) targetRoleName = "Shipper";
+            else if (targetRoleName.Contains("Admin", StringComparison.OrdinalIgnoreCase)) targetRoleName = "Admin";
+            else if (targetRoleName.Contains("Staff", StringComparison.OrdinalIgnoreCase) || targetRoleName.Contains("POS", StringComparison.OrdinalIgnoreCase) || targetRoleName.Contains("Lễ tân", StringComparison.OrdinalIgnoreCase)) targetRoleName = "Staff";
+            else if (targetRoleName.Contains("Tech", StringComparison.OrdinalIgnoreCase) || targetRoleName.Contains("Kỹ thuật", StringComparison.OrdinalIgnoreCase)) targetRoleName = "Technician";
+
+            var role = await _context.Roles.FirstOrDefaultAsync(r => r.Name.ToLower() == targetRoleName.ToLower());
             if (role != null)
                 user.RoleId = role.Id;
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Password))
+        {
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password.Trim());
         }
 
         await _context.SaveChangesAsync();

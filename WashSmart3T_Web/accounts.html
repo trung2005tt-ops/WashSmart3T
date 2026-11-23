@@ -683,15 +683,10 @@
             <label class="block font-semibold text-secondary mb-1">Vai Trò</label>
 
             <select id="input-emp-role" class="w-full bg-surface-container-low rounded-lg px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary">
-
-              <option value="Admin Quản trị">Admin Quản trị</option>
-
-              <option value="Lễ tân POS" selected>Lễ tân POS</option>
-
+              <option value="Admin">Admin Quản trị</option>
+              <option value="Staff" selected>Lễ tân POS</option>
               <option value="Shipper">Shipper Giao nhận</option>
-
-              <option value="Kỹ thuật xưởng">Kỹ thuật xưởng</option>
-
+              <option value="Technician">Kỹ thuật xưởng</option>
             </select>
 
           </div>
@@ -861,6 +856,14 @@
 
 
     async function loadAccounts() {
+      if (window.Auth) {
+        const userRole = (Auth.getRole() || '').toLowerCase();
+        if (userRole === 'staff') {
+          alert('Tài khoản Nhân viên POS không có quyền truy cập trang Quản lý tài khoản.');
+          window.location.replace('pos.html');
+          return;
+        }
+      }
       try {
         const users = await Api.Users.all();
         // CHỈ QUẢN LÝ NHÂN SỰ CỬA HÀNG (Admin, Lễ tân POS, Shipper, Kỹ thuật xưởng)
@@ -1115,7 +1118,8 @@
 
       document.getElementById('input-emp-password').value = item.plainPassword || '123456';
 
-      document.getElementById('input-emp-role').value = item.role;
+      const rawRole = item.rawRole || (item.role.includes('Admin') ? 'Admin' : (item.role.includes('Shipper') ? 'Shipper' : (item.role.includes('Kỹ thuật') ? 'Technician' : 'Staff')));
+      document.getElementById('input-emp-role').value = rawRole;
 
       document.getElementById('input-emp-branch').value = item.branch;
 
@@ -1138,10 +1142,9 @@
       document.getElementById('modal-account-title').textContent = 'Thêm Nhân Sự Mới';
 
       document.getElementById('input-emp-name').value = '';
-
       document.getElementById('input-emp-phone').value = '';
-
-      document.getElementById('input-emp-role').value = 'Lễ tân POS';
+      document.getElementById('input-emp-password').value = '123456';
+      document.getElementById('input-emp-role').value = 'Staff';
 
       document.getElementById('input-emp-branch').value = 'CS1 - TP.HCM';
 
@@ -1174,97 +1177,57 @@
 
 
     // 4. Lưu Nhân Viên (Gửi trực tiếp lên Backend SQL Server)
-
     document.getElementById('confirm-save-account')?.addEventListener('click', async () => {
-
       const name = document.getElementById('input-emp-name').value.trim();
-
       const phone = document.getElementById('input-emp-phone').value.trim();
-
-      const role = document.getElementById('input-emp-role').value;
-
+      const roleVal = document.getElementById('input-emp-role').value;
       const branch = document.getElementById('input-emp-branch').value;
-
       const status = document.getElementById('input-emp-status').value;
 
-
-
       if (!name || !phone) {
-
         showToast('Vui lòng nhập đầy đủ tên và số điện thoại!', true);
-
         return;
-
       }
 
-
-
       let roleName = 'Staff';
-
-      if (role.includes('Admin')) roleName = 'Admin';
-
-      else if (role.includes('Shipper')) roleName = 'Shipper';
-
-
+      if (roleVal.includes('Admin')) roleName = 'Admin';
+      else if (roleVal.includes('Shipper')) roleName = 'Shipper';
+      else if (roleVal.includes('Technician') || roleVal.includes('Kỹ thuật')) roleName = 'Technician';
+      else roleName = 'Staff';
 
       const password = document.getElementById('input-emp-password').value.trim();
 
-
-
       try {
-
         if (currentEditingId !== null) {
-
           const payload = {
-
             fullName: name,
-
             phone: phone,
-
+            role: roleName,
             roleName: roleName,
-
+            branch: branch,
             isActive: status === 'active'
-
           };
-
           if (password) payload.password = password;
-
           await Api.Users.update(currentEditingId, payload);
-
-          showToast(`Đã cập nhật thông tin nhân sự "${name}" thành công!`);
-
+          showToast(`Đã cập nhật thông tin nhân sự "${name}" (${roleName}) thành công!`);
         } else {
-
           const finalPass = password || '123456';
-
           await Api.Users.create({
-
             fullName: name,
-
             phone: phone,
-
+            role: roleName,
             roleName: roleName,
-
+            branch: branch,
             isActive: status === 'active',
-
             password: finalPass
-
           });
-
           showToast(`Đã tạo tài khoản "${name}" (${roleName}) thành công! Mật khẩu: ${finalPass}`);
-
         }
-
         hideAccountModal();
-
         await loadAccounts();
-
       } catch (err) {
-
         showToast('Lỗi lưu tài khoản: ' + err.message, true);
-
       }
-
     });
 
 
