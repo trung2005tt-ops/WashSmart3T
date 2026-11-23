@@ -573,17 +573,38 @@ class _ShipperScreenState extends State<ShipperScreen>
     }
   }
 
+  Future<void> _syncPresenceToBackend(bool isOnline) async {
+    try {
+      final token = await AuthService.getToken();
+      if (token == null || token.isEmpty) return;
+      await http.post(
+        Uri.parse('$_baseUrl/Orders/shipper-presence'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'isOnline': isOnline,
+          'latitude': 10.8031, // Cửa hàng WashSmart 3T (140 Lê Trọng Tấn)
+          'longitude': 106.6268,
+        }),
+      );
+    } catch (_) {}
+  }
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     // Tải đơn hàng thật từ API khi mở màn hình
     _loadOrdersFromApi();
+    _syncPresenceToBackend(true);
 
     // 🚀 Polling kiểm tra đơn hàng mới định kỳ mỗi 10 giây (Item 10)
     _orderPollingTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
       if (mounted && _isOnline) {
         _checkNewOrdersSilently();
+        _syncPresenceToBackend(true);
       }
     });
   }
@@ -860,6 +881,7 @@ class _ShipperScreenState extends State<ShipperScreen>
                 setState(() {
                   _isOnline = !_isOnline;
                 });
+                _syncPresenceToBackend(_isOnline);
                 _showToast(
                   _isOnline
                       ? 'Bạn đã BẬT chế độ sẵn sàng nhận đơn'
@@ -1180,6 +1202,8 @@ class _ShipperScreenState extends State<ShipperScreen>
 
     if (confirmed != true || !context.mounted) return;
 
+    // Báo cho backend biết shipper đã offline
+    await _syncPresenceToBackend(false);
     // Xóa Token lưu dưới SharedPreferences
     await AuthService.logout();
 

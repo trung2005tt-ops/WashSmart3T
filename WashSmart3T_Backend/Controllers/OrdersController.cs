@@ -22,6 +22,24 @@ public class OrdersController : ControllerBase
     private readonly ILogger<OrdersController> _logger;
     private readonly IHubContext<OrderNotificationHub> _hubContext;
 
+    public class ShipperPresenceInfo
+    {
+        public int ShipperId { get; set; }
+        public bool IsOnline { get; set; }
+        public DateTime LastSeenAt { get; set; } = DateTime.UtcNow;
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+    }
+
+    public class ShipperPresenceRequest
+    {
+        public bool IsOnline { get; set; } = true;
+        public double? Latitude { get; set; }
+        public double? Longitude { get; set; }
+    }
+
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, ShipperPresenceInfo> _shipperPresence = new();
+
     public OrdersController(
         ApplicationDbContext context,
         IWebHostEnvironment env,
@@ -136,8 +154,55 @@ public class OrdersController : ControllerBase
     }
 
     // ============================================================
+    // POST: api/Orders/shipper-presence
+    // Cập nhật trạng thái trực tuyến / vị trí hiện trường của Shipper
+    // ============================================================
+    [HttpPost("shipper-presence")]
+    [Authorize(Roles = "Shipper,Admin,Staff")]
+    public async Task<IActionResult> UpdateShipperPresence([FromBody] ShipperPresenceRequest request)
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!int.TryParse(userIdClaim, out int shipperId))
+        {
+            return Unauthorized();
+        }
+
+        _shipperPresence.AddOrUpdate(shipperId,
+            new ShipperPresenceInfo
+            {
+                ShipperId = shipperId,
+                IsOnline = request.IsOnline,
+                LastSeenAt = DateTime.UtcNow,
+                Latitude = request.Latitude,
+                Longitude = request.Longitude
+            },
+            (id, existing) =>
+            {
+                existing.IsOnline = request.IsOnline;
+                existing.LastSeenAt = DateTime.UtcNow;
+                if (request.Latitude.HasValue) existing.Latitude = request.Latitude;
+                if (request.Longitude.HasValue) existing.Longitude = request.Longitude;
+                return existing;
+            });
+
+        try
+        {
+            await _hubContext.Clients.All.SendAsync("ShipperPresenceUpdated", new
+            {
+                shipperId,
+                isOnline = request.IsOnline,
+                latitude = request.Latitude,
+                longitude = request.Longitude
+            });
+        }
+        catch { }
+
+        return Ok(new { message = "Cập nhật trạng thái trực tuyến thành công.", isOnline = request.IsOnline });
+    }
+
+    // ============================================================
     // GET: api/Orders/management/shippers
-    // Danh sách shipper cho Admin/Staff phân công (hỗ trợ hiển thị số đơn đang ghép)
+    // Danh sách shipper cho Admin/Staff phân công (hỗ trợ hiển thị số đơn đang ghép và trạng thái Online)
     // ============================================================
     [HttpGet("management/shippers")]
     [Authorize(Roles = "Admin,Staff")]
@@ -182,12 +247,34 @@ public class OrdersController : ControllerBase
             // Shipper bận khi đã nhận tối đa 5 đơn cùng đợt (ghép tuyến)
             bool isBusy = activeOrders.Count >= 5;
 
+            // Kiểm tra trạng thái Online từ bộ theo dõi Presence
+            bool isOnline = false;
+            double? lat = null;
+            double? lng = null;
+
+            if (_shipperPresence.TryGetValue(shipper.Id, out var presence))
+            {
+                // Coi là Online nếu được đánh dấu IsOnline và có tương tác trong 15 phút gần nhất
+                isOnline = presence.IsOnline && (DateTime.UtcNow - presence.LastSeenAt).TotalMinutes <= 15;
+                lat = presence.Latitude;
+                lng = presence.Longitude;
+            }
+
+            // Nếu shipper đang chạy đơn PickingUp hoặc Delivering thì cũng ghi nhận là Online
+            if (!isOnline && activeOrders.Any(o => o.status == "PickingUp" || o.status == "Delivering"))
+            {
+                isOnline = true;
+            }
+
             shippers.Add(new
             {
                 shipper.Id,
                 shipper.FullName,
                 shipper.Phone,
                 isBusy,
+                isOnline,
+                latitude = lat,
+                longitude = lng,
                 activeTaskCount = activeOrders.Count,
                 currentOrderId = activeOrders.FirstOrDefault()?.Id,
                 currentTask

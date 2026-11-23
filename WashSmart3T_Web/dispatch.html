@@ -1386,7 +1386,8 @@
 
       document.getElementById('statQrAmount').textContent = (typeof formatMoney === 'function' ? formatMoney(qrTotal) : qrTotal.toLocaleString('vi-VN') + ' đ');
       document.getElementById('statCodAmount').textContent = (typeof formatMoney === 'function' ? formatMoney(codTotal) : codTotal.toLocaleString('vi-VN') + ' đ');
-      document.getElementById('statShippersCount').textContent = `${shippers.length}/${shippers.length}`;
+      const onlineShippersCount = shippers.filter(s => s.isOnline).length;
+      document.getElementById('statShippersCount').textContent = `${onlineShippersCount}/${shippers.length}`;
 
       if (list.length === 0) {
         tbody.innerHTML = `<tr><td colspan="4" class="py-8 text-center text-secondary font-medium">Hiện không có đơn hàng nào cần điều phối</td></tr>`;
@@ -1819,17 +1820,39 @@
         orderMarkers[o.id] = marker;
       });
 
-      // 3. Add Shipper Markers
+      // 3. Add Shipper Markers - CHỈ HIỂN THỊ SHIPPER ĐANG ĐĂNG NHẬP (ONLINE) & XUẤT PHÁT TẠI CỬA HÀNG
       Object.values(shipperMarkers).forEach(m => leafletMap.removeLayer(m));
       shipperMarkers = {};
 
-      shippers.forEach((s, idx) => {
-        // Compute shipper location slightly offset from store or along their route
+      // Chỉ hiển thị trên bản đồ khi shipper ĐÃ ĐĂNG NHẬP VÀO HỆ THỐNG (isOnline)
+      const onlineShippers = shippers.filter(s => s.isOnline);
+
+      onlineShippers.forEach((s, idx) => {
         const activeCount = shipperActiveOrderCount(s.id);
-        const offsetAngle = (idx * 60) * (Math.PI / 180);
-        const offsetDist = activeCount > 0 ? 0.015 : 0.004;
-        const sLat = STORE_HUB.lat + offsetDist * Math.cos(offsetAngle);
-        const sLng = STORE_HUB.lng + offsetDist * Math.sin(offsetAngle);
+        let sLat, sLng, locationDesc;
+
+        if (activeCount > 0) {
+          // Khi đang có đơn: Xuất phát từ cửa hàng đến địa chỉ đơn hàng
+          const assignedOrder = allOrders.find(o => o.shipperId === s.id && ['PickingUp', 'Delivering', 'Confirmed', 'Ready'].includes(o.status));
+          if (assignedOrder) {
+            const orderCoords = resolveOrderCoordinates(assignedOrder);
+            // Vị trí đang di chuyển từ Cửa Hàng tới trạm của khách hàng
+            sLat = (STORE_HUB.lat * 0.45) + (orderCoords.lat * 0.55);
+            sLng = (STORE_HUB.lng * 0.45) + (orderCoords.lng * 0.55);
+            locationDesc = `Đang di chuyển từ Cửa hàng tới đơn #${assignedOrder.id} (${assignedOrder.customerName || 'Khách'})`;
+          } else {
+            sLat = STORE_HUB.lat;
+            sLng = STORE_HUB.lng;
+            locationDesc = `Đang trực tại Cửa hàng WashSmart 3T (140 Lê Trọng Tấn)`;
+          }
+        } else {
+          // KHI SHIPPER RẢNH / CHỜ ĐƠN: VỊ TRÍ XUẤT PHÁT Ở TẠI CỬA HÀNG 140 LÊ TRỌNG TẤN!
+          // Đỗ tại sân cửa hàng Hub với micro-offset siêu nhỏ (~12-15m) để không đè khít lên icon Hub 3T
+          const parkAngle = idx * 1.05;
+          sLat = STORE_HUB.lat + 0.00012 * Math.cos(parkAngle);
+          sLng = STORE_HUB.lng + 0.00012 * Math.sin(parkAngle);
+          locationDesc = `Đang trực ca tại Cửa hàng 140 Lê Trọng Tấn • Sẵn sàng nhận đơn`;
+        }
 
         const shipperIcon = L.divIcon({
           className: 'shipper-pin-wrapper',
@@ -1846,14 +1869,18 @@
         const m = L.marker([sLat, sLng], { icon: shipperIcon, zIndexOffset: 1500 })
           .addTo(leafletMap)
           .bindPopup(`
-            <div class="p-3 space-y-1.5 min-w-[200px]">
-              <div class="flex items-center gap-1.5 text-sky-700 font-bold text-xs">
-                <span class="material-symbols-outlined text-base">two_wheeler</span>
-                <span>${s.fullName}</span>
+            <div class="p-3 space-y-1.5 min-w-[220px]">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-1.5 text-sky-700 font-bold text-xs">
+                  <span class="material-symbols-outlined text-base">two_wheeler</span>
+                  <span>${s.fullName}</span>
+                </div>
+                <span class="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[9px] font-bold">🟢 Trực tuyến</span>
               </div>
-              <p class="text-[11px] text-secondary">SĐT: ${s.phone}</p>
+              <p class="text-[11px] text-secondary">SĐT: ${s.phone || '—'}</p>
+              <p class="text-[11px] text-slate-700 font-medium">📍 ${locationDesc}</p>
               <p class="text-[11px] font-semibold text-primary">
-                ${activeCount > 0 ? `Đang chở ${activeCount} đơn ghép` : 'Đang sẵn sàng nhận chuyến'}
+                ${activeCount > 0 ? `Đang chở ${activeCount} đơn ghép` : 'Đang sẵn sàng nhận chuyến tại Cửa hàng'}
               </p>
               <button onclick="focusShipperRoute(${s.id})" class="w-full mt-1 px-2 py-1 rounded bg-sky-600 hover:bg-sky-700 text-white font-bold text-[10px] transition-colors">
                 Xem lộ trình xe này
@@ -2366,23 +2393,32 @@
           ['Confirmed', 'PickingUp', 'Ready', 'Delivering'].includes(o.status)
         );
         const count = activeOrders.length;
+        const isOnline = !!s.isOnline;
 
         return `
-          <div class="p-3 rounded-xl bg-surface-card border border-surface-container hover:border-primary transition-all shadow-xs space-y-2 cursor-pointer"
+          <div class="p-3 rounded-xl bg-surface-card border ${isOnline ? 'border-surface-container hover:border-primary' : 'border-slate-100 opacity-70'} transition-all shadow-xs space-y-2 cursor-pointer"
             onclick="focusShipperRoute(${s.id})">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <span class="w-8 h-8 rounded-full bg-sky-600 text-white font-bold text-xs flex items-center justify-center">
+                <span class="w-8 h-8 rounded-full ${isOnline ? 'bg-sky-600 text-white' : 'bg-slate-300 text-slate-600'} font-bold text-xs flex items-center justify-center">
                   <span class="material-symbols-outlined text-base">two_wheeler</span>
                 </span>
                 <div>
                   <h4 class="font-bold text-xs text-on-surface">${s.fullName}</h4>
-                  <p class="text-[10px] text-secondary">${s.phone}</p>
+                  <p class="text-[10px] text-secondary">${s.phone || '—'}</p>
                 </div>
               </div>
-              <span class="px-2 py-0.5 rounded text-[10px] font-bold ${count > 0 ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'}">
-                ${count > 0 ? `Đang chở ${count} đơn` : 'Đang rảnh'}
-              </span>
+              <div class="text-right">
+                ${isOnline ? `
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold ${count > 0 ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'}">
+                    ${count > 0 ? `Đang chở ${count} đơn` : 'Trực tại Cửa hàng'}
+                  </span>
+                ` : `
+                  <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500">
+                    Chưa vào ca (Offline)
+                  </span>
+                `}
+              </div>
             </div>
 
             ${count > 0 ? `
@@ -2393,15 +2429,24 @@
                   return `<p class="truncate">• #${code}: ${o.customerName} (${o.deliveryAddress || o.pickupAddress || ''})</p>`;
                 }).join('')}
               </div>
-            ` : ''}
+            ` : (isOnline ? `
+              <p class="text-[10px] text-emerald-700 font-semibold bg-emerald-50/70 p-1.5 rounded-lg border border-emerald-100">
+                📍 Đang có mặt tại Cửa hàng (140 Lê Trọng Tấn) • Sẵn sàng nhận đơn
+              </p>
+            ` : '')}
 
             <div class="flex items-center justify-between pt-1 text-[10px]">
-              <span class="text-sky-700 font-bold flex items-center gap-1">
-                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span> GPS Kết nối
+              <span class="${isOnline ? 'text-sky-700 font-bold' : 'text-slate-400 font-medium'} flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-slate-300'}"></span>
+                ${isOnline ? 'Trực tuyến (GPS Hub)' : 'Chưa đăng nhập'}
               </span>
-              <button onclick="event.stopPropagation(); focusShipperRoute(${s.id})" class="text-primary font-bold hover:underline">
-                Xem lộ trình &rarr;
-              </button>
+              ${isOnline ? `
+                <button onclick="event.stopPropagation(); focusShipperRoute(${s.id})" class="text-primary font-bold hover:underline">
+                  Xem trên bản đồ &rarr;
+                </button>
+              ` : `
+                <span class="text-slate-400 italic">Không hiển thị bản đồ</span>
+              `}
             </div>
           </div>
         `;
