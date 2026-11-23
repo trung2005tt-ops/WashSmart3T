@@ -206,22 +206,60 @@ public class PaymentsController : ControllerBase
 
         if (payment == null)
         {
-            return NotFound(new { message = "Đơn hàng chưa có thanh toán." });
+            var order = await _context.Orders.Include(o => o.Customer).FirstOrDefaultAsync(o => o.Id == orderId);
+            if (order == null)
+            {
+                return NotFound(new { message = "Không tìm thấy đơn hàng." });
+            }
+
+            var method = PaymentMethod.BankTransfer;
+            if (!string.IsNullOrWhiteSpace(request.Method))
+            {
+                if (request.Method.Equals("MoMo", StringComparison.OrdinalIgnoreCase)) method = PaymentMethod.MoMo;
+                else if (request.Method.Equals("Cash", StringComparison.OrdinalIgnoreCase)) method = PaymentMethod.Cash;
+            }
+
+            payment = new Payment
+            {
+                OrderId = order.Id,
+                Amount = order.TotalAmount,
+                Method = method,
+                Status = PaymentStatus.Paid,
+                CreatedAt = DateTime.UtcNow,
+                PaidAt = DateTime.UtcNow,
+                PaymentNote = request.Note ?? "Shipper xác nhận khách đã thanh toán thành công"
+            };
+            _context.Payments.Add(payment);
+
+            if (order.Customer != null)
+            {
+                LoyaltyService.AwardLoyalty(order.Customer, payment.Amount);
+            }
+
+            await _context.SaveChangesAsync();
+            return Ok(new { message = "Xác nhận thanh toán thành công.", payment });
         }
 
-        if (role == "Shipper" && payment.Order!.ShipperId != userId)
+        if (role == "Shipper" && payment.Order?.ShipperId != null && payment.Order.ShipperId != userId)
         {
             return Forbid();
         }
 
         if (payment.Status == PaymentStatus.Paid)
         {
-            return BadRequest(new { message = "Thanh toán đã được xác nhận trước đó." });
+            return Ok(new { message = "Thanh toán đã được xác nhận trước đó.", payment });
         }
 
         if (payment.Status == PaymentStatus.Refunded)
         {
             return BadRequest(new { message = "Thanh toán đã bị hoàn tiền, không thể xác nhận." });
+        }
+
+        if (!string.IsNullOrWhiteSpace(request.Method))
+        {
+            if (request.Method.Equals("MoMo", StringComparison.OrdinalIgnoreCase)) payment.Method = PaymentMethod.MoMo;
+            else if (request.Method.Equals("BankTransfer", StringComparison.OrdinalIgnoreCase)) payment.Method = PaymentMethod.BankTransfer;
+            else if (request.Method.Equals("Cash", StringComparison.OrdinalIgnoreCase)) payment.Method = PaymentMethod.Cash;
         }
 
         payment.Status = PaymentStatus.Paid;

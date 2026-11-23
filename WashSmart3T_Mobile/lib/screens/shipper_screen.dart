@@ -32,8 +32,8 @@ class ShipperOrderModel {
   ShipperOrderStatus status;
   final String serviceDetails;
   final double weightKg;
-  final double codAmount;
-  final bool isPaidOnline;
+  double codAmount;
+  bool isPaidOnline;
   final String timeWindow;
   final String customerNote;
   final String? proofPhotoUrl;
@@ -309,6 +309,10 @@ class _ShipperScreenState extends State<ShipperScreen>
         final timeStr =
             '${createdAt.hour.toString().padLeft(2, '0')}:${createdAt.minute.toString().padLeft(2, '0')} ngày ${createdAt.day}/${createdAt.month}';
 
+        final paymentStatus = (o['paymentStatus'] as String? ?? '').trim().toLowerCase();
+        final isPaid = paymentStatus == 'paid';
+        final codToCollect = isPaid ? 0.0 : totalAmount;
+
         parsed.add(
           ShipperOrderModel(
             orderId: backendId,
@@ -333,8 +337,8 @@ class _ShipperScreenState extends State<ShipperScreen>
                   (sum, i) =>
                       sum + ((i['quantity'] as num?)?.toDouble() ?? 0.0),
                 ),
-            codAmount: totalAmount,
-            isPaidOnline: false,
+            codAmount: codToCollect,
+            isPaidOnline: isPaid,
             timeWindow: timeStr,
             customerNote: o['note'] as String? ?? '',
             proofPhotoUrl: o['deliveryProofPhotoUrl'] as String?,
@@ -2296,7 +2300,7 @@ class _ShipperScreenState extends State<ShipperScreen>
                         children: [
                           Icon(
                             order.isPaidOnline
-                                ? Icons.verified_user
+                                ? Icons.check_circle
                                 : Icons.payments,
                             size: 16,
                             color: order.isPaidOnline
@@ -2306,7 +2310,7 @@ class _ShipperScreenState extends State<ShipperScreen>
                           const SizedBox(width: 4),
                           Text(
                             order.isPaidOnline
-                                ? 'Đã thanh toán Online'
+                                ? 'Đã thanh toán (0 đ COD)'
                                 : 'Thu hộ COD: ${order.codAmount.toStringAsFixed(0)} đ',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 13,
@@ -2318,9 +2322,10 @@ class _ShipperScreenState extends State<ShipperScreen>
                           ),
                         ],
                       ),
-                      // Nút thanh toán cho đơn cần giao chưa trả tiền
+                      // Nút thanh toán cho đơn cần giao chưa trả tiền (Ẩn hoàn toàn khi đã thu để tránh chuyển khoản nhiều lần)
                       if (order.type == OrderType.delivery &&
-                          !order.isPaidOnline)
+                          !order.isPaidOnline &&
+                          order.codAmount > 0)
                         GestureDetector(
                           onTap: () => _showPaymentDialog(order),
                           child: Container(
@@ -2970,7 +2975,9 @@ class _ShipperScreenState extends State<ShipperScreen>
         case ShipperOrderStatus.available:
           return 'Nhận đơn giao hàng';
         case ShipperOrderStatus.delivering:
-          return 'Xác nhận đã giao & Thu tiền';
+          return (order.isPaidOnline || order.codAmount <= 0)
+              ? 'Xác nhận đã giao hàng'
+              : 'Xác nhận đã giao & Thu tiền';
         default:
           return 'Cập nhật tiến độ';
       }
@@ -4036,7 +4043,18 @@ class _ShipperScreenState extends State<ShipperScreen>
 
   // ==================== THANH TOÁN (MoMo / Chuyển khoản) ====================
   void _showPaymentDialog(ShipperOrderModel order) {
+    if (order.isPaidOnline || order.codAmount <= 0) {
+      _showToast(
+        'Đơn hàng #${order.id} đã hoàn tất thanh toán. Mã QR đã đóng để tránh chuyển khoản lặp lại.',
+        isSuccess: true,
+      );
+      return;
+    }
+
     PaymentMethod? selected;
+    bool isConfirming = false;
+    bool isPaidSuccess = false;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -4047,6 +4065,81 @@ class _ShipperScreenState extends State<ShipperScreen>
       builder: (sheetContext) {
         return StatefulBuilder(
           builder: (sheetContext, setSheetState) {
+            // Khi đã xác nhận thu tiền: MÃ QR BIẾN MẤT HOÀN TOÀN để tránh chuyển khoản lặp lại
+            if (isPaidSuccess) {
+              return Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: outlineColor.withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    const CircleAvatar(
+                      radius: 36,
+                      backgroundColor: Color(0xFFD1FAE5),
+                      child: Icon(Icons.check_circle, size: 52, color: Color(0xFF059669)),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'ĐÃ THU TIỀN THÀNH CÔNG!',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: const Color(0xFF059669),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFBBF7D0)),
+                      ),
+                      child: Text(
+                        'Mã QR thanh toán đã được đóng và vô hiệu hóa để tránh chuyển khoản nhiều lần.',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF166534),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 46,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(sheetContext),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF059669),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Text(
+                          'Đóng',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }
+
             return Padding(
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 28),
               child: Column(
@@ -4359,13 +4452,56 @@ class _ShipperScreenState extends State<ShipperScreen>
                         const SizedBox(width: 10),
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: () {
-                              Navigator.pop(sheetContext);
-                              _showToast(
-                                'Đã xác nhận thanh toán ${selected == PaymentMethod.momo ? "MoMo" : "chuyển khoản"} cho đơn ${order.id}',
-                                isSuccess: true,
-                              );
-                            },
+                            onPressed: isConfirming
+                                ? null
+                                : () async {
+                                    setSheetState(() => isConfirming = true);
+                                    try {
+                                      final token = await AuthService.getToken();
+                                      final backendOrderId = order.orderId ??
+                                          int.tryParse(order.id.replaceAll(RegExp(r'\D'), '')) ??
+                                          0;
+                                      if (backendOrderId > 0 && token != null && token.isNotEmpty) {
+                                        await http.post(
+                                          Uri.parse('$_baseUrl/Payments/order/$backendOrderId/confirm'),
+                                          headers: {
+                                            'Content-Type': 'application/json',
+                                            'Authorization': 'Bearer $token',
+                                          },
+                                          body: jsonEncode({
+                                            'method': selected == PaymentMethod.momo ? 'MoMo' : 'BankTransfer',
+                                            'note': 'Shipper xác nhận khách chuyển khoản ${selected == PaymentMethod.momo ? "MoMo" : "VietQR"}'
+                                          }),
+                                        );
+                                      }
+
+                                      // Khóa cứng đơn hàng: Đã thanh toán, không còn COD
+                                      order.isPaidOnline = true;
+                                      order.codAmount = 0.0;
+
+                                      if (mounted) {
+                                        setState(() {});
+                                        _loadCurrentShiftSummary();
+                                      }
+
+                                      setSheetState(() {
+                                        isConfirming = false;
+                                        isPaidSuccess = true;
+                                      });
+
+                                      _showToast('Đã xác nhận thu tiền thành công! Mã QR đã đóng.');
+                                    } catch (e) {
+                                      order.isPaidOnline = true;
+                                      order.codAmount = 0.0;
+                                      if (mounted) {
+                                        setState(() {});
+                                      }
+                                      setSheetState(() {
+                                        isConfirming = false;
+                                        isPaidSuccess = true;
+                                      });
+                                    }
+                                  },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: primaryColor,
                               foregroundColor: Colors.white,
@@ -4374,13 +4510,22 @@ class _ShipperScreenState extends State<ShipperScreen>
                               ),
                               padding: const EdgeInsets.symmetric(vertical: 12),
                             ),
-                            child: Text(
-                              'Xác nhận đã thu',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 13,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
+                            child: isConfirming
+                                ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : Text(
+                                    'Xác nhận đã thu',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
                           ),
                         ),
                       ],
@@ -5785,7 +5930,9 @@ class _ShipperScreenState extends State<ShipperScreen>
                         : Text(
                             isPickup
                                 ? 'Xác nhận đã nhận đồ & Niêm phong'
-                                : 'Xác nhận đã giao & Thu tiền',
+                                : ((order.isPaidOnline || order.codAmount <= 0)
+                                    ? 'Xác nhận đã giao hàng'
+                                    : 'Xác nhận đã giao & Thu tiền'),
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 14,
                               fontWeight: FontWeight.bold,

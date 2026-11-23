@@ -13,6 +13,7 @@ public class CreatePaymentRequest
 
 public class ConfirmPaymentRequest
 {
+    public string? Method { get; set; }
     public string? Note { get; set; }
 }
 
