@@ -8,6 +8,8 @@ import 'package:image_picker/image_picker.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'login_screen.dart';
 import '../services/auth_service.dart';
+import '../utils/url_helper.dart';
+import '../widgets/route_map_embed.dart';
 
 enum OrderType { pickup, delivery }
 
@@ -128,6 +130,7 @@ class _ShipperScreenState extends State<ShipperScreen>
 
   bool _isOnline = true;
   String _shipperName = 'Shipper';
+  int? _currentShipperId;
   Timer? _orderPollingTimer;
   bool _hasNewOrderNotification = false;
   int _selectedFilterIndex = 0; // 0: Cần lấy, 1: Cần giao, 2: Đã hoàn tất
@@ -424,6 +427,10 @@ class _ShipperScreenState extends State<ShipperScreen>
       if (response.statusCode == 200) {
         final body = jsonDecode(response.body);
         if (body is Map) {
+          final idVal = body['id'] ?? body['Id'] ?? body['userId'] ?? body['UserId'];
+          if (idVal != null) {
+            _currentShipperId = int.tryParse(idVal.toString());
+          }
           final name =
               (body['fullName'] ??
                       body['FullName'] ??
@@ -452,6 +459,10 @@ class _ShipperScreenState extends State<ShipperScreen>
         final normalized = base64Url.normalize(parts[1]);
         final claims = jsonDecode(utf8.decode(base64Url.decode(normalized)));
         if (claims is Map) {
+          final idVal = claims['nameid'] ?? claims['sub'] ?? claims['userId'] ?? claims['UserId'];
+          if (idVal != null) {
+            _currentShipperId = int.tryParse(idVal.toString());
+          }
           final name =
               (claims['fullName'] ??
                       claims['FullName'] ??
@@ -4879,7 +4890,30 @@ class _ShipperScreenState extends State<ShipperScreen>
     );
   }
 
+  String _buildMultiStopGoogleMapsUrl(List<ShipperOrderModel> orders) {
+    const hub = '140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú, TP. HCM';
+    if (orders.isEmpty) {
+      return 'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(hub)}';
+    }
+    final origin = Uri.encodeComponent(hub);
+    final destination = Uri.encodeComponent(hub);
+    final waypoints = orders.map((o) {
+      final addr = o.type == OrderType.pickup ? o.pickupAddress : o.deliveryAddress;
+      return Uri.encodeComponent(addr);
+    }).join('|');
+    return 'https://www.google.com/maps/dir/?api=1&origin=$origin&destination=$destination&waypoints=$waypoints';
+  }
+
+  String _buildSingleStopGoogleMapsUrl(String address) {
+    return 'https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(address)}';
+  }
+
   void _showNavigationModal(ShipperOrderModel order) {
+    final targetAddress = order.type == OrderType.pickup
+        ? order.pickupAddress
+        : order.deliveryAddress;
+    final orderParam = order.orderId ?? int.tryParse(order.id.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -4902,7 +4936,7 @@ class _ShipperScreenState extends State<ShipperScreen>
                     const Icon(Icons.map, color: tertiaryColor),
                     const SizedBox(width: 8),
                     Text(
-                      'Lộ trình di chuyển (${order.distanceKm} km)',
+                      'Bản đồ dẫn đường (${order.distanceKm} km)',
                       style: GoogleFonts.plusJakartaSans(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
@@ -4911,112 +4945,87 @@ class _ShipperScreenState extends State<ShipperScreen>
                     ),
                   ],
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () => Navigator.pop(context),
+                Row(
+                  children: [
+                    IconButton(
+                      tooltip: 'Mở tab bản đồ riêng',
+                      icon: const Icon(Icons.open_in_new, color: primaryColor, size: 20),
+                      onPressed: () {
+                        launchWebOrAppUrl('http://localhost:5500/shipper_route_map.html?orderIds=$orderParam');
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
                 ),
               ],
             ),
             const SizedBox(height: 10),
-            // Map Mock Canvas
-            Container(
-              height: 180,
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: const Color(0xFFE2E8F0),
-                borderRadius: BorderRadius.circular(16),
-                image: const DecorationImage(
-                  image: NetworkImage(
-                    'https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=600&auto=format&fit=crop',
-                  ),
-                  fit: BoxFit.cover,
-                ),
+            // Interactive Leaflet Map View like Web Dispatch
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: RouteMapEmbed(
+                url: 'http://localhost:5500/shipper_route_map.html?orderIds=$orderParam',
+                height: 240,
               ),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  color: Colors.black.withValues(alpha: 0.3),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Align(
-                      alignment: Alignment.topRight,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          'Dự kiến 8 phút',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: primaryColor,
-                          ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: surfaceLow,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Điểm đến (${order.type == OrderType.pickup ? 'Lấy đồ' : 'Giao đồ'}):',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          color: primaryColor,
                         ),
                       ),
-                    ),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Icon(
-                          Icons.navigation,
-                          color: Colors.white,
-                          size: 28,
+                      Text(
+                        'Khách: ${order.customerName}',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          color: onSurface,
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Mô phỏng bản đồ dẫn đường GPS',
-                          style: GoogleFonts.plusJakartaSans(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                        ),
-                      ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    targetAddress,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontWeight: FontWeight.w600,
+                      fontSize: 13,
+                      color: onSurface,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
-            Text(
-              'Địa chỉ cần tới:',
-              style: GoogleFonts.plusJakartaSans(
-                fontWeight: FontWeight.bold,
-                fontSize: 12,
-                color: outlineColor,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              order.type == OrderType.pickup
-                  ? order.pickupAddress
-                  : order.deliveryAddress,
-              style: GoogleFonts.plusJakartaSans(
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                color: onSurface,
-              ),
-            ),
-            const SizedBox(height: 20),
             SizedBox(
               width: double.infinity,
               height: 48,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  Navigator.pop(context);
-                  _showToast('Đang mở ứng dụng Google Maps...');
+                  launchWebOrAppUrl(_buildSingleStopGoogleMapsUrl(targetAddress));
                 },
                 icon: const Icon(Icons.near_me, color: Colors.white),
                 label: Text(
-                  'Mở Google Maps chỉ đường',
+                  'Mở Google Maps chỉ đường trực tiếp',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -5072,6 +5081,7 @@ class _ShipperScreenState extends State<ShipperScreen>
   void _showTodayRouteModal() {
     final pendingOrders = activePendingOrders;
     final doneOrders = todayCompletedOrders;
+    final shipperQuery = _currentShipperId != null ? '?shipperId=$_currentShipperId' : '';
 
     showModalBottomSheet(
       context: context,
@@ -5081,7 +5091,7 @@ class _ShipperScreenState extends State<ShipperScreen>
         length: 2,
         child: Container(
           constraints: BoxConstraints(
-            maxHeight: MediaQuery.of(sheetCtx).size.height * 0.9,
+            maxHeight: MediaQuery.of(sheetCtx).size.height * 0.94,
           ),
           decoration: const BoxDecoration(
             color: Colors.white,
@@ -5114,16 +5124,36 @@ class _ShipperScreenState extends State<ShipperScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            'Tuyến đường di chuyển',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: onSurface,
-                            ),
+                          Row(
+                            children: [
+                              Text(
+                                'Bản Đồ Tuyến Đường Shipper',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                  color: onSurface,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFE0F2FE),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  'Live OSRM',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    color: const Color(0xFF0284C7),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                           Text(
-                            'Lộ trình gom đồ & giao nhận tối ưu trong ngày',
+                            'Định tuyến tối ưu TSP • Cửa hàng 140 Lê Trọng Tấn',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 11,
                               color: outlineColor,
@@ -5131,6 +5161,13 @@ class _ShipperScreenState extends State<ShipperScreen>
                           ),
                         ],
                       ),
+                    ),
+                    IconButton(
+                      tooltip: 'Mở bản đồ toàn màn hình',
+                      icon: const Icon(Icons.open_in_new, color: primaryColor, size: 20),
+                      onPressed: () {
+                        launchWebOrAppUrl('http://localhost:5500/shipper_route_map.html$shipperQuery');
+                      },
                     ),
                     IconButton(
                       icon: const Icon(Icons.close),
@@ -5179,41 +5216,15 @@ class _ShipperScreenState extends State<ShipperScreen>
     BuildContext ctx,
     List<ShipperOrderModel> pendingOrders,
   ) {
-    if (pendingOrders.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Icon(
-                Icons.check_circle_outline,
-                size: 54,
-                color: successColor,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Không có đơn cần đi lúc này',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: onSurface,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                'Bạn đã hoàn thành tất cả các trạm trong tuyến hôm nay!',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 12,
-                  color: outlineColor,
-                ),
-                textAlign: TextAlign.center,
-              ),
-            ],
-          ),
-        ),
-      );
+    final shipperQuery = _currentShipperId != null ? '?shipperId=$_currentShipperId' : '';
+    final pickupCount = pendingOrders.where((o) => o.type == OrderType.pickup).length;
+    final deliveryCount = pendingOrders.where((o) => o.type == OrderType.delivery).length;
+    double totalEstKm = 0;
+    for (var o in pendingOrders) {
+      totalEstKm += o.distanceKm > 0 ? o.distanceKm : 1.5;
     }
+    final displayKm = (totalEstKm * 1.15).toStringAsFixed(1);
+    final estMinutes = (double.parse(displayKm) * 3.5).ceil();
 
     return Column(
       children: [
@@ -5221,12 +5232,265 @@ class _ShipperScreenState extends State<ShipperScreen>
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
+              // ==========================================
+              // 1. LIVE INTERACTIVE LEAFLET MAP VIEW
+              // ==========================================
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 10,
+                      offset: const Offset(0, 3),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Stack(
+                    children: [
+                      RouteMapEmbed(
+                        url: 'http://localhost:5500/shipper_route_map.html$shipperQuery',
+                        height: 300,
+                      ),
+                      Positioned(
+                        top: 10,
+                        right: 10,
+                        child: InkWell(
+                          onTap: () {
+                            launchWebOrAppUrl('http://localhost:5500/shipper_route_map.html$shipperQuery');
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.95),
+                              borderRadius: BorderRadius.circular(10),
+                              boxShadow: const [
+                                BoxShadow(color: Colors.black12, blurRadius: 4),
+                              ],
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.fullscreen, size: 16, color: primaryColor),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Mở toàn cảnh',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: primaryColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // ==========================================
+              // 2. HUD LỘ TRÌNH THÔNG MINH
+              // ==========================================
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.straighten, size: 16, color: primaryColor),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Chỉ số hành trình hôm nay',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFDCFCE7),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'Tối ưu TSP 2-Opt',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                              color: const Color(0xFF166534),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFF1F5F9)),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  'Tổng cự ly',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 10,
+                                    color: outlineColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '$displayKm km',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    color: primaryColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFF1F5F9)),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  'Thời gian',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 10,
+                                    color: outlineColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '$estMinutes phút',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                    color: onSurface,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFFF1F5F9)),
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  'Phân loại trạm',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 10,
+                                    color: outlineColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${pickupCount}P • ${deliveryCount}D',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                    color: tertiaryColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              if (pendingOrders.isEmpty) ...[
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF0FDF4),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFBBF7D0)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.check_circle, color: Color(0xFF16A34A), size: 28),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Đã hoàn thành mọi chuyến đi hôm nay!',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 13,
+                                color: const Color(0xFF15803D),
+                              ),
+                            ),
+                            Text(
+                              'Bản đồ trên đang hiển thị vị trí Trụ sở 140 Lê Trọng Tấn sẵn sàng nhận nhiệm vụ mới.',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11,
+                                color: const Color(0xFF166534),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 14),
+              ],
+
+              // ==========================================
+              // 3. DANH SÁCH CÁC TRẠM DỪNG TUẦN TỰ
+              // ==========================================
               // Trạm xuất phát: Cửa hàng WashSmart 3T
               _buildRouteStationCard(
                 stationNumber: 0,
                 isStartOrEnd: true,
-                title: 'Xuất phát: Cửa hàng WashSmart 3T',
-                address: '128 Hai Bà Trưng, P. Bến Nghé, Quận 1, TP. HCM',
+                title: 'Xuất phát: Cửa hàng WashSmart 3T (Hub Tân Phú)',
+                address: '140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú, TP. HCM',
                 tag: 'ĐIỂM XUẤT PHÁT',
                 tagColor: const Color(0xFF0284C7),
                 icon: Icons.storefront_rounded,
@@ -5261,8 +5525,7 @@ class _ShipperScreenState extends State<ShipperScreen>
                         : Icons.local_shipping_rounded,
                     onCall: () => _simulateCallCustomer(o),
                     onNavigate: () {
-                      Navigator.pop(ctx);
-                      _showNavigationModal(o);
+                      launchWebOrAppUrl(_buildSingleStopGoogleMapsUrl(targetAddress));
                     },
                   ),
                 );
@@ -5274,7 +5537,7 @@ class _ShipperScreenState extends State<ShipperScreen>
                 isStartOrEnd: true,
                 title: 'Kết thúc: Quay về Cửa hàng WashSmart 3T',
                 address:
-                    'Bàn giao đồ đã gom & nhận mẻ giặt sạch mới tại xưởng',
+                    '140 Lê Trọng Tấn • Bàn giao đồ đã gom & nhận mẻ giặt sạch mới',
                 tag: 'KẾT THÚC TUYẾN',
                 tagColor: const Color(0xFF059669),
                 icon: Icons.home_work_rounded,
@@ -5301,14 +5564,12 @@ class _ShipperScreenState extends State<ShipperScreen>
             height: 48,
             child: ElevatedButton.icon(
               onPressed: () {
-                Navigator.pop(ctx);
-                _showToast(
-                  'Đang mở lộ trình Google Maps ${pendingOrders.length} điểm dừng...',
-                );
+                final mapsUrl = _buildMultiStopGoogleMapsUrl(pendingOrders);
+                launchWebOrAppUrl(mapsUrl);
               },
               icon: const Icon(Icons.navigation, color: Colors.white),
               label: Text(
-                'Mở Google Maps dẫn đường toàn tuyến',
+                'Mở Google Maps dẫn đường toàn tuyến (${pendingOrders.length} trạm)',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,

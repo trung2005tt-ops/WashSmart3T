@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Bản Đồ Tuyến Đường Shipper • WashSmart 3T</title>
+  
+  <!-- Google Fonts: Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Material Symbols -->
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            primary: '#B90538',
+            'primary-dark': '#8e0028',
+            secondary: '#475569',
+            tertiary: '#0284c7',
+            surface: '#FFF0F2',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background-color: #f8fafc;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    #mapCanvas {
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+    }
+
+    /* Custom Store Marker Pulse Beacon */
+    .store-pin-beacon {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .store-pin-pulse {
+      position: absolute;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: rgba(185, 5, 56, 0.35);
+      animation: beacon-pulse 2s infinite ease-out;
+    }
+    @keyframes beacon-pulse {
+      0% { transform: scale(0.6); opacity: 1; }
+      100% { transform: scale(1.6); opacity: 0; }
+    }
+    .store-pin-icon {
+      position: relative;
+      z-index: 2;
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #B90538, #8e0028);
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 13px;
+      box-shadow: 0 4px 10px rgba(185, 5, 56, 0.45);
+      border: 2px solid #fff;
+    }
+
+    /* Numbered Stop Marker */
+    .stop-pin {
+      position: relative;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 13px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      border: 2px solid #fff;
+      transition: transform 0.2s ease;
+    }
+    .stop-pin:hover {
+      transform: scale(1.15);
+    }
+    .stop-pin.pickup {
+      background: linear-gradient(135deg, #0284c7, #0369a1);
+    }
+    .stop-pin.delivery {
+      background: linear-gradient(135deg, #e11d48, #be123c);
+    }
+    .stop-pin.completed {
+      background: linear-gradient(135deg, #10b981, #059669);
+    }
+
+    /* Shipper Live Sim Marker */
+    .shipper-sim-pin {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: #10b981;
+      border: 2.5px solid #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      box-shadow: 0 4px 12px rgba(16, 185, 129, 0.6);
+      animation: bounce 1s infinite alternate;
+    }
+    @keyframes bounce {
+      0% { transform: translateY(0); }
+      100% { transform: translateY(-4px); }
+    }
+
+    /* Drawer smooth animation */
+    .drawer-panel {
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .drawer-panel.collapsed {
+      transform: translateY(calc(100% - 90px));
+    }
+  </style>
+</head>
+<body class="relative h-screen w-screen overflow-hidden select-none">
+
+  <!-- TOP HEADER / CONTROLS -->
+  <header class="absolute top-0 left-0 right-0 z-20 px-3 py-2.5 bg-gradient-to-b from-black/70 via-black/40 to-transparent flex items-center justify-between">
+    <div class="flex items-center gap-2">
+      <button onclick="handleBackAction()" class="w-9 h-9 rounded-xl bg-white/95 backdrop-blur-md text-slate-800 flex items-center justify-center shadow-lg active:scale-95 transition-all">
+        <span class="material-symbols-outlined text-xl">arrow_back</span>
+      </button>
+      <div class="bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-lg border border-white/40 flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <div>
+          <h1 class="text-xs font-extrabold text-slate-900 leading-none flex items-center gap-1.5">
+            Bản Đồ Tuyến Đường Shipper
+            <span class="text-[9px] px-1.5 py-0.5 rounded bg-primary text-white font-bold uppercase">Live OSRM</span>
+          </h1>
+          <p class="text-[10px] text-slate-500 font-medium leading-none mt-0.5" id="shipperSubTitle">Đang đồng bộ dữ liệu tuyến...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick action buttons -->
+    <div class="flex items-center gap-1.5">
+      <button onclick="toggleMapLayer()" id="btnLayerToggle" class="px-2.5 py-1.5 rounded-xl bg-white/95 backdrop-blur-md text-slate-700 hover:text-slate-900 font-bold text-[11px] shadow-lg flex items-center gap-1 active:scale-95 transition-all">
+        <span class="material-symbols-outlined text-sm text-primary">layers</span>
+        <span id="txtLayerName">Vệ tinh</span>
+      </button>
+      <button onclick="fitAllMarkers()" class="w-9 h-9 rounded-xl bg-white/95 backdrop-blur-md text-slate-700 hover:text-slate-900 flex items-center justify-center shadow-lg active:scale-95 transition-all" title="Căn toàn cảnh">
+        <span class="material-symbols-outlined text-lg">crop_free</span>
+      </button>
+      <button onclick="centerStoreHub()" class="w-9 h-9 rounded-xl bg-white/95 backdrop-blur-md text-primary hover:text-primary-dark flex items-center justify-center shadow-lg active:scale-95 transition-all" title="Về Hub WashSmart 3T">
+        <span class="material-symbols-outlined text-lg">storefront</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- FLOATING HUD SUMMARY BADGE -->
+  <div id="routeHudBadge" class="absolute top-16 left-3 right-3 sm:left-auto sm:right-3 sm:w-96 z-10 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl border border-rose-100 p-3 transition-all duration-300">
+    <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+      <div class="flex items-center gap-1.5">
+        <div class="w-6 h-6 rounded-lg bg-rose-50 text-primary flex items-center justify-center">
+          <span class="material-symbols-outlined text-sm font-bold">alt_route</span>
+        </div>
+        <span class="text-xs font-bold text-slate-800">Lộ Trình Tối Ưu Hôm Nay</span>
+      </div>
+      <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-extrabold border border-emerald-200" id="hudStatusBadge">
+        Đã tối ưu TSP
+      </span>
+    </div>
+
+    <div class="grid grid-cols-4 gap-2 pt-2.5 text-center">
+      <div class="bg-slate-50/80 rounded-xl p-1.5 border border-slate-100">
+        <span class="text-[9px] text-slate-500 font-semibold block">Quãng đường</span>
+        <span class="text-xs sm:text-sm font-extrabold text-primary" id="hudDistance">0.0 km</span>
+      </div>
+      <div class="bg-slate-50/80 rounded-xl p-1.5 border border-slate-100">
+        <span class="text-[9px] text-slate-500 font-semibold block">Thời gian</span>
+        <span class="text-xs sm:text-sm font-extrabold text-slate-800" id="hudDuration">0 phút</span>
+      </div>
+      <div class="bg-slate-50/80 rounded-xl p-1.5 border border-slate-100">
+        <span class="text-[9px] text-slate-500 font-semibold block">Điểm lấy</span>
+        <span class="text-xs sm:text-sm font-extrabold text-sky-600" id="hudPickupCount">0 trạm</span>
+      </div>
+      <div class="bg-slate-50/80 rounded-xl p-1.5 border border-slate-100">
+        <span class="text-[9px] text-slate-500 font-semibold block">Điểm giao</span>
+        <span class="text-xs sm:text-sm font-extrabold text-rose-600" id="hudDeliveryCount">0 trạm</span>
+      </div>
+    </div>
+
+    <!-- Quick action: GPS Simulator -->
+    <div class="mt-2.5 pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+      <button id="btnSimulateGps" onclick="toggleSimulateGps()" class="flex-1 py-1.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
+        <span class="material-symbols-outlined text-base" id="iconSimulate">play_arrow</span>
+        <span id="txtSimulate">Mô phỏng xe chạy GPS</span>
+      </button>
+      <button onclick="openFullGoogleMapsRoute()" class="py-1.5 px-3 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
+        <span class="material-symbols-outlined text-base text-emerald-400">near_me</span>
+        <span>Google Maps</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- LEAFLET MAP CANVAS -->
+  <div id="mapCanvas"></div>
+
+  <!-- BOTTOM SHEET / STOPS DRAWER -->
+  <div id="stopsDrawer" class="drawer-panel collapsed absolute bottom-0 left-0 right-0 z-20 bg-white rounded-t-3xl shadow-2xl border-t border-slate-200 max-h-[75vh] flex flex-col">
+    <!-- Drawer Drag Bar -->
+    <div onclick="toggleDrawer()" class="pt-3 pb-2 px-4 cursor-pointer flex flex-col items-center select-none bg-white rounded-t-3xl">
+      <div class="w-12 h-1.5 rounded-full bg-slate-300"></div>
+      <div class="w-full flex items-center justify-between mt-2">
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-primary"></span>
+          <span class="font-extrabold text-xs sm:text-sm text-slate-900" id="drawerTitle">Danh Sách Trạm Dừng (0 trạm)</span>
+        </div>
+        <span class="text-xs text-primary font-bold flex items-center gap-0.5" id="drawerToggleTxt">
+          <span>Xem chi tiết</span>
+          <span class="material-symbols-outlined text-base">expand_less</span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Drawer Content Scrollable -->
+    <div class="flex-1 overflow-y-auto px-4 pb-6 space-y-2.5 divide-y divide-slate-100" id="stopsListContainer">
+      <div class="py-8 text-center text-slate-400 text-xs">
+        <span class="material-symbols-outlined text-3xl mb-1 text-slate-300">hourglass_empty</span>
+        <p>Đang tải danh sách trạm dừng...</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SCRIPT LOGIC -->
+  <script>
+    // Configuration & Hub Coordinates
+    const STORE_HUB = {
+      name: "Cửa hàng WashSmart 3T (Hub Tân Phú)",
+      address: "140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú, TP. HCM",
+      lat: 10.8031,
+      lng: 106.6268
+    };
+
+    let map = null;
+    let streetLayer = null;
+    let satelliteLayer = null;
+    let isSatellite = false;
+    let activePolyline = null;
+    let stopMarkers = [];
+    let storeMarker = null;
+    let shipperSimMarker = null;
+    let isSimulating = false;
+    let simTimer = null;
+    let currentRouteCoords = [];
+    let ordersList = [];
+    let optimizedStops = [];
+
+    // Parse URL params
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetShipperId = urlParams.get('shipperId') || '';
+    const targetOrderIds = urlParams.get('orderIds') || '';
+
+    // Initialize Map on Load
+    window.addEventListener('DOMContentLoaded', async () => {
+      initMap();
+      await loadShipperOrders();
+    });
+
+    function initMap() {
+      streetLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors &copy; WashSmart 3T',
+        maxZoom: 19
+      });
+
+      satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri',
+        maxZoom: 18
+      });
+
+      map = L.map('mapCanvas', {
+        center: [STORE_HUB.lat, STORE_HUB.lng],
+        zoom: 14,
+        zoomControl: false,
+        layers: [streetLayer]
+      });
+
+      L.control.zoom({ position: 'bottomright' }).addTo(map);
+
+      // Hub Marker
+      const storeHtml = `
+        <div class="store-pin-beacon">
+          <div class="store-pin-pulse"></div>
+          <div class="store-pin-icon" title="WashSmart 3T Hub">3T</div>
+        </div>
+      `;
+      storeMarker = L.marker([STORE_HUB.lat, STORE_HUB.lng], {
+        icon: L.divIcon({
+          className: 'custom-store-pin',
+          html: storeHtml,
+          iconSize: [44, 44],
+          iconAnchor: [22, 22]
+        }),
+        zIndexOffset: 2000
+      }).addTo(map);
+
+      storeMarker.bindPopup(`
+        <div class="p-2 space-y-1 text-slate-800">
+          <div class="font-extrabold text-xs text-primary flex items-center gap-1">
+            <span class="material-symbols-outlined text-sm">storefront</span>
+            ${STORE_HUB.name}
+          </div>
+          <p class="text-[11px] text-slate-600">${STORE_HUB.address}</p>
+          <div class="pt-1 border-t border-slate-100 text-[10px] text-emerald-700 font-bold">
+            ● Điểm xuất phát & Bàn giao đồ giặt
+          </div>
+        </div>
+      `);
+    }
+
+    function toggleMapLayer() {
+      isSatellite = !isSatellite;
+      if (isSatellite) {
+        map.removeLayer(streetLayer);
+        map.addLayer(satelliteLayer);
+        document.getElementById('txtLayerName').textContent = 'Đường phố';
+      } else {
+        map.removeLayer(satelliteLayer);
+        map.addLayer(streetLayer);
+        document.getElementById('txtLayerName').textContent = 'Vệ tinh';
+      }
+    }
+
+    function centerStoreHub() {
+      if (map) {
+        map.flyTo([STORE_HUB.lat, STORE_HUB.lng], 15, { duration: 0.8 });
+      }
+    }
+
+    function fitAllMarkers() {
+      if (!map) return;
+      const pts = [[STORE_HUB.lat, STORE_HUB.lng]];
+      stopMarkers.forEach(m => pts.push(m.getLatLng()));
+      if (pts.length > 1) {
+        map.fitBounds(pts, { padding: [60, 60], maxZoom: 16 });
+      } else {
+        centerStoreHub();
+      }
+    }
+
+    function toggleDrawer() {
+      const drawer = document.getElementById('stopsDrawer');
+      const isCollapsed = drawer.classList.contains('collapsed');
+      if (isCollapsed) {
+        drawer.classList.remove('collapsed');
+        document.getElementById('drawerToggleTxt').innerHTML = `<span>Thu gọn</span><span class="material-symbols-outlined text-base">expand_more</span>`;
+      } else {
+        drawer.classList.add('collapsed');
+        document.getElementById('drawerToggleTxt').innerHTML = `<span>Xem chi tiết</span><span class="material-symbols-outlined text-base">expand_less</span>`;
+      }
+    }
+
+    function handleBackAction() {
+      if (window.history.length > 1) {
+        window.history.back();
+      } else {
+        window.close();
+      }
+    }
+
+    // Realistic Geocoding for HCMC Addresses with Micro-Jitter
+    function resolveOrderCoordinates(order) {
+      const address = (order.deliveryAddress || order.pickupAddress || '').trim();
+      const q = address.toLowerCase();
+      const seed = Math.abs(Number(order.id) || 1);
+      const jLat = ((seed % 7) - 3) * 0.00045;
+      const jLng = ((((seed * 3) + 2) % 7) - 3) * 0.00045;
+
+      let base = null;
+      if (q.includes("nguyễn sỹ sách")) base = { lat: 10.8170, lng: 106.6380, label: "Nguyễn Sỹ Sách, P. 15, Tân Bình" };
+      else if (q.includes("lê trọng tấn") || q.includes("tây thạnh") || q.includes("sơn kỳ")) base = { lat: 10.8090, lng: 106.6300, label: "Lê Trọng Tấn, P. Tây Thạnh, Tân Phú" };
+      else if (q.includes("trường chinh") || q.includes("bình long") || q.includes("tân kỳ tân quý")) base = { lat: 10.7980, lng: 106.6210, label: "Trường Chinh / Bình Long, Tân Phú" };
+      else if (q.includes("celadon") || q.includes("aeon")) base = { lat: 10.8020, lng: 106.6180, label: "Celadon City, Tân Phú" };
+      else if (q.includes("cộng hòa") || q.includes("hoàng hoa thám") || q.includes("tân bình")) base = { lat: 10.7990, lng: 106.6490, label: "Cộng Hòa, Q. Tân Bình" };
+      else if (q.includes("lũy bán bích") || q.includes("thoại ngọc hầu") || q.includes("hòa bình")) base = { lat: 10.7830, lng: 106.6360, label: "Lũy Bán Bích, Q. Tân Phú" };
+      else if (q.includes("quang trung") || q.includes("gò vấp") || q.includes("phan huy ích")) base = { lat: 10.8350, lng: 106.6480, label: "Gò Vấp / Phan Huy Ích" };
+      else base = { lat: 10.8060, lng: 106.6280, label: address || "Khu vực Tân Phú, TP. HCM" };
+
+      return {
+        lat: base.lat + jLat,
+        lng: base.lng + jLng,
+        label: base.label
+      };
+    }
+
+    // Load Orders from API or Fallback
+    async function loadShipperOrders() {
+      try {
+        let orders = [];
+        const res = await fetch('http://localhost:5085/api/Orders');
+        if (res.ok) {
+          const allOrders = await res.json();
+          if (Array.isArray(allOrders)) {
+            // Filter by targetShipperId if provided, or active orders
+            if (targetShipperId) {
+              orders = allOrders.filter(o => String(o.shipperId) === String(targetShipperId));
+            } else if (targetOrderIds) {
+              const idList = targetOrderIds.split(',').map(s => s.trim());
+              orders = allOrders.filter(o => idList.includes(String(o.id)));
+            } else {
+              // Get active orders currently picking up or delivering
+              orders = allOrders.filter(o => ['Confirmed', 'PickingUp', 'Ready', 'Delivering'].includes(o.status));
+            }
+          }
+        }
+
+        // If no active orders from API or offline, use sample active order
+        if (!orders || orders.length === 0) {
+          orders = [
+            {
+              id: 44,
+              customerName: "Trung Minh",
+              contactPhone: "0888434359",
+              status: "Delivering",
+              deliveryAddress: "140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú, TP.HCM",
+              pickupAddress: "140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú, TP.HCM",
+              totalAmount: 110000,
+              paymentMethod: "BankTransfer",
+              orderType: "Standard"
+            }
+          ];
+        }
+
+        ordersList = orders;
+        document.getElementById('shipperSubTitle').textContent = `Shipper phụ trách: ${ordersList.length} đơn hàng trong ca`;
+        processRouteData();
+      } catch (err) {
+        console.warn('API error, using fallback route:', err);
+        ordersList = [
+          {
+            id: 44,
+            customerName: "Trung Minh",
+            contactPhone: "0888434359",
+            status: "Delivering",
+            deliveryAddress: "140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú, TP.HCM",
+            pickupAddress: "140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú, TP.HCM",
+            totalAmount: 110000,
+            paymentMethod: "BankTransfer",
+            orderType: "Standard"
+          }
+        ];
+        processRouteData();
+      }
+    }
+
+    // Process Route, TSP Optimization, Markers & OSRM Engine
+    async function processRouteData() {
+      // Clear old markers
+      stopMarkers.forEach(m => map.removeLayer(m));
+      stopMarkers = [];
+      if (activePolyline) {
+        map.removeLayer(activePolyline);
+        activePolyline = null;
+      }
+
+      // Resolve coords for all orders
+      ordersList.forEach(o => {
+        o.coords = resolveOrderCoordinates(o);
+        o.isPickup = ['Pending', 'Confirmed', 'PickingUp'].includes(o.status);
+      });
+
+      // Filter pending/active stops vs completed
+      const activeStops = ordersList.filter(o => o.status !== 'Completed');
+      const stopsToRoute = activeStops.length > 0 ? activeStops : ordersList;
+
+      // TSP nearest neighbor sequence
+      optimizedStops = calculateShortestSequence(STORE_HUB, stopsToRoute);
+
+      // Counts
+      const pickups = optimizedStops.filter(o => o.isPickup).length;
+      const deliveries = optimizedStops.filter(o => !o.isPickup).length;
+      document.getElementById('hudPickupCount').textContent = `${pickups} trạm`;
+      document.getElementById('hudDeliveryCount').textContent = `${deliveries} trạm`;
+      document.getElementById('drawerTitle').textContent = `Danh Sách Trạm Dừng (${optimizedStops.length} trạm)`;
+
+      // Render Stop Markers
+      optimizedStops.forEach((o, index) => {
+        const stopNum = index + 1;
+        const pinTypeClass = o.status === 'Completed' ? 'completed' : (o.isPickup ? 'pickup' : 'delivery');
+        const badgeLabel = o.isPickup ? 'Lấy đồ' : 'Giao đồ';
+        const code = `WS3T-${String(o.id).padStart(4, '0')}`;
+
+        const markerHtml = `
+          <div class="stop-pin ${pinTypeClass}">
+            ${stopNum}
+          </div>
+        `;
+
+        const m = L.marker([o.coords.lat, o.coords.lng], {
+          icon: L.divIcon({
+            className: 'custom-stop-marker',
+            html: markerHtml,
+            iconSize: [36, 36],
+            iconAnchor: [18, 18]
+          })
+        }).addTo(map);
+
+        const popupContent = `
+          <div class="p-2 space-y-1.5 text-slate-800 min-w-[210px]">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-extrabold text-primary">#${code}</span>
+              <span class="text-[9px] px-1.5 py-0.5 rounded font-bold ${o.isPickup ? 'bg-sky-100 text-sky-800' : 'bg-rose-100 text-rose-800'}">
+                Trạm ${stopNum}: ${badgeLabel}
+              </span>
+            </div>
+            <div class="font-bold text-xs text-slate-900">${o.customerName || 'Khách hàng'}</div>
+            <p class="text-[11px] text-slate-600">${o.deliveryAddress || o.pickupAddress || o.coords.label}</p>
+            <div class="text-[11px] text-slate-500 flex items-center justify-between pt-1 border-t border-slate-100">
+              <span>SĐT: <strong class="text-slate-800">${o.contactPhone || '—'}</strong></span>
+              <span class="text-emerald-700 font-bold">${o.paymentMethod === 'COD' ? (o.totalAmount || 0).toLocaleString() + ' đ' : 'Đã TT'}</span>
+            </div>
+            <div class="pt-1.5 flex gap-1">
+              <a href="tel:${o.contactPhone || ''}" class="flex-1 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-center font-bold text-[10px]">
+                Gọi khách
+              </a>
+              <button onclick="openSingleStopNav(${o.coords.lat}, ${o.coords.lng}, '${o.customerName}')" class="flex-1 py-1 rounded-lg bg-primary hover:bg-primary-dark text-white text-center font-bold text-[10px]">
+                Chỉ đường
+              </button>
+            </div>
+          </div>
+        `;
+        m.bindPopup(popupContent);
+        stopMarkers.push(m);
+      });
+
+      // Render Drawer Stop Items
+      renderDrawerStopsList(optimizedStops);
+
+      // Fetch OSRM Polyline Route
+      await fetchOsrmPolyline(STORE_HUB, optimizedStops);
+
+      // Fit map view
+      fitAllMarkers();
+    }
+
+    // TSP sequence solver
+    function calculateShortestSequence(hub, orders) {
+      if (!orders.length) return [];
+      const remaining = [...orders];
+      const seq = [];
+      let currentPt = hub;
+
+      while (remaining.length > 0) {
+        let bestIdx = 0;
+        let minDist = Infinity;
+        for (let i = 0; i < remaining.length; i++) {
+          const d = haversineDistance(currentPt.lat, currentPt.lng, remaining[i].coords.lat, remaining[i].coords.lng);
+          if (d < minDist) {
+            minDist = d;
+            bestIdx = i;
+          }
+        }
+        const nextOrder = remaining.splice(bestIdx, 1)[0];
+        seq.push(nextOrder);
+        currentPt = nextOrder.coords;
+      }
+      return seq;
+    }
+
+    function haversineDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    // Fetch OSRM Route
+    async function fetchOsrmPolyline(hub, sequence) {
+      if (!sequence.length) {
+        document.getElementById('hudDistance').textContent = '0.0 km';
+        document.getElementById('hudDuration').textContent = '0 phút';
+        return;
+      }
+
+      // Build waypoints string: lng,lat
+      const waypoints = [
+        `${hub.lng},${hub.lat}`,
+        ...sequence.map(s => `${s.coords.lng},${s.coords.lat}`),
+        `${hub.lng},${hub.lat}` // return to hub
+      ];
+
+      const url = `https://router.project-osrm.org/route/v1/driving/${waypoints.join(';')}?overview=full&geometries=geojson`;
+
+      try {
+        const resp = await fetch(url);
+        if (!resp.ok) throw new Error("OSRM failed");
+        const data = await resp.json();
+
+        if (data.routes && data.routes.length > 0) {
+          const route = data.routes[0];
+          const distKm = (route.distance / 1000).toFixed(1);
+          const durMin = Math.ceil(route.duration / 60);
+
+          document.getElementById('hudDistance').textContent = `${distKm} km`;
+          document.getElementById('hudDuration').textContent = `${durMin} phút`;
+
+          // GeoJSON coords are [lng, lat], Leaflet needs [lat, lng]
+          currentRouteCoords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+
+          activePolyline = L.polyline(currentRouteCoords, {
+            color: '#B90538',
+            weight: 5,
+            opacity: 0.9,
+            lineCap: 'round',
+            lineJoin: 'round'
+          }).addTo(map);
+
+          return;
+        }
+      } catch (err) {
+        console.warn('OSRM request error, fallback geodesic polyline:', err);
+      }
+
+      // Fallback polyline
+      const poly = [[hub.lat, hub.lng]];
+      let totalDist = 0;
+      let last = hub;
+      sequence.forEach(s => {
+        poly.push([s.coords.lat, s.coords.lng]);
+        totalDist += haversineDistance(last.lat, last.lng, s.coords.lat, s.coords.lng);
+        last = s.coords;
+      });
+      poly.push([hub.lat, hub.lng]);
+      totalDist += haversineDistance(last.lat, last.lng, hub.lat, hub.lng);
+      totalDist = (totalDist * 1.3).toFixed(1);
+
+      document.getElementById('hudDistance').textContent = `${totalDist} km`;
+      document.getElementById('hudDuration').textContent = `${Math.ceil(totalDist * 3)} phút`;
+
+      currentRouteCoords = poly;
+      activePolyline = L.polyline(poly, {
+        color: '#B90538',
+        weight: 5,
+        opacity: 0.85,
+        dashArray: '6, 8'
+      }).addTo(map);
+    }
+
+    // Render Drawer Stops List
+    function renderDrawerStopsList(stops) {
+      const container = document.getElementById('stopsListContainer');
+      if (!stops.length) {
+        container.innerHTML = `
+          <div class="py-6 text-center text-slate-400 text-xs">
+            <span class="material-symbols-outlined text-2xl text-emerald-500 mb-1">check_circle</span>
+            <p class="font-bold text-slate-700">Đã hoàn thành mọi chuyến đi!</p>
+            <p class="text-[11px] text-slate-400">Không còn trạm dừng cần đi trong ca làm việc.</p>
+          </div>
+        `;
+        return;
+      }
+
+      let html = '';
+
+      // Hub Start Station
+      html += `
+        <div class="pt-2 flex items-start gap-3">
+          <div class="w-8 h-8 rounded-full bg-rose-50 text-primary font-bold text-xs flex items-center justify-center shrink-0 border border-rose-200">
+            <span class="material-symbols-outlined text-base">storefront</span>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-extrabold text-primary">TRẠM 0 • XUẤT PHÁT</span>
+              <span class="text-[9px] px-1.5 py-0.5 rounded bg-rose-100 text-primary font-bold">Trụ sở Hub</span>
+            </div>
+            <p class="text-xs font-bold text-slate-800 mt-0.5">${STORE_HUB.name}</p>
+            <p class="text-[11px] text-slate-500 truncate">${STORE_HUB.address}</p>
+          </div>
+        </div>
+      `;
+
+      // Customer Stops
+      stops.forEach((o, index) => {
+        const stopNum = index + 1;
+        const code = `WS3T-${String(o.id).padStart(4, '0')}`;
+        const isPick = o.isPickup;
+
+        html += `
+          <div class="pt-3 flex items-start gap-3">
+            <div class="w-8 h-8 rounded-full ${isPick ? 'bg-sky-50 text-sky-600 border border-sky-200' : 'bg-rose-50 text-rose-600 border border-rose-200'} font-extrabold text-xs flex items-center justify-center shrink-0">
+              ${stopNum}
+            </div>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-extrabold text-slate-900">#${code} • ${o.customerName || 'Khách'}</span>
+                <span class="text-[9px] px-1.5 py-0.5 rounded font-bold ${isPick ? 'bg-sky-100 text-sky-800' : 'bg-rose-100 text-rose-800'}">
+                  ${isPick ? 'LẤY ĐỒ' : 'GIAO ĐỒ SẠCH'}
+                </span>
+              </div>
+              <p class="text-[11px] text-slate-600 mt-0.5 truncate">${o.deliveryAddress || o.pickupAddress || o.coords.label}</p>
+              <div class="flex items-center justify-between mt-1 text-[11px]">
+                <span class="text-slate-500">SĐT: <strong class="text-slate-800">${o.contactPhone || '—'}</strong></span>
+                <span class="font-extrabold text-primary">${o.paymentMethod === 'COD' ? 'Thu COD: ' + (o.totalAmount || 0).toLocaleString() + 'đ' : 'Đã thanh toán online'}</span>
+              </div>
+              <div class="mt-2 flex items-center gap-2">
+                <button onclick="flyToStop(${o.coords.lat}, ${o.coords.lng}, ${index})" class="py-1 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[10px] flex items-center gap-1">
+                  <span class="material-symbols-outlined text-xs">pin_drop</span> Xem trên bản đồ
+                </button>
+                <button onclick="openSingleStopNav(${o.coords.lat}, ${o.coords.lng}, '${o.customerName}')" class="py-1 px-2.5 rounded-lg bg-primary hover:bg-primary-dark text-white font-bold text-[10px] flex items-center gap-1">
+                  <span class="material-symbols-outlined text-xs">navigation</span> Dẫn đường Google Maps
+                </button>
+              </div>
+            </div>
+          </div>
+        `;
+      });
+
+      // Return to Hub Station
+      html += `
+        <div class="pt-3 flex items-start gap-3">
+          <div class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 font-bold text-xs flex items-center justify-center shrink-0 border border-emerald-200">
+            <span class="material-symbols-outlined text-base">check</span>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-extrabold text-emerald-700">KẾT THÚC TUYẾN</span>
+              <span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-800 font-bold">Về cửa hàng</span>
+            </div>
+            <p class="text-xs font-bold text-slate-800 mt-0.5">Bàn giao đồ đã gom & nhận mẻ giao mới</p>
+            <p class="text-[11px] text-slate-500 truncate">${STORE_HUB.address}</p>
+          </div>
+        </div>
+      `;
+
+      container.innerHTML = html;
+    }
+
+    function flyToStop(lat, lng, markerIndex) {
+      map.flyTo([lat, lng], 16, { duration: 0.8 });
+      if (stopMarkers[markerIndex]) {
+        stopMarkers[markerIndex].openPopup();
+      }
+      toggleDrawer(); // auto collapse drawer so map is visible
+    }
+
+    // Google Maps Navigation Single Stop
+    function openSingleStopNav(lat, lng, label) {
+      const url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+      window.open(url, '_blank');
+    }
+
+    // Google Maps Full Route Navigation
+    function openFullGoogleMapsRoute() {
+      if (!optimizedStops.length) {
+        alert("Chưa có trạm dừng nào để mở lộ trình.");
+        return;
+      }
+      const origin = `${STORE_HUB.lat},${STORE_HUB.lng}`;
+      const destination = `${STORE_HUB.lat},${STORE_HUB.lng}`;
+      const waypoints = optimizedStops.map(s => `${s.coords.lat},${s.coords.lng}`).join('|');
+      const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${encodeURIComponent(waypoints)}`;
+      window.open(url, '_blank');
+    }
+
+    // GPS Simulation along route
+    function toggleSimulateGps() {
+      if (isSimulating) {
+        stopSimulation();
+      } else {
+        startSimulation();
+      }
+    }
+
+    function startSimulation() {
+      if (!currentRouteCoords || currentRouteCoords.length === 0) {
+        alert("Chưa tải được toạ độ đường đi để mô phỏng.");
+        return;
+      }
+
+      isSimulating = true;
+      document.getElementById('iconSimulate').textContent = 'pause';
+      document.getElementById('txtSimulate').textContent = 'Dừng mô phỏng';
+      document.getElementById('btnSimulateGps').className = 'flex-1 py-1.5 px-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all';
+
+      // Create Shipper marker if not exist
+      if (!shipperSimMarker) {
+        const simIcon = L.divIcon({
+          className: 'custom-sim-pin',
+          html: `<div class="shipper-sim-pin"><span class="material-symbols-outlined text-base">two_wheeler</span></div>`,
+          iconSize: [38, 38],
+          iconAnchor: [19, 19]
+        });
+        shipperSimMarker = L.marker(currentRouteCoords[0], { icon: simIcon, zIndexOffset: 3000 }).addTo(map);
+      } else {
+        shipperSimMarker.setLatLng(currentRouteCoords[0]);
+      }
+
+      let step = 0;
+      const totalSteps = currentRouteCoords.length;
+
+      if (simTimer) clearInterval(simTimer);
+      simTimer = setInterval(() => {
+        if (!isSimulating || step >= totalSteps) {
+          stopSimulation();
+          return;
+        }
+        const pt = currentRouteCoords[step];
+        shipperSimMarker.setLatLng(pt);
+        map.panTo(pt, { animate: true, duration: 0.1 });
+        step += Math.max(1, Math.floor(totalSteps / 120)); // ~120 frames total
+      }, 100);
+    }
+
+    function stopSimulation() {
+      isSimulating = false;
+      if (simTimer) clearInterval(simTimer);
+      document.getElementById('iconSimulate').textContent = 'play_arrow';
+      document.getElementById('txtSimulate').textContent = 'Mô phỏng xe chạy GPS';
+      document.getElementById('btnSimulateGps').className = 'flex-1 py-1.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all';
+      if (shipperSimMarker) {
+        map.removeLayer(shipperSimMarker);
+        shipperSimMarker = null;
+      }
+    }
+  </script>
+</body>
+</html>
