@@ -239,6 +239,29 @@ public class ComplaintsController : ControllerBase
                 });
             }
 
+            // 🚀 QUY TẮC BẢO HIỂM 3T CARE: Chỉ tiếp nhận khiếu nại trong vòng 60 phút sau khi giao hàng thành công
+            if (role != "Admin" && role != "Staff")
+            {
+                if (order.Status == OrderStatus.Completed)
+                {
+                    var historyCompleted = await _context.OrderStatusHistories
+                        .Where(h => h.OrderId == order.Id && h.Status == OrderStatus.Completed)
+                        .OrderByDescending(h => h.ChangedAt)
+                        .FirstOrDefaultAsync();
+
+                    var completionTime = historyCompleted?.ChangedAt ?? order.UpdatedAt ?? order.CreatedAt;
+                    var elapsed = DateTime.UtcNow - completionTime;
+                    if (elapsed.TotalMinutes > 60)
+                    {
+                        var minutesPassed = (int)Math.Round(elapsed.TotalMinutes);
+                        return BadRequest(new
+                        {
+                            message = $"Đơn hàng đã giao thành công được {minutesPassed} phút. Thời hạn tiếp nhận khiếu nại trực tuyến tối đa là 60 phút kể từ lúc nhận đồ sạch (để đối soát niêm phong seal). Quý khách vui lòng liên hệ Hotline 1900 3T3T (0818.605.505) để được chuyên viên hỗ trợ trực tiếp."
+                        });
+                    }
+                }
+            }
+
             orderCode = $"#WS3T-{order.Id:D4}";
             sealCode = !string.IsNullOrWhiteSpace(order.SealCode) ? order.SealCode : $"WS-SEAL-{order.Id:D4}";
             sealStatus = !string.IsNullOrWhiteSpace(order.SealStatus) ? order.SealStatus : "Intact";

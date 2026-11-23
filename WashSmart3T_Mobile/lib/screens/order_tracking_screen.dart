@@ -1640,6 +1640,24 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     final paymentStatus = (order['paymentStatus'] ?? '').toString().toLowerCase();
     // 🚀 Chỉ khi đơn hàng hoàn thành hoặc thanh toán thành công mới được gửi khiếu nại
     final bool isPaidOrCompleted = status == 'completed' || paymentStatus == 'paid';
+    bool isClaimExpired = false;
+    int remainingMinutes = 60;
+    final completionRaw = (order['updatedAt'] ?? order['paidAt'] ?? order['createdAt'])?.toString();
+    if (completionRaw != null && completionRaw.isNotEmpty) {
+      String cleanDate = completionRaw;
+      if (!cleanDate.endsWith('Z') && !cleanDate.contains('+')) {
+        cleanDate += 'Z';
+      }
+      final completionTime = DateTime.tryParse(cleanDate);
+      if (completionTime != null) {
+        final diff = DateTime.now().toUtc().difference(completionTime.toUtc());
+        if (diff.inMinutes > 60) {
+          isClaimExpired = true;
+        } else {
+          remainingMinutes = 60 - diff.inMinutes;
+        }
+      }
+    }
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -1778,7 +1796,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
             ),
           ],
           const SizedBox(height: 12),
-          if (isPaidOrCompleted)
+          if (isPaidOrCompleted && !isClaimExpired)
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -1797,7 +1815,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                 },
                 icon: const Icon(Icons.report_problem_outlined, size: 16, color: primary),
                 label: Text(
-                  'Gửi Khiếu Nại Đơn Hàng Này',
+                  'Gửi Khiếu Nại Đơn Hàng Này (Còn $remainingMinutes phút)',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
@@ -1811,6 +1829,31 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                   ),
                   padding: const EdgeInsets.symmetric(vertical: 10),
                 ),
+              ),
+            )
+          else if (isPaidOrCompleted && isClaimExpired)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFEF2F2),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFFCA5A5)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.timer_off_outlined, size: 18, color: Colors.red),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Đã hết thời hạn khiếu nại (Quá 60 phút sau khi giao hàng thành công). Vui lòng liên hệ Hotline 1900 3T3T để được hỗ trợ.',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        color: Colors.red.shade900,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             )
           else
@@ -1829,7 +1872,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                     child: Text(
                       status == 'cancelled'
                           ? 'Đơn hàng đã hủy, không thể gửi khiếu nại dịch vụ.'
-                          : 'Khiếu nại & bồi thường chỉ khả dụng sau khi đơn hàng được giao và thanh toán thành công.',
+                          : 'Khiếu nại & bồi thường chỉ khả dụng sau khi đơn hàng được giao và thanh toán thành công (trong 60 phút).',
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 11,
                         color: secondaryText,

@@ -1,6 +1,11 @@
+import 'dart:convert';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 
 class SubmitClaimScreen extends StatefulWidget {
   final String orderCode;
@@ -23,9 +28,7 @@ class SubmitClaimScreen extends StatefulWidget {
 class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
   // Bảng màu thiết kế chuẩn WashSmart 3T
   static const Color primaryColor = Color(0xFFB90538);
-  static const Color primaryContainer = Color(0xFFDC2C4F);
   static const Color secondaryColor = Color(0xFFB4136D);
-  static const Color tertiaryColor = Color(0xFF006577);
   static const Color bgSurface = Color(0xFFFFF8F7);
   static const Color cardBg = Colors.white;
   static const Color surfaceLow = Color(0xFFFFF0F0);
@@ -56,10 +59,14 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
     {'icon': Icons.air, 'label': 'Đồ còn ẩm / Mùi lạ'},
   ];
 
-  final List<String> _proofPhotos = [
-    'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?q=80&w=200&auto=format&fit=crop',
-    'https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?q=80&w=200&auto=format&fit=crop',
-  ];
+  // 📸 Ảnh bằng chứng tải lên từ di động / camera (Bắt đầu rỗng, không dùng ảnh mẫu giả lập)
+  final List<String> _proofPhotos = [];
+  bool _isUploadingPhoto = false;
+
+  // ⏱️ Giới hạn 60 phút sau khi giao hàng thành công
+  bool _isClaimExpired = false;
+  int _remainingMinutes = 60;
+  String? _expiredMessage;
 
   late TextEditingController _descController;
   late TextEditingController _refundAmountController;
@@ -130,6 +137,27 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
             _orderTotalAmount = (order['totalAmount'] as num).toDouble();
           }
 
+          // ⏱️ Kiểm tra thời hạn 60 phút sau khi giao hàng thành công
+          final completionRaw = (order['updatedAt'] ?? order['paidAt'] ?? order['createdAt'])?.toString();
+          if (completionRaw != null && completionRaw.isNotEmpty) {
+            String cleanDate = completionRaw;
+            if (!cleanDate.endsWith('Z') && !cleanDate.contains('+')) {
+              cleanDate += 'Z';
+            }
+            final completionTime = DateTime.tryParse(cleanDate);
+            if (completionTime != null) {
+              final diff = DateTime.now().toUtc().difference(completionTime.toUtc());
+              final mins = diff.inMinutes;
+              if (mins > 60) {
+                _isClaimExpired = true;
+                _expiredMessage = 'Đơn hàng đã giao thành công được $mins phút. Thời hạn tiếp nhận khiếu nại trực tuyến tối đa là 60 phút kể từ lúc nhận đồ (để đối soát seal niêm phong). Quý khách vui lòng liên hệ Hotline 1900 3T3T (0818.605.505) để được hỗ trợ đặc cách.';
+              } else {
+                _isClaimExpired = false;
+                _remainingMinutes = 60 - mins;
+              }
+            }
+          }
+
           if (_itemSelections.isEmpty) {
             final rawItems = order['items'];
             if (rawItems is List && rawItems.isNotEmpty) {
@@ -194,10 +222,168 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
     );
   }
 
+  Future<String?> _uploadSinglePhoto(Uint8List bytes, String fileName) async {
+    try {
+      final token = await AuthService.getToken();
+      final request = http.MultipartRequest('POST', Uri.parse('http://localhost:5085/api/Uploads'));
+      if (token != null && token.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+      final safeName = fileName.isNotEmpty ? fileName : 'claim_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: safeName,
+        ),
+      );
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+      if (response.statusCode == 200) {
+        final body = jsonDecode(response.body);
+        if (body is Map && body['url'] != null) {
+          return body['url'].toString();
+        }
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Lỗi tải ảnh khiếu nại: $e');
+      return null;
+    }
+  }
+
+  Future<void> _pickAndUploadPhoto({required ImageSource source}) async {
+    if (_proofPhotos.length >= 5) {
+      _showToast('Bạn chỉ có thể tải lên tối đa 5 hình ảnh bằng chứng.');
+      return;
+    }
+    try {
+      final picker = ImagePicker();
+      final xfile = await picker.pickImage(
+        source: source,
+        imageQuality: 85,
+        maxWidth: 1600,
+        maxHeight: 1600,
+      );
+      if (xfile == null) return;
+
+      setState(() => _isUploadingPhoto = true);
+      _showToast('Đang tải ảnh bằng chứng lên máy chủ...');
+
+      final bytes = await xfile.readAsBytes();
+      final uploadedUrl = await _uploadSinglePhoto(bytes, xfile.name);
+
+      if (!mounted) return;
+      setState(() => _isUploadingPhoto = false);
+
+      if (uploadedUrl != null && uploadedUrl.isNotEmpty) {
+        setState(() {
+          _proofPhotos.add(uploadedUrl);
+        });
+        _showToast('Tải ảnh bằng chứng #${_proofPhotos.length} thành công!');
+      } else {
+        _showToast('Không tải được ảnh lên máy chủ. Vui lòng thử lại!');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isUploadingPhoto = false);
+        _showToast('Lỗi chọn ảnh: $e');
+      }
+    }
+  }
+
+  void _showPickPhotoSourceSheet() {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Thêm ảnh bằng chứng sự cố',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: onSurface,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Chụp rõ tem seal niêm phong hoặc vết bẩn/hỏng vải trên trang phục',
+                style: GoogleFonts.plusJakartaSans(fontSize: 12, color: outlineColor),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: primaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.camera_alt, color: primaryColor),
+                ),
+                title: Text(
+                  'Chụp ảnh bằng Camera',
+                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+                subtitle: Text(
+                  'Mở máy ảnh chụp trực tiếp sản phẩm',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 11, color: outlineColor),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickAndUploadPhoto(source: ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0284C7).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.photo_library, color: Color(0xFF0284C7)),
+                ),
+                title: Text(
+                  'Chọn ảnh từ Thiết bị / Thư viện',
+                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+                subtitle: Text(
+                  'Chọn hình ảnh đã chụp sẵn trong máy',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 11, color: outlineColor),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _pickAndUploadPhoto(source: ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _handleSubmitClaim() async {
+    if (_isClaimExpired) {
+      _showToast(_expiredMessage ?? 'Đã hết thời hạn 60 phút khiếu nại kể từ lúc giao hàng thành công.');
+      return;
+    }
+
     final selectedItems = _itemSelections.where((x) => x['isSelected'] == true).toList();
     if (selectedItems.isEmpty) {
       _showToast('Vui lòng chọn ít nhất 1 món đồ bị sự cố!');
+      return;
+    }
+
+    if (_proofPhotos.isEmpty) {
+      _showToast('Vui lòng chụp hoặc tải lên ít nhất 1 ảnh bằng chứng để đối soát!');
       return;
     }
 
@@ -232,7 +418,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
         incidentType: categoryLabel,
         itemDescription: fullItemDesc,
         severity: _selectedCategoryIndex == 1 ? 'High' : 'Medium',
-        photoUrl: _proofPhotos.isNotEmpty ? _proofPhotos.first : null,
+        photoUrl: _proofPhotos.join(','),
         customerNote: 'Phương án mong muốn: $solutionText. Ghi chú khách: $desc',
         requestedRefund: refundAmount,
       );
@@ -308,6 +494,8 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildInsuranceHeaderCard(),
+                  const SizedBox(height: 12),
+                  _buildTimeLimitBanner(),
                   const SizedBox(height: 16),
                   _buildItemSelectionSection(),
                   const SizedBox(height: 20),
@@ -341,11 +529,12 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
             width: double.infinity,
             height: 50,
             child: ElevatedButton.icon(
-              onPressed: _isSubmitting ? null : _handleSubmitClaim,
+              onPressed: (_isSubmitting || _isClaimExpired) ? null : _handleSubmitClaim,
               style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
+                backgroundColor: _isClaimExpired ? Colors.grey.shade400 : primaryColor,
+                disabledBackgroundColor: Colors.grey.shade400,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
-                elevation: 4,
+                elevation: _isClaimExpired ? 0 : 4,
               ),
               icon: _isSubmitting
                   ? const SizedBox(
@@ -353,9 +542,9 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                       height: 18,
                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                     )
-                  : const Icon(Icons.shield, color: Colors.white, size: 20),
+                  : Icon(_isClaimExpired ? Icons.timer_off_outlined : Icons.shield, color: Colors.white, size: 20),
               label: Text(
-                'Gửi khiếu nại & Yêu cầu xử lý',
+                _isClaimExpired ? 'Đã quá hạn khiếu nại (60 phút)' : 'Gửi khiếu nại & Yêu cầu xử lý',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
@@ -365,6 +554,82 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  // --- 0. TIME LIMIT BANNER ---
+  Widget _buildTimeLimitBanner() {
+    if (_isClaimExpired) {
+      return Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFEF2F2),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFFCA5A5), width: 1.2),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(Icons.timer_off_outlined, color: Colors.red, size: 22),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'ĐÃ HẾT HẠN KHIẾU NẠI TRỰC TUYẾN (60 PHÚT)',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      color: Colors.red.shade900,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    _expiredMessage ??
+                        'Đơn hàng đã hoàn tất vượt quá 60 phút. Quy chuẩn đối soát niêm phong chỉ áp dụng trong vòng 60 phút sau khi shipper bàn giao. Quý khách vui lòng liên hệ Hotline 1900 3T3T (0818.605.505) để được hỗ trợ đặc cách.',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      color: Colors.red.shade800,
+                      height: 1.35,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFECFDF5),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFF86EFAC), width: 1.2),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.timer_outlined, color: Color(0xFF059669), size: 20),
+          const SizedBox(width: 8),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: GoogleFonts.plusJakartaSans(fontSize: 11, color: const Color(0xFF065F46)),
+                children: [
+                  const TextSpan(text: 'Thời hạn tiếp nhận khiếu nại 3T Care: '),
+                  TextSpan(
+                    text: 'Còn $_remainingMinutes phút ',
+                    style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF047857)),
+                  ),
+                  const TextSpan(text: '(Chỉ áp dụng trong vòng 60 phút sau khi shipper giao hàng hoàn tất).'),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -428,8 +693,13 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                     ),
                   ),
                   Text(
-                    'Khách hàng: $_customerName',
+                    'Khách hàng: $_customerName${_customerPhone.isNotEmpty ? ' ($_customerPhone)' : ''}',
                     style: GoogleFonts.plusJakartaSans(fontSize: 12, color: outlineColor),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Shipper: $_shipperName • $_drumInfo',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 10, color: outlineColor),
                   ),
                 ],
               ),
@@ -524,9 +794,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
           ],
         ),
         const SizedBox(height: 10),
-        ..._itemSelections.asMap().entries.map((entry) {
-          final idx = entry.key;
-          final item = entry.value;
+        ..._itemSelections.map((item) {
           final isSelected = item['isSelected'] == true;
           return Padding(
             padding: const EdgeInsets.only(bottom: 8.0),
@@ -763,10 +1031,33 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                       ClipRRect(
                         borderRadius: BorderRadius.circular(12),
                         child: Image.network(
-                          _proofPhotos[idx],
+                          _proofPhotos[idx].startsWith('http')
+                              ? _proofPhotos[idx]
+                              : 'http://localhost:5085${_proofPhotos[idx].startsWith('/') ? _proofPhotos[idx] : '/${_proofPhotos[idx]}'}',
                           width: 85,
                           height: 85,
                           fit: BoxFit.cover,
+                          loadingBuilder: (ctx, child, progress) {
+                            if (progress == null) return child;
+                            return Container(
+                              width: 85,
+                              height: 85,
+                              color: surfaceLow,
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: primaryColor),
+                                ),
+                              ),
+                            );
+                          },
+                          errorBuilder: (_, __, ___) => Container(
+                            width: 85,
+                            height: 85,
+                            color: Colors.grey.shade200,
+                            child: const Icon(Icons.broken_image, color: Colors.grey),
+                          ),
                         ),
                       ),
                       Positioned(
@@ -775,12 +1066,12 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.7),
+                            color: Colors.black.withValues(alpha: 0.7),
                             borderRadius: BorderRadius.circular(4),
                           ),
                           child: Text(
                             'Ảnh ${idx + 1}',
-                            style: GoogleFonts.plusJakartaSans(fontSize: 8, color: Colors.white),
+                            style: GoogleFonts.plusJakartaSans(fontSize: 8, color: Colors.white, fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),
@@ -800,20 +1091,39 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                   ),
                 );
               }),
-              if (_proofPhotos.length < 5)
+              if (_isUploadingPhoto)
+                Padding(
+                  padding: const EdgeInsets.only(right: 10.0),
+                  child: Container(
+                    width: 85,
+                    height: 85,
+                    decoration: BoxDecoration(
+                      color: surfaceLow,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: primaryColor),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Đang tải...',
+                          style: GoogleFonts.plusJakartaSans(fontSize: 10, color: primaryColor, fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              if (_proofPhotos.length < 5 && !_isUploadingPhoto)
                 Padding(
                   padding: const EdgeInsets.only(right: 10.0),
                   child: InkWell(
-                    onTap: () {
-                      final dummyPhotos = [
-                        'https://images.unsplash.com/photo-1545127398-14699f92334b?q=80&w=200&auto=format&fit=crop',
-                        'https://images.unsplash.com/photo-1567113463300-102570d935b4?q=80&w=200&auto=format&fit=crop',
-                        'https://images.unsplash.com/photo-1574634534894-89d7576c8259?q=80&w=200&auto=format&fit=crop',
-                      ];
-                      final nextPhoto = dummyPhotos[_proofPhotos.length % dummyPhotos.length];
-                      setState(() => _proofPhotos.add(nextPhoto));
-                      _showToast('Đã thêm ảnh bằng chứng #${_proofPhotos.length}');
-                    },
+                    onTap: _showPickPhotoSourceSheet,
                     borderRadius: BorderRadius.circular(12),
                     child: Container(
                       width: 85,
@@ -821,7 +1131,7 @@ class _SubmitClaimScreenState extends State<SubmitClaimScreen> {
                       decoration: BoxDecoration(
                         color: cardBg,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: primaryColor.withOpacity(0.3)),
+                        border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
