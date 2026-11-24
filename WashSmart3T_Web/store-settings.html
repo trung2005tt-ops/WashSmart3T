@@ -365,73 +365,6 @@
               </button>
             </div>
           </div>
-
-          <!-- Card: Cổng Gửi SMS Xác Thực SĐT Thật -->
-          <div class="bg-surface-card rounded-2xl border border-surface-container p-5 shadow-sm space-y-4">
-            <div class="flex items-center justify-between pb-3 border-b border-surface-container">
-              <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-blue-700 text-xl">sms</span>
-                <h2 class="font-bold text-sm text-on-surface">Cổng Gửi SMS Xác Thực SĐT Thật (OTP Bảo Mật)</h2>
-              </div>
-              <span class="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold border border-blue-300">OTP Gateway</span>
-            </div>
-
-            <p class="text-[11px] text-secondary">
-              Khi khách hàng Đăng ký mới hoặc Quên mật khẩu, hệ thống sẽ gửi tin nhắn SMS chứa mã OTP 6 số bảo mật đến đúng số điện thoại thật của họ.
-            </p>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-xs font-bold text-secondary mb-1">Cổng dịch vụ SMS Gateway</label>
-                <select id="smsProviderSelect"
-                  class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-white text-xs font-semibold focus:outline-none focus:border-primary">
-                  <option value="Simulated">SmartWashSMS Engine (Tự động cấp mã OTP kiểm thử an toàn)</option>
-                  <option value="SpeedSMS">SpeedSMS.vn (Cổng SMS Việt Nam phổ biến nhất)</option>
-                  <option value="Twilio">Twilio SMS (SMS Gateway quốc tế)</option>
-                  <option value="eSMS">eSMS.vn (SMS Brandname doanh nghiệp)</option>
-                </select>
-              </div>
-
-              <div>
-                <label class="block text-xs font-bold text-secondary mb-1">Tên Brandname / Số gửi</label>
-                <input type="text" id="smsSenderIdInput" placeholder="Ví dụ: WashSmart3T"
-                  class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-white text-xs font-semibold focus:outline-none focus:border-primary">
-              </div>
-
-              <div class="md:col-span-2">
-                <label class="block text-xs font-bold text-secondary mb-1">API Key / Access Token</label>
-                <input type="password" id="smsApiKeyInput" placeholder="Nhập API Key cổng SMS nếu có (để trống để dùng chế độ tự động an toàn)"
-                  class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-white text-xs font-mono focus:outline-none focus:border-primary">
-              </div>
-            </div>
-
-            <!-- Gửi thử nghiệm SMS -->
-            <div class="p-3 rounded-xl bg-blue-50/70 border border-blue-200 flex flex-col md:flex-row items-center justify-between gap-3">
-              <div class="text-xs text-blue-900">
-                <span class="font-bold flex items-center gap-1">
-                  <span class="material-symbols-outlined text-sm">send_to_mobile</span>
-                  Kiểm tra gửi thử tin nhắn SMS OTP:
-                </span>
-                <p class="text-[11px] text-blue-800 mt-0.5">Nhập SĐT của bạn và nhấn gửi thử để xem mã OTP được xử lý.</p>
-              </div>
-              <div class="flex items-center gap-2 w-full md:w-auto">
-                <input type="text" id="testPhoneInput" placeholder="SĐT ví dụ: 0999222111"
-                  class="px-2.5 py-1.5 rounded-lg border border-blue-300 bg-white text-xs font-bold text-blue-950 focus:outline-none w-36">
-                <button type="button" onclick="testSendSms()"
-                  class="px-3 py-1.5 rounded-lg bg-blue-700 text-white text-xs font-bold hover:bg-blue-800 transition-colors shrink-0">
-                  Gửi Thử SMS
-                </button>
-              </div>
-            </div>
-
-            <div class="pt-2 flex items-center justify-end">
-              <button type="button" onclick="saveStoreConfig()"
-                class="px-5 py-2 rounded-lg bg-blue-700 text-white text-xs font-bold hover:bg-blue-800 shadow-sm transition-colors flex items-center gap-1">
-                <span class="material-symbols-outlined text-sm">save</span>
-                Lưu Cấu Hình SMS
-              </button>
-            </div>
-          </div>
         </div>
 
         <!-- Right Preview Column (5 Cols) -->
@@ -614,13 +547,6 @@
         document.getElementById('bankAccountNoInput').value = config.bankAccountNo || '0908123456';
         document.getElementById('bankAccountHolderInput').value = config.bankAccountHolder || 'NGUYEN THI KIEU NHU';
 
-        // Cấu hình SMS
-        if (config.smsProvider) {
-          document.getElementById('smsProviderSelect').value = config.smsProvider;
-        }
-        document.getElementById('smsApiKeyInput').value = config.smsApiKey || '';
-        document.getElementById('smsSenderIdInput').value = config.smsSenderId || 'WashSmart3T';
-
         updateVietQrPreview();
         runMockCalculation();
       } catch (err) {
@@ -702,9 +628,9 @@
         const bankAccountNo = document.getElementById('bankAccountNoInput').value.trim() || '0908123456';
         const bankAccountHolder = (document.getElementById('bankAccountHolderInput').value.trim() || 'NGUYEN THI KIEU NHU').toUpperCase();
 
-        const smsProvider = document.getElementById('smsProviderSelect').value;
-        const smsApiKey = document.getElementById('smsApiKeyInput').value.trim();
-        const smsSenderId = document.getElementById('smsSenderIdInput').value.trim() || 'WashSmart3T';
+        const smsProvider = currentConfig?.smsProvider || 'Simulated';
+        const smsApiKey = currentConfig?.smsApiKey || '';
+        const smsSenderId = currentConfig?.smsSenderId || 'WashSmart3T';
 
         const payload = {
           storeName,
@@ -796,21 +722,6 @@
 
       const imgUrl = `https://img.vietqr.io/image/${bin}-${accountNo}-compact2.png?amount=50000&addInfo=TEST%20VIETQR&accountName=${encodeURIComponent(holder)}`;
       document.getElementById('vietQrPreviewImg').src = imgUrl;
-    }
-
-    async function testSendSms() {
-      const phone = document.getElementById('testPhoneInput').value.trim();
-      if (!phone) {
-        alert('Vui lòng nhập số điện thoại để gửi thử tin nhắn SMS OTP.');
-        return;
-      }
-      try {
-        showAlert('Đang kết nối cổng SMS gửi tin nhắn tới ' + phone + '...', false);
-        const data = await Api.StoreConfig.testSms(phone);
-        showAlert(`[${data.provider || "Gateway"}] ${data.message}`, false, true);
-      } catch (err) {
-        showAlert('❌ Lỗi kết nối gửi SMS: ' + (err.message || err), true);
-      }
     }
 
     function showAlert(msg, isError = false, isSuccess = false) {
