@@ -288,9 +288,18 @@
     const urlParams = new URLSearchParams(window.location.search);
     const targetShipperId = urlParams.get('shipperId') || '';
     const targetOrderIds = urlParams.get('orderIds') || '';
+    const isEmbed = urlParams.get('embed') === '1';
 
     // Initialize Map on Load
     window.addEventListener('DOMContentLoaded', async () => {
+      if (isEmbed) {
+        const headerEl = document.querySelector('header');
+        const hudEl = document.getElementById('routeHudBadge');
+        const drawerEl = document.getElementById('stopsDrawer');
+        if (headerEl) headerEl.style.display = 'none';
+        if (hudEl) hudEl.style.display = 'none';
+        if (drawerEl) drawerEl.style.display = 'none';
+      }
       initMap();
       await loadShipperOrders();
     });
@@ -430,20 +439,21 @@
           const allOrders = await res.json();
           if (Array.isArray(allOrders)) {
             // Filter by targetShipperId if provided, or active orders
+            const activeStatuses = ['Confirmed', 'PickingUp', 'Ready', 'Delivering'];
             if (targetShipperId) {
-              orders = allOrders.filter(o => String(o.shipperId) === String(targetShipperId));
+              orders = allOrders.filter(o => String(o.shipperId) === String(targetShipperId) && activeStatuses.includes(o.status));
             } else if (targetOrderIds) {
               const idList = targetOrderIds.split(',').map(s => s.trim());
               orders = allOrders.filter(o => idList.includes(String(o.id)));
             } else {
               // Get active orders currently picking up or delivering
-              orders = allOrders.filter(o => ['Confirmed', 'PickingUp', 'Ready', 'Delivering'].includes(o.status));
+              orders = allOrders.filter(o => activeStatuses.includes(o.status));
             }
           }
         }
 
-        // If no active orders from API or offline, use sample active order
-        if (!orders || orders.length === 0) {
+        // Only use sample fallback if neither targetShipperId nor targetOrderIds was specified
+        if ((!orders || orders.length === 0) && !targetShipperId && !targetOrderIds) {
           orders = [
             {
               id: 44,

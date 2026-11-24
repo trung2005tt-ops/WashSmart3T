@@ -132,7 +132,6 @@ class _ShipperScreenState extends State<ShipperScreen>
   String _shipperName = 'Shipper';
   int? _currentShipperId;
   Timer? _orderPollingTimer;
-  bool _hasNewOrderNotification = false;
   int _selectedFilterIndex = 0; // 0: Cần lấy, 1: Cần giao, 2: Đã hoàn tất
   int _completedTimeFilter = 0; // 0: Đã đi hôm nay, 1: Tất cả lịch sử
   String _searchQuery = '';
@@ -664,9 +663,7 @@ class _ShipperScreenState extends State<ShipperScreen>
             .length;
         if (currentPickupWaiting > localPickupWaiting) {
           if (mounted) {
-            setState(() {
-              _hasNewOrderNotification = true;
-            });
+            _loadOrdersFromApi();
           }
         }
       }
@@ -850,7 +847,7 @@ class _ShipperScreenState extends State<ShipperScreen>
                   ),
                 ),
                 Text(
-                  'Điều Phối Lấy & Giao',
+                  'Lộ Trình Giao Nhận',
                   style: GoogleFonts.plusJakartaSans(
                     color: onSurface,
                     fontSize: 16,
@@ -884,8 +881,8 @@ class _ShipperScreenState extends State<ShipperScreen>
                 _syncPresenceToBackend(_isOnline);
                 _showToast(
                   _isOnline
-                      ? 'Bạn đã BẬT chế độ sẵn sàng nhận đơn'
-                      : 'Bạn đã TẮT chế độ nhận đơn (Tạm nghỉ)',
+                      ? 'Bạn đã BẬT chế độ trực tuyến'
+                      : 'Bạn đã TẮT chế độ trực tuyến (Tạm nghỉ)',
                   isSuccess: _isOnline,
                 );
               },
@@ -919,83 +916,6 @@ class _ShipperScreenState extends State<ShipperScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 🔔 Thông báo có đơn mới nhảy thông báo (Item 10)
-            if (_hasNewOrderNotification) ...[
-              Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF3C7),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFFF59E0B)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.amber.withOpacity(0.15),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.notifications_active,
-                      color: Color(0xFFD97706),
-                      size: 22,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'CÓ ĐƠN HÀNG MỚI CẦN LẤY!',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: const Color(0xFF92400E),
-                            ),
-                          ),
-                          Text(
-                            'Khách vừa đặt đơn giặt sấy. Hãy bấm để nhận đơn ngay!',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 11,
-                              color: const Color(0xFF78350F),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    ElevatedButton(
-                      onPressed: () {
-                        setState(() => _hasNewOrderNotification = false);
-                        _loadOrdersFromApi();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        minimumSize: Size.zero,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      child: const Text(
-                        'Xem ngay',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-
             // 1. Shipper Header Info Card
             _buildShipperProfileCard(),
             const SizedBox(height: 16),
@@ -1369,7 +1289,7 @@ class _ShipperScreenState extends State<ShipperScreen>
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      'Điều phối lấy & giao',
+                      'Tuyến đường giao nhận',
                       style: GoogleFonts.plusJakartaSans(
                         color: Colors.white70,
                         fontSize: 11,
@@ -3174,7 +3094,7 @@ class _ShipperScreenState extends State<ShipperScreen>
     if (order.type == OrderType.pickup) {
       switch (order.status) {
         case ShipperOrderStatus.available:
-          return 'Nhận đơn lấy hàng';
+          return 'Bắt đầu đi lấy đồ';
         case ShipperOrderStatus.pickingUp:
           return 'Cân đồ';
         case ShipperOrderStatus.inStore:
@@ -3185,7 +3105,7 @@ class _ShipperScreenState extends State<ShipperScreen>
     } else {
       switch (order.status) {
         case ShipperOrderStatus.available:
-          return 'Nhận đơn giao hàng';
+          return 'Bắt đầu giao hàng';
         case ShipperOrderStatus.delivering:
           return (order.isPaidOnline || order.codAmount <= 0)
               ? 'Xác nhận đã giao hàng'
@@ -3215,61 +3135,18 @@ class _ShipperScreenState extends State<ShipperScreen>
     }
     if (order.type == OrderType.pickup &&
         order.status == ShipperOrderStatus.available) {
-      // Chỉ đơn Confirmed mới nhận được cho công đoạn lấy đồ.
-      final assigned = await _assignOrderToSelf(order.orderId!);
-      if (!assigned) {
-        _showToast(
-          'Không thể nhận đơn. Kiểm tra trạng thái đơn hoặc nhiệm vụ đang làm.',
-          isSuccess: false,
-        );
-        await _loadOrdersFromApi();
-        return;
-      }
+      // Đơn đã được Web Quản lý phân công -> chuyển thẳng sang Đang đi lấy
       await _updateOrderStatus(order, ShipperOrderStatus.pickingUp);
     } else if (order.type == OrderType.pickup &&
         order.status == ShipperOrderStatus.pickingUp) {
       _showPickupWeighingDialog(order);
     } else if (order.type == OrderType.delivery &&
         order.status == ShipperOrderStatus.available) {
-      // Chỉ đơn Ready mới nhận được cho công đoạn giao đồ.
-      final assigned = await _assignOrderToSelf(order.orderId!);
-      if (!assigned) {
-        _showToast(
-          'Không thể nhận đơn giao. Kiểm tra trạng thái đơn hoặc nhiệm vụ đang làm.',
-          isSuccess: false,
-        );
-        await _loadOrdersFromApi();
-        return;
-      }
+      // Đơn đã được Web Quản lý phân công -> chuyển thẳng sang Đang giao hàng
       await _updateOrderStatus(order, ShipperOrderStatus.delivering);
     } else if (order.type == OrderType.delivery &&
         order.status == ShipperOrderStatus.delivering) {
       _showProofPhotoDialog(order, isPickup: false);
-    }
-  }
-
-  /// Shipper nhận đơn qua POST /api/Orders/{id}/assign.
-  Future<bool> _assignOrderToSelf(int backendOrderId) async {
-    try {
-      final token = await AuthService.getToken();
-      if (token == null || token.isEmpty) return false;
-      final res = await http.post(
-        Uri.parse('$_baseUrl/Orders/$backendOrderId/assign'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-      );
-      if (res.statusCode == 200) return true;
-      try {
-        final body = jsonDecode(res.body);
-        if (body is Map && body['message'] != null) {
-          _showToast(body['message'].toString(), isSuccess: false);
-        }
-      } catch (_) {}
-      return false;
-    } catch (_) {
-      return false;
     }
   }
 
@@ -5241,6 +5118,7 @@ class _ShipperScreenState extends State<ShipperScreen>
     List<ShipperOrderModel> pendingOrders,
   ) {
     final shipperQuery = _currentShipperId != null ? '?shipperId=$_currentShipperId' : '';
+    final embedQuery = _currentShipperId != null ? '?shipperId=$_currentShipperId&embed=1' : '?embed=1';
     final pickupCount = pendingOrders.where((o) => o.type == OrderType.pickup).length;
     final deliveryCount = pendingOrders.where((o) => o.type == OrderType.delivery).length;
     double totalEstKm = 0;
@@ -5275,7 +5153,7 @@ class _ShipperScreenState extends State<ShipperScreen>
                   child: Stack(
                     children: [
                       RouteMapEmbed(
-                        url: 'http://localhost:5500/shipper_route_map.html$shipperQuery',
+                        url: 'http://localhost:5500/shipper_route_map.html$embedQuery',
                         height: 300,
                       ),
                       Positioned(

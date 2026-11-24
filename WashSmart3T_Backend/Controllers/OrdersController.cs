@@ -1279,7 +1279,7 @@ public class OrdersController : ControllerBase
 
     // ============================================================
     // GET: api/Orders/shipper-orders
-    // Shipper xem các đơn được giao cho mình và các đơn đang chờ nhận
+    // Shipper chỉ xem các đơn đã được Web Quản Lý phân công cho mình
     // ============================================================
     [HttpGet("shipper-orders")]
     [Authorize(Roles = "Shipper,Admin,Staff")]
@@ -1292,7 +1292,7 @@ public class OrdersController : ControllerBase
         }
 
         var orders = await _context.Orders
-            .Where(x => x.Status != OrderStatus.Cancelled && ((x.ShipperId == null && (x.Status == OrderStatus.Confirmed || x.Status == OrderStatus.Ready)) || x.ShipperId == shipperId))
+            .Where(x => x.ShipperId == shipperId && x.Status != OrderStatus.Cancelled)
             .Include(x => x.Customer)
             .Include(x => x.OrderDetails)
                 .ThenInclude(x => x.Service)
