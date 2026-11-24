@@ -713,21 +713,66 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
     );
   }
 
-  // Khách hàng chọn khối lượng ước tính (kg) để dự trù chi phí minh bạch
+  // Khách hàng chọn khối lượng (kg) hoặc số lượng (bộ/cái/đôi) ước tính tùy theo dịch vụ đã chọn
   Widget _buildWeightEstimationSection() {
-    final hasKgService = selectedServiceIds.any((id) {
-      final svc = availableServices.firstWhere((s) => s['id'] == id, orElse: () => {});
-      return svc.isNotEmpty && !_isServiceByItem(svc);
-    });
+    final kgServices = selectedServiceIds.map((id) {
+      return availableServices.firstWhere((s) => s['id'] == id, orElse: () => <String, dynamic>{});
+    }).where((svc) => svc.isNotEmpty && !_isServiceByItem(svc)).toList();
 
-    int estimatedKgAmount = 0;
-    for (final id in selectedServiceIds) {
-      final svc = availableServices.firstWhere((s) => s['id'] == id, orElse: () => {});
-      if (svc.isNotEmpty && !_isServiceByItem(svc)) {
-        final price = _getServicePrice(svc);
-        estimatedKgAmount += (price * estimatedWeightKg).round();
+    final itemServices = selectedServiceIds.map((id) {
+      return availableServices.firstWhere((s) => s['id'] == id, orElse: () => <String, dynamic>{});
+    }).where((svc) => svc.isNotEmpty && _isServiceByItem(svc)).toList();
+
+    final children = <Widget>[];
+
+    // NẾU CÓ DỊCH VỤ THEO KG (Giặt sấy tiêu chuẩn, Giặt thường, Giặt nhanh, Giặt rèm cửa...)
+    if (kgServices.isNotEmpty) {
+      children.add(_buildKgEstimationCard(kgServices));
+    }
+
+    // NẾU CÓ DỊCH VỤ THEO MÓN (Bộ, Cái, Đôi: Comple/Áo vest, Giày sneaker, Đầm dạ hội, Chăn mền...)
+    if (itemServices.isNotEmpty) {
+      if (children.isNotEmpty) {
+        children.add(const SizedBox(height: 14));
+      }
+      for (final svc in itemServices) {
+        children.add(_buildItemQuantityEstimationCard(svc));
       }
     }
+
+    if (children.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: children,
+    );
+  }
+
+  // Khối Lượng Ước Tính cho các dịch vụ tính theo KG
+  Widget _buildKgEstimationCard(List<Map<String, dynamic>> kgServices) {
+    int estimatedKgAmount = 0;
+    int totalRatePerKg = 0;
+    bool isCurtain = false;
+
+    for (final svc in kgServices) {
+      final price = _getServicePrice(svc);
+      totalRatePerKg += price;
+      estimatedKgAmount += (price * estimatedWeightKg).round();
+      final name = (svc['name'] ?? '').toString().toLowerCase();
+      if (name.contains('rèm') || name.contains('màn')) {
+        isCurtain = true;
+      }
+    }
+
+    final presetList = isCurtain
+        ? [3.0, 5.0, 8.0, 10.0, 15.0]
+        : [2.0, 3.0, 5.0, 7.0, 10.0];
+
+    final title = kgServices.length == 1
+        ? 'Khối Lượng Ước Tính (Theo kg)'
+        : 'Khối Lượng Ước Tính (${kgServices.length} dịch vụ giặt theo kg)';
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -753,7 +798,7 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
                   const Icon(Icons.scale, color: primaryColor, size: 20),
                   const SizedBox(width: 8),
                   Text(
-                    'Khối Lượng Ước Tính (Theo kg)',
+                    title,
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -781,7 +826,9 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Chọn khối lượng ước chừng để tạm tính chi phí. Shipper 3T sẽ cân chốt thực tế khi nhận đồ.',
+            isCurtain
+                ? 'Chọn khối lượng rèm cửa ước chừng. Shipper 3T trang bị cân điện tử mini IoT để cân chốt chính xác khi nhận đồ.'
+                : 'Chọn khối lượng ước chừng để tạm tính chi phí. Shipper 3T sẽ cân chốt thực tế khi nhận đồ.',
             style: GoogleFonts.plusJakartaSans(
               fontSize: 11,
               color: onSurfaceVariant,
@@ -850,9 +897,11 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
                         ),
                       ],
                     ),
-                    if (hasKgService && estimatedKgAmount > 0)
+                    if (estimatedKgAmount > 0)
                       Text(
-                        'Tạm tính: ~${_formatCurrency(estimatedKgAmount)} đ',
+                        kgServices.length == 1
+                            ? 'Tạm tính: ~${_formatCurrency(estimatedKgAmount)} đ (${_formatCurrency(totalRatePerKg)} đ/kg)'
+                            : 'Tạm tính: ~${_formatCurrency(estimatedKgAmount)} đ',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 11,
                           fontWeight: FontWeight.bold,
@@ -893,7 +942,7 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
-              children: [2.0, 3.0, 5.0, 7.0, 10.0].map((presetKg) {
+              children: presetList.map((presetKg) {
                 final isSelected = (estimatedWeightKg - presetKg).abs() < 0.01;
                 return Padding(
                   padding: const EdgeInsets.only(right: 8.0),
@@ -941,6 +990,254 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
                 Expanded(
                   child: Text(
                     'Shipper 3T trang bị cân điện tử mini IoT, cân chốt minh bạch trước mặt bạn khi nhận đồ.',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 10,
+                      color: onSurfaceVariant,
+                      height: 1.3,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Số Lượng Ước Tính cho dịch vụ tính theo Món (Bộ, Cái, Đôi)
+  Widget _buildItemQuantityEstimationCard(Map<String, dynamic> svc) {
+    final id = (svc['id'] as num).toInt();
+    final name = svc['name']?.toString() ?? 'Dịch vụ $id';
+    final unit = _getServiceUnit(svc);
+    final price = _getServicePrice(svc);
+    final qty = selectedItemQuantities[id] ?? 1;
+    final nameLower = name.toLowerCase();
+
+    IconData itemIcon = Icons.checkroom;
+    if (unit.toLowerCase().contains('bộ') || nameLower.contains('vest') || nameLower.contains('comple')) {
+      itemIcon = Icons.dry_cleaning;
+    } else if (unit.toLowerCase().contains('đôi') || nameLower.contains('giày') || nameLower.contains('sneaker')) {
+      itemIcon = Icons.style;
+    } else if (nameLower.contains('mền') || nameLower.contains('drap') || nameLower.contains('chăn')) {
+      itemIcon = Icons.bed;
+    }
+
+    final totalLinePrice = price * qty;
+    final presetCounts = [1, 2, 3, 4, 5];
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: cardBg,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Icon(itemIcon, color: secondaryColor, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Số Lượng Ước Tính (Theo $unit)',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: onSurface,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFEEF3),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$qty $unit',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: secondaryColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Chọn số lượng $unit cho gói "$name" để tạm tính chi phí. Shipper 3T sẽ kiểm đếm xác nhận cùng bạn khi nhận đồ.',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 11,
+              color: onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 14),
+
+          // BỘ ĐẾM SỐ LƯỢNG MÓN [-] X cái/bộ/đôi [+]
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: surfaceLow,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: secondaryColor.withOpacity(0.2)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                InkWell(
+                  onTap: () {
+                    if (qty > 1) {
+                      setState(() {
+                        selectedItemQuantities[id] = qty - 1;
+                      });
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: cardBg,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: outlineVariant),
+                    ),
+                    child: Icon(
+                      Icons.remove,
+                      color: qty > 1 ? secondaryColor : Colors.grey,
+                      size: 20,
+                    ),
+                  ),
+                ),
+                Column(
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          '$qty',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: secondaryColor,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          unit,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'Tạm tính: ~${_formatCurrency(totalLinePrice)} đ (${_formatCurrency(price)} đ/$unit)',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: secondaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+                InkWell(
+                  onTap: () {
+                    if (qty < 50) {
+                      setState(() {
+                        selectedItemQuantities[id] = qty + 1;
+                      });
+                    }
+                  },
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: const BoxDecoration(
+                      color: secondaryColor,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.add,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // CÁC NÚT CHỌN NHANH: 1, 2, 3, 4, 5
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: presetCounts.map((presetVal) {
+                final isSelected = qty == presetVal;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8.0),
+                  child: ChoiceChip(
+                    label: Text('$presetVal $unit'),
+                    labelStyle: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: isSelected ? Colors.white : onSurface,
+                    ),
+                    selected: isSelected,
+                    selectedColor: secondaryColor,
+                    backgroundColor: surfaceLow,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(
+                        color: isSelected ? secondaryColor : outlineVariant.withOpacity(0.5),
+                      ),
+                    ),
+                    onSelected: (selected) {
+                      if (selected) {
+                        setState(() {
+                          selectedItemQuantities[id] = presetVal;
+                        });
+                      }
+                    },
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 10),
+
+          // LỜI NHẮC KIỂM ĐẾM MINH BẠCH
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: surfaceLow,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.verified, size: 16, color: secondaryColor),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    unit.toLowerCase().contains('đôi') || nameLower.contains('giày')
+                        ? 'Shipper 3T kiểm tra tình trạng giày, chụp ảnh đối soát và bấm seal niêm phong minh bạch trước mặt bạn.'
+                        : 'Shipper 3T kiểm đếm số lượng chi tiết, đối soát và bấm seal niêm phong minh bạch trước mặt bạn khi nhận đồ.',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 10,
                       color: onSurfaceVariant,
@@ -1176,9 +1473,15 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
                     if (newId != null) {
                       setState(() {
                         selectedComboboxServiceId = newId;
+                        selectedServiceIds.clear();
                         selectedServiceIds.add(newId);
                         if (!selectedItemQuantities.containsKey(newId)) {
                           selectedItemQuantities[newId] = 1;
+                        }
+                        final svc = availableServices.firstWhere((s) => s['id'] == newId, orElse: () => {});
+                        final name = (svc['name'] ?? '').toString().toLowerCase();
+                        if (name.contains('rèm') || name.contains('màn')) {
+                          if (estimatedWeightKg < 5.0) estimatedWeightKg = 5.0;
                         }
                       });
                     }
@@ -1249,13 +1552,40 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
             const SizedBox(height: 14),
 
             // DANH SÁCH DỊCH VỤ ĐÃ CHỌN
-            Text(
-              'Dịch vụ đã chọn trong đơn:',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: onSurfaceVariant,
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Dịch vụ đã chọn trong đơn (${selectedServiceIds.length}):',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: onSurfaceVariant,
+                  ),
+                ),
+                if (availableServices.length > selectedServiceIds.length)
+                  InkWell(
+                    onTap: () => _showAddServiceBottomSheet(context),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.add_circle_outline, size: 14, color: primaryColor),
+                          const SizedBox(width: 4),
+                          Text(
+                            '+ Thêm dịch vụ',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: primaryColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(height: 8),
 
@@ -1421,7 +1751,7 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
                                 });
                               },
                               borderRadius: BorderRadius.circular(14),
-                              child: const Padding(
+                              child: Padding(
                                 padding: const EdgeInsets.all(4.0),
                                 child: Icon(Icons.add, size: 16, color: primaryColor),
                               ),
@@ -1825,6 +2155,169 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
     );
   }
 
+  String _getBottomEstimationSummaryText() {
+    final hasKg = selectedServiceIds.any((id) {
+      final svc = availableServices.firstWhere((s) => s['id'] == id, orElse: () => {});
+      return svc.isNotEmpty && !_isServiceByItem(svc);
+    });
+    final itemSvcs = selectedServiceIds.where((id) {
+      final svc = availableServices.firstWhere((s) => s['id'] == id, orElse: () => {});
+      return svc.isNotEmpty && _isServiceByItem(svc);
+    }).toList();
+
+    if (hasKg && itemSvcs.isNotEmpty) {
+      int totalItems = 0;
+      for (final id in itemSvcs) {
+        totalItems += selectedItemQuantities[id] ?? 1;
+      }
+      return '(tạm tính: ${estimatedWeightKg.toStringAsFixed(1)} kg + $totalItems món)';
+    } else if (hasKg) {
+      return '(tạm tính theo ${estimatedWeightKg.toStringAsFixed(1)} kg)';
+    } else if (itemSvcs.isNotEmpty) {
+      if (itemSvcs.length == 1) {
+        final svc = availableServices.firstWhere((s) => s['id'] == itemSvcs.first, orElse: () => {});
+        final unit = _getServiceUnit(svc);
+        final qty = selectedItemQuantities[itemSvcs.first] ?? 1;
+        return '(tạm tính theo $qty $unit)';
+      } else {
+        int totalItems = 0;
+        for (final id in itemSvcs) {
+          totalItems += selectedItemQuantities[id] ?? 1;
+        }
+        return '(tạm tính theo $totalItems món)';
+      }
+    }
+    return '(tạm tính)';
+  }
+
+  void _showAddServiceBottomSheet(BuildContext context) {
+    final unselectedServices = availableServices.where((svc) {
+      final id = (svc['id'] as num).toInt();
+      return !selectedServiceIds.contains(id);
+    }).toList();
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      backgroundColor: cardBg,
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Text(
+                  'Thêm dịch vụ kết hợp vào đơn hàng',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: onSurface,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Chọn thêm dịch vụ bạn muốn gom giặt chung trong chuyến lấy đồ này.',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    color: onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                if (unselectedServices.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 24),
+                    child: Center(
+                      child: Text(
+                        'Bạn đã thêm tất cả các dịch vụ hiện có.',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          color: onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: unselectedServices.length,
+                      separatorBuilder: (context, index) => const Divider(height: 1),
+                      itemBuilder: (ctx, i) {
+                        final svc = unselectedServices[i];
+                        final id = (svc['id'] as num).toInt();
+                        final name = svc['name']?.toString() ?? 'Dịch vụ $id';
+                        final unit = _getServiceUnit(svc);
+                        final price = _getServicePrice(svc);
+                        final isByItem = _isServiceByItem(svc);
+
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                          leading: Container(
+                            width: 38,
+                            height: 38,
+                            decoration: BoxDecoration(
+                              color: surfaceLow,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Icon(
+                              isByItem ? Icons.checkroom : Icons.local_laundry_service,
+                              color: isByItem ? secondaryColor : primaryColor,
+                              size: 20,
+                            ),
+                          ),
+                          title: Text(
+                            name,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: onSurface,
+                            ),
+                          ),
+                          subtitle: Text(
+                            '${_formatCurrency(price)} đ/$unit • ${isByItem ? 'Theo $unit' : 'Theo kg'}',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: isByItem ? secondaryColor : tertiaryColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          trailing: const Icon(Icons.add_circle, color: primaryColor),
+                          onTap: () {
+                            setState(() {
+                              selectedServiceIds.add(id);
+                              if (!selectedItemQuantities.containsKey(id)) {
+                                selectedItemQuantities[id] = 1;
+                              }
+                            });
+                            Navigator.pop(ctx);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   // --- WIDGET 8: STICKY BOTTOM ACTION BAR (TÍCH HỢP SẴN CHUYỂN BƯỚC 2) ---
   Widget _buildBottomActionBar(BuildContext context) {
     return Positioned(
@@ -1890,7 +2383,7 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            '(tạm tính theo ${estimatedWeightKg.toStringAsFixed(1)} kg)',
+                            _getBottomEstimationSummaryText(),
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 11,
                               color: onSurfaceVariant,
