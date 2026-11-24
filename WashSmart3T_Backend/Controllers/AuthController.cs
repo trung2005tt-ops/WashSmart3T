@@ -181,6 +181,22 @@ public class AuthController : ControllerBase
                 existingUser.Email = request.Email.Trim();
                 existingUser.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password);
                 existingUser.IsActive = true;
+
+                // Đồng bộ toàn bộ đơn hàng POS gắn số điện thoại này vào user
+                var ghostOrders = await _context.Orders
+                    .Where(o => o.ContactPhone == phone && o.CustomerId != existingUser.Id)
+                    .ToListAsync();
+                foreach (var ord in ghostOrders)
+                {
+                    ord.CustomerId = existingUser.Id;
+                }
+
+                var totalSpent = await _context.Orders
+                    .Where(o => o.CustomerId == existingUser.Id && o.Status == OrderStatus.Completed)
+                    .SumAsync(o => (decimal?)o.TotalAmount) ?? 0m;
+                existingUser.TotalSpent = totalSpent;
+                existingUser.MembershipTier = LoyaltyService.CalculateTier(existingUser.TotalSpent, existingUser.LoyaltyPoints);
+
                 await _context.SaveChangesAsync();
 
                 return Ok(new
@@ -222,6 +238,24 @@ public class AuthController : ControllerBase
 
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
+
+        // Đồng bộ toàn bộ đơn hàng POS đã tạo trước đó gắn với số điện thoại này vào tài khoản mới
+        var unlinkedOrders = await _context.Orders
+            .Where(o => o.ContactPhone == phone && o.CustomerId != user.Id)
+            .ToListAsync();
+        if (unlinkedOrders.Any())
+        {
+            foreach (var ord in unlinkedOrders)
+            {
+                ord.CustomerId = user.Id;
+            }
+            var totalSpent = await _context.Orders
+                .Where(o => o.CustomerId == user.Id && o.Status == OrderStatus.Completed)
+                .SumAsync(o => (decimal?)o.TotalAmount) ?? 0m;
+            user.TotalSpent = totalSpent;
+            user.MembershipTier = LoyaltyService.CalculateTier(user.TotalSpent, user.LoyaltyPoints);
+            await _context.SaveChangesAsync();
+        }
 
         return Ok(new
         {
@@ -421,6 +455,26 @@ public class AuthController : ControllerBase
         if (user.Role?.Name == "Shipper")
         {
             OrdersController.RecordShipperOnline(user.Id);
+        }
+
+        // Tự động đồng bộ các đơn POS đã tạo trước đó gắn với số điện thoại này vào user.Id
+        if (user.Role?.Name == "Customer")
+        {
+            var unlinkedOrders = await _context.Orders
+                .Where(o => o.ContactPhone == phone && o.CustomerId != user.Id)
+                .ToListAsync();
+            if (unlinkedOrders.Any())
+            {
+                foreach (var ord in unlinkedOrders)
+                {
+                    ord.CustomerId = user.Id;
+                }
+                var totalSpent = await _context.Orders
+                    .Where(o => o.CustomerId == user.Id && o.Status == OrderStatus.Completed)
+                    .SumAsync(o => (decimal?)o.TotalAmount) ?? 0m;
+                user.TotalSpent = totalSpent;
+                await _context.SaveChangesAsync();
+            }
         }
 
         // Đồng bộ cấp bậc thành viên theo điểm và tổng chi tiêu

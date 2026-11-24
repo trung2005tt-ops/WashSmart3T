@@ -1357,6 +1357,7 @@
         const savedCustomerName = newOrder.customerName ?? customerName; set('receipt-order-id', '#WS3T-' + String(orderId).padStart(4, '0')); set('receipt-seal-code', '#SEAL-3T-' + orderId); set('seal-header-code', '#SEAL-3T-' + orderId); set('receipt-date-time', dateTimeStr); set('receipt-cust-name', savedCustomerName); const curStaffName = (window.Auth && Auth.getFullName()) ? Auth.getFullName() : 'Lễ tân POS'; set('receipt-staff-info', curStaffName); set('receipt-cust-phone', phone);
         
         // Cập nhật mã VietQR động chuẩn EMVCo khóa theo mã đơn hàng vừa tạo
+        const posQr = document.getElementById('posVietQrImg');
         try {
           const qrData = await Api.get('/Payments/vietqr/' + orderId);
           if (qrData && qrData.qrImageUrl && posQr) {
@@ -1367,6 +1368,11 @@
             posQr.src = 'https://img.vietqr.io/image/' + currentBankConfig.bankBin + '-' + currentBankConfig.bankAccountNo + '-compact2.png?amount=' + calc.grandTotal + '&addInfo=' + encodeURIComponent('#WS3T-' + String(orderId).padStart(4, '0')) + '&accountName=' + encodeURIComponent(currentBankConfig.bankAccountHolder);
           }
         }
+
+        // Tự động kích hoạt đồng bộ về App Khách Hàng
+        try {
+          await Api.post('/Orders/pos/sync-app', { phone });
+        } catch (_) {}
         
         // Render itemized services in Receipt Modal
         const itemsContainer = document.getElementById('receipt-items-container');
@@ -1413,7 +1419,31 @@
     });
     document.getElementById('close-receipt-modal')?.addEventListener('click', () => { receiptModal.classList.add('hidden'); receiptModal.classList.remove('flex'); });
     document.getElementById('btn-trigger-print')?.addEventListener('click', () => window.print());
-    document.getElementById('btnSyncApp')?.addEventListener('click', () => showToast('Chức năng đồng bộ App chưa có API backend tương ứng.', true));
+    document.getElementById('btnSyncApp')?.addEventListener('click', async () => {
+      const phoneInput = document.getElementById('customerPhoneInput');
+      const phone = phoneInput ? phoneInput.value.replace(/\D/g, '').trim() : '';
+      if (!phone || phone.length < 9) {
+        showToast('Vui lòng nhập số điện thoại khách hàng cần đồng bộ về App.', true);
+        return;
+      }
+      const btn = document.getElementById('btnSyncApp');
+      const origHtml = btn ? btn.innerHTML : '';
+      try {
+        if (btn) {
+          btn.disabled = true;
+          btn.innerHTML = '<span class="material-symbols-outlined text-base animate-spin">refresh</span><span>Đang đồng bộ về App...</span>';
+        }
+        const res = await Api.post('/Orders/pos/sync-app', { phone });
+        showToast(res.message || 'Đồng bộ đơn hàng về App Khách Hàng thành công!');
+      } catch (err) {
+        showToast('Lỗi đồng bộ: ' + (err.message || 'Không kết nối được API'), true);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = origHtml;
+        }
+      }
+    });
     let currentBankConfig = {
       bankName: 'MBBank (Ngân hàng Quân Đội)',
       bankBin: '970422',

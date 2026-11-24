@@ -951,6 +951,66 @@ public class OrdersController : ControllerBase
         });
     }
 
+    public class PosSyncAppRequest
+    {
+        public string Phone { get; set; } = string.Empty;
+    }
+
+    // ============================================================
+    // POST: api/Orders/pos/sync-app
+    // Đồng bộ các đơn hàng POS về tài khoản App của khách hàng
+    // ============================================================
+    [HttpPost("pos/sync-app")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> SyncPosOrdersToApp([FromBody] PosSyncAppRequest request)
+    {
+        var (_, _, cleanPhone) = SmsService.NormalizePhone(request.Phone ?? string.Empty);
+        if (cleanPhone.Length < 9)
+        {
+            return BadRequest(new { message = "Số điện thoại không hợp lệ." });
+        }
+
+        var customer = await _context.Users
+            .FirstOrDefaultAsync(u => u.Phone == cleanPhone && u.Role != null && u.Role.Name == "Customer");
+
+        var orders = await _context.Orders
+            .Where(o => o.ContactPhone == cleanPhone)
+            .ToListAsync();
+
+        if (customer != null && orders.Any())
+        {
+            foreach (var o in orders)
+            {
+                if (o.CustomerId != customer.Id)
+                {
+                    o.CustomerId = customer.Id;
+                }
+            }
+            await _context.SaveChangesAsync();
+        }
+
+        try
+        {
+            await _hubContext.Clients.All.SendAsync("OrdersSynced", new { phone = cleanPhone, count = orders.Count });
+            await _hubContext.Clients.All.SendAsync("DashboardStatsUpdated");
+        }
+        catch { }
+
+        bool hasAppAccount = customer != null && !customer.Email.EndsWith("@customer.washsmart.local") && !customer.Email.StartsWith("pos-");
+        string message = hasAppAccount
+            ? $"Đã đồng bộ {orders.Count} đơn hàng với tài khoản App '{customer!.FullName}' ({cleanPhone}) thành công!"
+            : $"Đã đồng bộ {orders.Count} đơn hàng theo SĐT {cleanPhone}. Khách hàng đăng ký hoặc đăng nhập số này trên App sẽ thấy toàn bộ đơn ngay lập tức!";
+
+        return Ok(new
+        {
+            success = true,
+            phone = cleanPhone,
+            hasAppAccount,
+            orderCount = orders.Count,
+            message
+        });
+    }
+
     public class PosCreateOrderRequest
     {
         public string CustomerName { get; set; } = string.Empty;
@@ -1133,11 +1193,11 @@ public class OrdersController : ControllerBase
 
             _context.Orders.Add(order);
 
-            // Tự động đồng bộ địa chỉ giao/nhận cho tài khoản khách hàng nếu chưa có
+            // Tự động đồng bộ địa chỉ giao hàng tận nơi cho tài khoản khách hàng nếu có
             var customerUser = await _context.Users.FindAsync(customer.Id);
-            if (customerUser != null && string.IsNullOrWhiteSpace(customerUser.Address) && !string.IsNullOrWhiteSpace(request.PickupAddress))
+            if (customerUser != null && request.DeliveryMethod == "HomeDelivery" && !string.IsNullOrWhiteSpace(request.DeliveryAddress) && request.DeliveryAddress != request.PickupAddress)
             {
-                customerUser.Address = request.PickupAddress.Trim();
+                customerUser.Address = request.DeliveryAddress.Trim();
             }
 
             await _context.SaveChangesAsync();
@@ -1518,8 +1578,11 @@ public class OrdersController : ControllerBase
             return Unauthorized(new { message = "Không xác định được người dùng." });
         }
 
+        var customer = await _context.Users.FindAsync(customerId);
+        var phone = customer?.Phone;
+
         var orders = await _context.Orders
-            .Where(x => x.CustomerId == customerId)
+            .Where(x => x.CustomerId == customerId || (!string.IsNullOrEmpty(phone) && x.ContactPhone == phone))
             .Include(x => x.Shipper)
             .Include(x => x.OrderDetails)
                 .ThenInclude(x => x.Service)
@@ -1697,13 +1760,20 @@ public class OrdersController : ControllerBase
             return NotFound(new { message = "Không tìm thấy đơn hàng." });
         }
 
-        var isOwner = order.CustomerId == currentUserId;
+        var customerUser = await _context.Users.FindAsync(currentUserId);
+        var isOwner = order.CustomerId == currentUserId || (!string.IsNullOrEmpty(customerUser?.Phone) && order.ContactPhone == customerUser.Phone);
         var isAssignedShipper = order.ShipperId == currentUserId;
         var isStaffOrAdmin = role == "Admin" || role == "Staff";
 
         if (!isOwner && !isAssignedShipper && !isStaffOrAdmin)
         {
             return Forbid();
+        }
+
+        if (isOwner && order.CustomerId != currentUserId)
+        {
+            order.CustomerId = currentUserId;
+            await _context.SaveChangesAsync();
         }
 
         var payment = await _context.Payments.FirstOrDefaultAsync(p => p.OrderId == order.Id);
