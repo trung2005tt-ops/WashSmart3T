@@ -1404,52 +1404,113 @@
     // GOOGLE MAPS-LIKE LIVE ROUTING & SMART BUNDLING SYSTEM
     // ============================================================
 
-    // Realistic Geocoding for HCMC Addresses with Micro-Jitter for Multi-Stop Clustering
+    // Geocode cache to store accurate GPS coordinates
+    const _geoCoordCache = {};
+
+    function getOrderActiveAddress(order) {
+      const isDelivery = (order.status === 'Ready' || order.status === 'Delivering');
+      if (isDelivery) {
+        return (order.deliveryAddress || order.pickupAddress || '').trim();
+      } else {
+        return (order.pickupAddress || order.deliveryAddress || '').trim();
+      }
+    }
+
+    // Realistic Accurate Geocoding for HCMC Addresses with Micro-Jitter for Multi-Stop Clustering
     function resolveOrderCoordinates(order) {
-      const address = (order.deliveryAddress || order.pickupAddress || '').trim();
+      if (order.latitude && order.longitude && order.latitude > 0 && order.longitude > 0) {
+        return {
+          lat: Number(order.latitude),
+          lng: Number(order.longitude),
+          label: getOrderActiveAddress(order) || "Địa chỉ khách hàng"
+        };
+      }
+
+      const address = getOrderActiveAddress(order);
       const q = address.toLowerCase();
 
-      // Seed micro-jitter from order ID to distinguish nearby/same-address pins without overlapping
+      if (_geoCoordCache[address]) {
+        return _geoCoordCache[address];
+      }
+
+      // Micro-jitter of ~8m to keep multiple orders on the same street visible without pushing off-road
       const seed = Math.abs(Number(order.id) || 1);
-      const jLat = ((seed % 7) - 3) * 0.00045; // ~30-50m
-      const jLng = ((((seed * 3) + 2) % 7) - 3) * 0.00045;
+      const jLat = ((seed % 5) - 2) * 0.00008;
+      const jLng = ((((seed * 2) + 1) % 5) - 2) * 0.00008;
 
       let base = null;
-      if (q.includes("nguyễn sỹ sách")) base = { lat: 10.8170, lng: 106.6380, label: "2 Nguyễn Sỹ Sách, P. 15, Tân Bình" };
-      else if (q.includes("lê trọng tấn") || q.includes("tây thạnh") || q.includes("sơn kỳ")) base = { lat: 10.8090, lng: 106.6300, label: "Lê Trọng Tấn, P. Tây Thạnh, Tân Phú" };
-      else if (q.includes("trường chinh") || q.includes("bình long") || q.includes("tân kỳ tân quý")) base = { lat: 10.7980, lng: 106.6210, label: "Trường Chinh / Bình Long, Tân Phú" };
-      else if (q.includes("celadon") || q.includes("aeon")) base = { lat: 10.8020, lng: 106.6180, label: "Celadon City, Tân Phú" };
-      else if (q.includes("cộng hòa") || q.includes("hoàng hoa thám") || q.includes("tân bình")) base = { lat: 10.7990, lng: 106.6490, label: "Cộng Hòa, Q. Tân Bình" };
-      else if (q.includes("lũy bán bích") || q.includes("thoại ngọc hầu") || q.includes("hòa bình")) base = { lat: 10.7830, lng: 106.6360, label: "Lũy Bán Bích, Q. Tân Phú" };
-      else if (q.includes("lý thường kiệt") || q.includes("quận 10") || q.includes("bách khoa")) base = { lat: 10.7720, lng: 106.6570, label: "Lý Thường Kiệt, Quận 10" };
+      if (q.includes("nguyễn sỹ sách")) base = { lat: 10.8185, lng: 106.6330, label: "Nguyễn Sỹ Sách, P. 15, Tân Bình" };
+      else if (q.includes("phan huy ích")) base = { lat: 10.8285, lng: 106.6325, label: "Phan Huy Ích, P. 15, Tân Bình" };
+      else if (q.includes("phạm văn bạch")) base = { lat: 10.8240, lng: 106.6380, label: "Phạm Văn Bạch, P. 15, Tân Bình" };
+      else if (q.includes("lê trọng tấn") || q.includes("tây thạnh")) base = { lat: 10.8068, lng: 106.6288, label: "Lê Trọng Tấn / Tây Thạnh, Tân Phú" };
+      else if (q.includes("chế lan viên")) base = { lat: 10.8080, lng: 106.6230, label: "Chế Lan Viên, Tây Thạnh, Tân Phú" };
+      else if (q.includes("sơn kỳ")) base = { lat: 10.8090, lng: 106.6240, label: "Sơn Kỳ, Tân Phú" };
+      else if (q.includes("tân sơn") || q.includes("tân trụ")) base = { lat: 10.8205, lng: 106.6345, label: "Tân Sơn / Tân Trụ, Tân Bình" };
+      else if (q.includes("trường chinh")) base = { lat: 10.8125, lng: 106.6320, label: "Trường Chinh, Tân Bình" };
+      else if (q.includes("celadon") || q.includes("aeon")) base = { lat: 10.8015, lng: 106.6175, label: "Celadon City / Aeon Mall Tân Phú" };
+      else if (q.includes("tân kỳ tân quý")) base = { lat: 10.8000, lng: 106.6230, label: "Tân Kỳ Tân Quý, Tân Phú" };
+      else if (q.includes("bình long")) base = { lat: 10.7890, lng: 106.6180, label: "Bình Long, Tân Phú" };
+      else if (q.includes("cộng hòa")) base = { lat: 10.8010, lng: 106.6480, label: "Cộng Hòa, Tân Bình" };
+      else if (q.includes("hoàng hoa thám")) base = { lat: 10.8030, lng: 106.6470, label: "Hoàng Hoa Thám, Tân Bình" };
+      else if (q.includes("quang trung") || q.includes("gò vấp")) base = { lat: 10.8350, lng: 106.6550, label: "Quang Trung, Gò Vấp" };
+      else if (q.includes("lũy bán bích")) base = { lat: 10.7830, lng: 106.6360, label: "Lũy Bán Bích, Tân Phú" };
+      else if (q.includes("thoại ngọc hầu")) base = { lat: 10.7780, lng: 106.6380, label: "Thoại Ngọc Hầu, Tân Phú" };
+      else if (q.includes("hòa bình")) base = { lat: 10.7680, lng: 106.6320, label: "Hòa Bình, Tân Phú" };
+      else if (q.includes("âu cơ")) base = { lat: 10.7860, lng: 106.6450, label: "Âu Cơ, Tân Bình / Tân Phú" };
+      else if (q.includes("đồng đen") || q.includes("bàu cát")) base = { lat: 10.7930, lng: 106.6460, label: "Bàu Cát / Đồng Đen, Tân Bình" };
+      else if (q.includes("lý thường kiệt")) base = { lat: 10.7720, lng: 106.6570, label: "Lý Thường Kiệt, Quận 10" };
       else if (q.includes("cách mạng tháng 8") || q.includes("quận 3")) base = { lat: 10.7790, lng: 106.6780, label: "Cách Mạng Tháng 8, Quận 3" };
-      else if (q.includes("quận 1") || q.includes("bến thành") || q.includes("hai bà trưng") || q.includes("bến nghé") || q.includes("q.1") || q.includes("q1")) base = { lat: 10.7725, lng: 106.6980, label: "Chợ Bến Thành, Quận 1" };
-      else if (q.includes("quang trung") || q.includes("gò vấp")) base = { lat: 10.8350, lng: 106.6620, label: "Quang Trung, Q. Gò Vấp" };
+      else if (q.includes("quận 1") || q.includes("bến thành")) base = { lat: 10.7725, lng: 106.6980, label: "Chợ Bến Thành, Quận 1" };
       else if (q.includes("quận 12") || q.includes("an sương")) base = { lat: 10.8520, lng: 106.6120, label: "An Sương, Quận 12" };
+      else if (q.includes("nguyễn văn quá")) base = { lat: 10.8400, lng: 106.6200, label: "Nguyễn Văn Quá, Quận 12" };
       else if (q.includes("midtown") || q.includes("phú mỹ hưng") || q.includes("quận 7")) base = { lat: 10.7290, lng: 106.7110, label: "Phú Mỹ Hưng, Quận 7" };
       else if (q.includes("số 79") || q.includes("tân quy") || q.includes("lotte")) base = { lat: 10.7480, lng: 106.7020, label: "Tân Quy, Quận 7" };
 
       if (base) {
-        return {
+        const res = {
           lat: Number((base.lat + jLat).toFixed(5)),
           lng: Number((base.lng + jLng).toFixed(5)),
           label: address || base.label
         };
+        _geoCoordCache[address] = res;
+        return res;
       }
 
-      // Deterministic hash fallback to distribute points naturally near store (1.2km to 3.8km)
+      // Asynchronous geocode lookup in background for unknown address
+      if (address && !_geoCoordCache[address]) {
+        fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address + ', TP. Hồ Chí Minh, Việt Nam')}&format=json&limit=1`, {
+          headers: { 'User-Agent': 'WashSmart3T/1.0' }
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data && data.length > 0) {
+            _geoCoordCache[address] = {
+              lat: Number(parseFloat(data[0].lat).toFixed(5)),
+              lng: Number(parseFloat(data[0].lon).toFixed(5)),
+              label: address
+            };
+            if (typeof refreshMapData === 'function' && leafletMap) {
+              refreshMapData();
+            }
+          }
+        })
+        .catch(() => {});
+      }
+
+      // Natural deterministic distribution near store hub (1.0km - 2.0km)
       let hash = 0;
       for (let i = 0; i < address.length; i++) {
         hash = (hash << 5) - hash + address.charCodeAt(i);
         hash |= 0;
       }
       const angle = (Math.abs(hash % 360)) * (Math.PI / 180);
-      const radius = 0.012 + (Math.abs(hash) % 25) * 0.001; // ~1.3km to ~3.7km
-      return {
+      const radius = 0.008 + (Math.abs(hash) % 10) * 0.0006;
+      const fallbackRes = {
         lat: Number((STORE_HUB.lat + radius * Math.cos(angle) + jLat).toFixed(5)),
         lng: Number((STORE_HUB.lng + radius * Math.sin(angle) + jLng).toFixed(5)),
         label: address || "Địa chỉ khách hàng"
       };
+      return fallbackRes;
     }
 
     // Haversine formula for distance between 2 coordinates (km)
