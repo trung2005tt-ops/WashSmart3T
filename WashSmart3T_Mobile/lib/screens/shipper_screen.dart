@@ -4842,29 +4842,11 @@ class _ShipperScreenState extends State<ShipperScreen>
     );
   }
 
-  String _buildMultiStopGoogleMapsUrl(List<ShipperOrderModel> orders) {
-    const hub = '140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú, TP. HCM';
-    if (orders.isEmpty) {
-      return 'https://www.google.com/maps/search/?api=1&query=${Uri.encodeComponent(hub)}';
-    }
-    final origin = Uri.encodeComponent(hub);
-    final destination = Uri.encodeComponent(hub);
-    final waypoints = orders.map((o) {
-      final addr = o.type == OrderType.pickup ? o.pickupAddress : o.deliveryAddress;
-      return Uri.encodeComponent(addr);
-    }).join('|');
-    return 'https://www.google.com/maps/dir/?api=1&origin=$origin&destination=$destination&waypoints=$waypoints';
-  }
-
-  String _buildSingleStopGoogleMapsUrl(String address) {
-    return 'https://www.google.com/maps/dir/?api=1&destination=${Uri.encodeComponent(address)}';
-  }
-
   void _showNavigationModal(ShipperOrderModel order) {
     final targetAddress = order.type == OrderType.pickup
         ? order.pickupAddress
         : order.deliveryAddress;
-    final orderParam = order.orderId ?? int.tryParse(order.id.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+    final singleOrderQuery = _buildRouteMapQuery([order], embed: true);
 
     showModalBottomSheet(
       context: context,
@@ -4903,7 +4885,8 @@ class _ShipperScreenState extends State<ShipperScreen>
                       tooltip: 'Mở tab bản đồ riêng',
                       icon: const Icon(Icons.open_in_new, color: primaryColor, size: 20),
                       onPressed: () {
-                        launchWebOrAppUrl('http://localhost:5500/shipper_route_map.html?orderIds=$orderParam');
+                        final fullQuery = _buildRouteMapQuery([order], embed: false);
+                        launchWebOrAppUrl('http://localhost:5500/shipper_route_map.html$fullQuery');
                       },
                     ),
                     IconButton(
@@ -4919,7 +4902,7 @@ class _ShipperScreenState extends State<ShipperScreen>
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: RouteMapEmbed(
-                url: 'http://localhost:5500/shipper_route_map.html?orderIds=$orderParam',
+                url: 'http://localhost:5500/shipper_route_map.html$singleOrderQuery',
                 height: 240,
               ),
             ),
@@ -4973,11 +4956,12 @@ class _ShipperScreenState extends State<ShipperScreen>
               height: 48,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  launchWebOrAppUrl(_buildSingleStopGoogleMapsUrl(targetAddress));
+                  Navigator.pop(context);
+                  _showTodayRouteModal();
                 },
-                icon: const Icon(Icons.near_me, color: Colors.white),
+                icon: const Icon(Icons.alt_route_rounded, color: Colors.white),
                 label: Text(
-                  'Mở Google Maps chỉ đường trực tiếp',
+                  'Xem tuyến đường trên bản đồ',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
@@ -5030,10 +5014,39 @@ class _ShipperScreenState extends State<ShipperScreen>
     );
   }
 
+  String _buildRouteMapQuery(List<ShipperOrderModel> pendingOrders, {bool embed = false}) {
+    final encodedOrders = base64Url.encode(
+      utf8.encode(
+        jsonEncode(
+          pendingOrders
+              .map(
+                (o) => {
+                  'id': o.orderId ?? 0,
+                  'customerName': o.customerName,
+                  'contactPhone': o.customerPhone,
+                  'status': o.type == OrderType.delivery ? 'Delivering' : 'PickingUp',
+                  'pickupAddress': o.pickupAddress,
+                  'deliveryAddress': o.deliveryAddress,
+                  'totalAmount': o.codAmount,
+                  'paymentMethod': o.isPaidOnline ? 'BankTransfer' : 'COD',
+                },
+              )
+              .toList(),
+        ),
+      ),
+    );
+    final parts = <String>[
+      if (_currentShipperId != null) 'shipperId=$_currentShipperId',
+      if (embed) 'embed=1',
+      'data=$encodedOrders',
+    ];
+    return '?${parts.join('&')}';
+  }
+
   void _showTodayRouteModal() {
     final pendingOrders = activePendingOrders;
     final doneOrders = todayCompletedOrders;
-    final shipperQuery = _currentShipperId != null ? '?shipperId=$_currentShipperId' : '';
+    final fullMapQuery = _buildRouteMapQuery(pendingOrders, embed: false);
 
     showModalBottomSheet(
       context: context,
@@ -5118,7 +5131,7 @@ class _ShipperScreenState extends State<ShipperScreen>
                       tooltip: 'Mở bản đồ toàn màn hình',
                       icon: const Icon(Icons.open_in_new, color: primaryColor, size: 20),
                       onPressed: () {
-                        launchWebOrAppUrl('http://localhost:5500/shipper_route_map.html$shipperQuery');
+                        launchWebOrAppUrl('http://localhost:5500/shipper_route_map.html$fullMapQuery');
                       },
                     ),
                     IconButton(
@@ -5168,8 +5181,8 @@ class _ShipperScreenState extends State<ShipperScreen>
     BuildContext ctx,
     List<ShipperOrderModel> pendingOrders,
   ) {
-    final shipperQuery = _currentShipperId != null ? '?shipperId=$_currentShipperId' : '';
-    final embedQuery = _currentShipperId != null ? '?shipperId=$_currentShipperId&embed=1' : '?embed=1';
+    final fullMapQuery = _buildRouteMapQuery(pendingOrders, embed: false);
+    final embedQuery = _buildRouteMapQuery(pendingOrders, embed: true);
     final pickupCount = pendingOrders.where((o) => o.type == OrderType.pickup).length;
     final deliveryCount = pendingOrders.where((o) => o.type == OrderType.delivery).length;
     double totalEstKm = 0;
@@ -5205,14 +5218,14 @@ class _ShipperScreenState extends State<ShipperScreen>
                     children: [
                       RouteMapEmbed(
                         url: 'http://localhost:5500/shipper_route_map.html$embedQuery',
-                        height: 300,
+                        height: 360,
                       ),
                       Positioned(
                         top: 10,
                         right: 10,
                         child: InkWell(
                           onTap: () {
-                            launchWebOrAppUrl('http://localhost:5500/shipper_route_map.html$shipperQuery');
+                            launchWebOrAppUrl('http://localhost:5500/shipper_route_map.html$fullMapQuery');
                           },
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -5477,9 +5490,6 @@ class _ShipperScreenState extends State<ShipperScreen>
                         ? Icons.arrow_circle_up_rounded
                         : Icons.local_shipping_rounded,
                     onCall: () => _simulateCallCustomer(o),
-                    onNavigate: () {
-                      launchWebOrAppUrl(_buildSingleStopGoogleMapsUrl(targetAddress));
-                    },
                   ),
                 );
               }),
@@ -5496,46 +5506,6 @@ class _ShipperScreenState extends State<ShipperScreen>
                 icon: Icons.home_work_rounded,
               ),
             ],
-          ),
-        ),
-
-        // Nút mở Google Maps toàn tuyến
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black12,
-                blurRadius: 8,
-                offset: Offset(0, -2),
-              ),
-            ],
-          ),
-          child: SizedBox(
-            width: double.infinity,
-            height: 48,
-            child: ElevatedButton.icon(
-              onPressed: () {
-                final mapsUrl = _buildMultiStopGoogleMapsUrl(pendingOrders);
-                launchWebOrAppUrl(mapsUrl);
-              },
-              icon: const Icon(Icons.navigation, color: Colors.white),
-              label: Text(
-                'Mở Google Maps dẫn đường toàn tuyến (${pendingOrders.length} trạm)',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: tertiaryColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-            ),
           ),
         ),
       ],

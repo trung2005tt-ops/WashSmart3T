@@ -224,10 +224,6 @@
         <span class="material-symbols-outlined text-base" id="iconSimulate">play_arrow</span>
         <span id="txtSimulate">Mô phỏng xe chạy GPS</span>
       </button>
-      <button onclick="openFullGoogleMapsRoute()" class="py-1.5 px-3 rounded-xl bg-slate-900 hover:bg-black text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-sm active:scale-95 transition-all">
-        <span class="material-symbols-outlined text-base text-emerald-400">near_me</span>
-        <span>Google Maps</span>
-      </button>
     </div>
   </div>
 
@@ -466,30 +462,56 @@
       };
     }
 
-    // Load Orders from API or Fallback
+    // Load Orders from URL data param (passed by Shipper App) or API
     async function loadShipperOrders() {
       try {
+        // Đồng bộ tọa độ cửa hàng thực tế từ StoreConfig
+        try {
+          const cfgRes = await fetch('http://localhost:5085/api/StoreConfig');
+          if (cfgRes.ok) {
+            const cfg = await cfgRes.json();
+            if (cfg && cfg.latitude && cfg.longitude) {
+              STORE_HUB.lat = Number(cfg.latitude);
+              STORE_HUB.lng = Number(cfg.longitude);
+              if (cfg.storeName) STORE_HUB.name = cfg.storeName;
+              if (cfg.address) STORE_HUB.address = cfg.address;
+            }
+          }
+        } catch (_) {}
+
         let orders = [];
-        const res = await fetch('http://localhost:5085/api/Orders');
-        if (res.ok) {
-          const allOrders = await res.json();
-          if (Array.isArray(allOrders)) {
-            // Filter by targetShipperId if provided, or active orders
-            const activeStatuses = ['Confirmed', 'PickingUp', 'Ready', 'Delivering'];
-            if (targetShipperId) {
-              orders = allOrders.filter(o => String(o.shipperId) === String(targetShipperId) && activeStatuses.includes(o.status));
-            } else if (targetOrderIds) {
-              const idList = targetOrderIds.split(',').map(s => s.trim());
-              orders = allOrders.filter(o => idList.includes(String(o.id)));
-            } else {
-              // Get active orders currently picking up or delivering
-              orders = allOrders.filter(o => activeStatuses.includes(o.status));
+        const rawDataParam = urlParams.get('data');
+        if (rawDataParam) {
+          try {
+            const b64 = rawDataParam.replace(/-/g, '+').replace(/_/g, '/');
+            const binStr = atob(b64);
+            const bytes = Uint8Array.from(binStr, c => c.charCodeAt(0));
+            const decoded = new TextDecoder().decode(bytes);
+            const parsed = JSON.parse(decoded);
+            if (Array.isArray(parsed)) {
+              orders = parsed;
+            }
+          } catch (e) {
+            console.warn('Could not parse data param:', e);
+          }
+        }
+
+        const tokenParam = urlParams.get('token');
+        if (orders.length === 0 && tokenParam) {
+          const res = await fetch('http://localhost:5085/api/Orders/shipper-orders', {
+            headers: { 'Authorization': 'Bearer ' + tokenParam }
+          });
+          if (res.ok) {
+            const shipperOrders = await res.json();
+            if (Array.isArray(shipperOrders)) {
+              const activeStatuses = ['Confirmed', 'PickingUp', 'Ready', 'Delivering'];
+              orders = shipperOrders.filter(o => activeStatuses.includes(o.status));
             }
           }
         }
 
-        // Only use sample fallback if neither targetShipperId nor targetOrderIds was specified
-        if ((!orders || orders.length === 0) && !targetShipperId && !targetOrderIds) {
+        // Only use sample fallback if neither data/token nor targetShipperId/targetOrderIds was specified
+        if ((!orders || orders.length === 0) && !targetShipperId && !targetOrderIds && !rawDataParam) {
           orders = [
             {
               id: 44,
@@ -782,9 +804,6 @@
               <div class="mt-2 flex items-center gap-2">
                 <button onclick="flyToStop(${o.coords.lat}, ${o.coords.lng}, ${index})" class="py-1 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[10px] flex items-center gap-1">
                   <span class="material-symbols-outlined text-xs">pin_drop</span> Xem trên bản đồ
-                </button>
-                <button onclick="openSingleStopNav(${o.coords.lat}, ${o.coords.lng}, '${o.customerName}')" class="py-1 px-2.5 rounded-lg bg-primary hover:bg-primary-dark text-white font-bold text-[10px] flex items-center gap-1">
-                  <span class="material-symbols-outlined text-xs">navigation</span> Dẫn đường Google Maps
                 </button>
               </div>
             </div>
