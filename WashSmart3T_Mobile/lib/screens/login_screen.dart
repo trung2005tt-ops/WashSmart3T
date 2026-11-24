@@ -28,6 +28,19 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
 
   bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _passwordController.clear();
+  }
+
+  @override
+  void dispose() {
+    _phoneController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -179,6 +192,9 @@ class _LoginScreenState extends State<LoginScreen> {
                     TextField(
                       controller: _passwordController,
                       obscureText: _obscurePassword,
+                      enableSuggestions: false,
+                      autocorrect: false,
+                      autofillHints: null,
                       decoration: InputDecoration(
                         filled: true,
                         fillColor: surfaceContainerLow,
@@ -310,7 +326,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           onTap: () {
                             setState(() {
                               _phoneController.text = '0818605505';
-                              _passwordController.text = '123456';
+                              _passwordController.clear();
                             });
                           },
                           borderRadius: BorderRadius.circular(8),
@@ -336,7 +352,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           onTap: () {
                             setState(() {
                               _phoneController.text = '0888434359';
-                              _passwordController.text = '123456';
+                              _passwordController.clear();
                             });
                           },
                           borderRadius: BorderRadius.circular(8),
