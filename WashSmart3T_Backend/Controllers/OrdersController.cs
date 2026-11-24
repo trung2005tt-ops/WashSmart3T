@@ -1449,6 +1449,8 @@ public class OrdersController : ControllerBase
                 return BadRequest(new { message = "Vui lòng nhập số lượng/cân nặng thực tế." });
             if (!request.CustomerConfirmed)
                 return BadRequest(new { message = "Vui lòng xác nhận đã đối chiếu số liệu với khách hàng." });
+            if (string.IsNullOrWhiteSpace(request.PickupProofPhotoUrl))
+                return BadRequest(new { message = "Bắt buộc phải có ảnh chụp đồ & niêm phong hiện trường khi lấy đồ từ khách hàng." });
 
             var serviceIds = request.Items.Select(x => x.ServiceId).Distinct().ToList();
             var services = await _context.Services
@@ -1880,10 +1882,11 @@ public class OrdersController : ControllerBase
         try
         {
             var effectivePhotoUrl = request.GetEffectivePhotoUrl();
-            if (!string.IsNullOrWhiteSpace(effectivePhotoUrl))
+            if (string.IsNullOrWhiteSpace(effectivePhotoUrl))
             {
-                order.DeliveryProofPhotoUrl = effectivePhotoUrl;
+                return BadRequest(new { message = "Bắt buộc phải có ảnh minh chứng giao hàng khi bàn giao đồ cho khách hàng." });
             }
+            order.DeliveryProofPhotoUrl = effectivePhotoUrl;
             order.Status = OrderStatus.Completed;
             order.UpdatedAt = DateTime.UtcNow;
 

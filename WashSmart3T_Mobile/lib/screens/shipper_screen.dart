@@ -3841,16 +3841,29 @@ class _ShipperScreenState extends State<ShipperScreen>
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text(
-                                      'Ảnh chụp đồ & Niêm phong hiện trường',
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        color: onSurface,
-                                      ),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          'Ảnh chụp đồ & Niêm phong hiện trường',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.bold,
+                                            color: onSurface,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '*(Bắt buộc)',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: primaryColor,
+                                          ),
+                                        ),
+                                      ],
                                     ),
                                     Text(
-                                      'Bảo vệ tài sản khách hàng • Minh bạch tình trạng trước khi giặt',
+                                      'Bảo vệ tài sản khách hàng • Bắt buộc chụp tình trạng đồ & tem seal',
                                       style: GoogleFonts.plusJakartaSans(
                                         fontSize: 10.5,
                                         color: outlineColor,
@@ -3967,21 +3980,21 @@ class _ShipperScreenState extends State<ShipperScreen>
                               width: double.infinity,
                               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
                               decoration: BoxDecoration(
-                                color: Colors.white,
+                                color: const Color(0xFFFEF2F2),
                                 borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: Colors.black12, style: BorderStyle.solid),
+                                border: Border.all(color: const Color(0xFFFCA5A5), style: BorderStyle.solid),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.info_outline, size: 14, color: outlineColor),
+                                  const Icon(Icons.warning_amber_rounded, size: 16, color: primaryColor),
                                   const SizedBox(width: 6),
                                   Expanded(
                                     child: Text(
-                                      'Chưa tải ảnh. Khuyến nghị chụp túi đồ & tem seal để bảo vệ tài sản khách hàng.',
+                                      'Chưa có ảnh (Bắt buộc). Vui lòng chụp ảnh túi đồ & tem seal trước khi xác nhận lấy hàng.',
                                       style: GoogleFonts.plusJakartaSans(
                                         fontSize: 10.5,
-                                        fontStyle: FontStyle.italic,
-                                        color: outlineColor,
+                                        fontWeight: FontWeight.w600,
+                                        color: primaryColor,
                                       ),
                                     ),
                                   ),
@@ -4092,6 +4105,13 @@ class _ShipperScreenState extends State<ShipperScreen>
                                       },
                                     )
                                     .toList();
+                                if (pickupPhotos.isEmpty) {
+                                  _showToast(
+                                    'Bắt buộc phải chụp hoặc tải ít nhất 1 ảnh đồ & niêm phong trước khi xác nhận lấy hàng.',
+                                    isSuccess: false,
+                                  );
+                                  return;
+                                }
                                 if (!customerConfirmed) {
                                   _showToast(
                                     'Vui lòng xác nhận đã đối chiếu với khách hàng.',
@@ -6346,8 +6366,8 @@ class _ShipperScreenState extends State<ShipperScreen>
                         const SizedBox(width: 8),
                         Text(
                           isPickup
-                              ? 'Chụp ảnh túi đồ niêm phong'
-                              : 'Chụp ảnh giao hàng thành công',
+                              ? 'Chụp ảnh túi đồ niêm phong *(Bắt buộc)'
+                              : 'Chụp ảnh giao hàng thành công *(Bắt buộc)',
                           style: GoogleFonts.plusJakartaSans(
                             fontWeight: FontWeight.bold,
                             fontSize: 16,
@@ -6539,6 +6559,14 @@ class _ShipperScreenState extends State<ShipperScreen>
                             if (isPickup) {
                               Navigator.pop(sheetContext);
                               _showPickupWeighingDialog(order);
+                              return;
+                            }
+
+                            if (proofPhotoBytes == null && (uploadedPhotoUrl == null || uploadedPhotoUrl!.isEmpty)) {
+                              _showToast(
+                                'Bắt buộc phải chụp hoặc tải ảnh minh chứng giao hàng trước khi xác nhận.',
+                                isSuccess: false,
+                              );
                               return;
                             }
 
