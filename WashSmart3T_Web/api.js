@@ -1,6 +1,6 @@
 // ============================================================
 // WashSmart 3T — API helper dùng chung cho trang quản lý web
-// Lưu token JWT + role vào localStorage, tự đính kèm Authorization.
+// Lưu token JWT + role vào sessionStorage theo từng tab, tự đính kèm Authorization.
 // ============================================================
 
 const API_BASE = 'http://localhost:5085/api';
@@ -8,19 +8,19 @@ window.API_BASE = API_BASE;
 
 var Auth = window.Auth = {
   save(token, role, fullName) {
-    localStorage.setItem('ws_token', token);
-    localStorage.setItem('ws_role', role || 'Customer');
-    localStorage.setItem('ws_fullname', fullName || '');
+    sessionStorage.setItem('ws_token', token);
+    sessionStorage.setItem('ws_role', role || 'Customer');
+    sessionStorage.setItem('ws_fullname', fullName || '');
   },
 
-  getToken() { return localStorage.getItem('ws_token'); },
-  getRole() { return localStorage.getItem('ws_role'); },
-  getFullName() { return localStorage.getItem('ws_fullname'); },
+  getToken() { return sessionStorage.getItem('ws_token'); },
+  getRole() { return sessionStorage.getItem('ws_role'); },
+  getFullName() { return sessionStorage.getItem('ws_fullname'); },
 
   logout() {
-    localStorage.removeItem('ws_token');
-    localStorage.removeItem('ws_role');
-    localStorage.removeItem('ws_fullname');
+    sessionStorage.removeItem('ws_token');
+    sessionStorage.removeItem('ws_role');
+    sessionStorage.removeItem('ws_fullname');
     window.location.href = 'login.html';
   },
 

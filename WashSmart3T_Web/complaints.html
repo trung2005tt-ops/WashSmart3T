@@ -948,7 +948,7 @@
 
     // 8. Khởi chạy với Auto-seed Authentication và Tải Dữ Liệu
     (async () => {
-      if (!localStorage.getItem('ws_token')) {
+      if (!sessionStorage.getItem('ws_token')) {
         try {
           const res = await fetch('http://localhost:5085/api/Auth/login', {
             method: 'POST',
@@ -957,9 +957,9 @@
           });
           if (res.ok) {
             const data = await res.json();
-            localStorage.setItem('ws_token', data.token);
-            localStorage.setItem('ws_role', 'Admin');
-            localStorage.setItem('ws_fullname', 'Nguyễn Kiều Như');
+            sessionStorage.setItem('ws_token', data.token);
+            sessionStorage.setItem('ws_role', 'Admin');
+            sessionStorage.setItem('ws_fullname', 'Nguyễn Kiều Như');
           }
         } catch (e) {}
       }

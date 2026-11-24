@@ -209,7 +209,7 @@
               if (typeof Auth.logout === 'function') {
                 Auth.logout();
               } else {
-                localStorage.clear();
+                sessionStorage.clear();
               }
               if (roleStr.toLowerCase().includes('shipper')) {
                 throw new Error("Tài khoản Shipper vui lòng đăng nhập trên ứng dụng Mobile chuyên dụng dành cho tài xế giao nhận, không truy cập trang quản trị web.");
