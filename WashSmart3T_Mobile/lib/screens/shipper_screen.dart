@@ -197,6 +197,33 @@ class _ShipperScreenState extends State<ShipperScreen>
   // Thống kê ca chạy & Đối soát tiền mặt cuối ca
   Map<String, dynamic>? _currentShiftData;
 
+  // Cấu hình tài khoản ngân hàng nhận tiền đồng bộ từ StoreConfig
+  String _storeBankBin = '970422';
+  String _storeBankName = 'MBBank (Ngân hàng Quân Đội)';
+  String _storeBankAccountNo = '0818606505';
+  String _storeBankAccountHolder = 'TRAN DIEP MINH TRUNG';
+
+  Future<void> _loadStoreBankConfig() async {
+    try {
+      final res = await http.get(Uri.parse('$_baseUrl/StoreConfig'));
+      if (res.statusCode == 200) {
+        final cfg = jsonDecode(res.body);
+        if (cfg is Map<String, dynamic> && mounted) {
+          setState(() {
+            final bin = cfg['bankBin']?.toString().trim() ?? '';
+            final name = cfg['bankName']?.toString().trim() ?? '';
+            final acc = cfg['bankAccountNo']?.toString().trim() ?? '';
+            final holder = cfg['bankAccountHolder']?.toString().trim() ?? '';
+            if (bin.isNotEmpty) _storeBankBin = bin;
+            if (name.isNotEmpty) _storeBankName = name;
+            if (acc.isNotEmpty) _storeBankAccountNo = acc;
+            if (holder.isNotEmpty) _storeBankAccountHolder = holder.toUpperCase();
+          });
+        }
+      }
+    } catch (_) {}
+  }
+
   // Dữ liệu đơn từ API (không còn mock)
   List<ShipperOrderModel> _orders = [];
   bool _isLoading = false;
@@ -254,6 +281,7 @@ class _ShipperScreenState extends State<ShipperScreen>
       // Lấy tên tài khoản hiện tại từ API hồ sơ; không dùng tên mẫu hard-code.
       await _loadShipperProfile(token);
       await _loadCurrentShiftSummary();
+      await _loadStoreBankConfig();
 
       final previousActiveIds = _orders
           .where(
@@ -4142,7 +4170,7 @@ class _ShipperScreenState extends State<ShipperScreen>
   }
 
   // ==================== THANH TOÁN (MoMo / Chuyển khoản) ====================
-  void _showPaymentDialog(ShipperOrderModel order) {
+  Future<void> _showPaymentDialog(ShipperOrderModel order) async {
     if (order.isPaidOnline || order.codAmount <= 0) {
       _showToast(
         'Đơn hàng #${order.id} đã hoàn tất thanh toán. Mã QR đã đóng để tránh chuyển khoản lặp lại.',
@@ -4150,6 +4178,9 @@ class _ShipperScreenState extends State<ShipperScreen>
       );
       return;
     }
+
+    await _loadStoreBankConfig();
+    if (!mounted) return;
 
     PaymentMethod? selected;
     bool isConfirming = false;
@@ -4300,14 +4331,14 @@ class _ShipperScreenState extends State<ShipperScreen>
                       final amountVal = order.codAmount > 0 ? order.codAmount : 50000.0;
                       final cleanOrderTag = (order.id.isNotEmpty ? order.id : 'WS3T-${order.orderId ?? 0}').replaceAll('#', '');
                       final emvCoData = VietQrHelper.generateEmvCo(
-                        bankBin: '970422',
-                        accountNo: '0818606505',
-                        accountHolder: 'TRAN DIEP MINH TRUNG',
+                        bankBin: _storeBankBin,
+                        accountNo: _storeBankAccountNo,
+                        accountHolder: _storeBankAccountHolder,
                         amount: amountVal,
                         orderCode: cleanOrderTag,
                       );
                       // MoMo nhận tiền trực tiếp qua universal link hoặc EMVCo NAPAS 247
-                      final momoData = 'https://nhantien.momo.vn/0818606505/${amountVal.round()}';
+                      final momoData = 'https://nhantien.momo.vn/$_storeBankAccountNo/${amountVal.round()}';
                       final qrData = selected == PaymentMethod.momo ? momoData : emvCoData;
 
                       return Container(
@@ -4425,7 +4456,7 @@ class _ShipperScreenState extends State<ShipperScreen>
                                         ),
                                       ),
                                       Text(
-                                        '0818606505',
+                                        _storeBankAccountNo,
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 12,
                                           fontWeight: FontWeight.bold,
@@ -4447,7 +4478,7 @@ class _ShipperScreenState extends State<ShipperScreen>
                                         ),
                                       ),
                                       Text(
-                                        'TRAN DIEP MINH TRUNG',
+                                        _storeBankAccountHolder,
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 11,
                                           fontWeight: FontWeight.bold,
@@ -4468,7 +4499,7 @@ class _ShipperScreenState extends State<ShipperScreen>
                                         ),
                                       ),
                                       Text(
-                                        selected == PaymentMethod.momo ? 'Ví điện tử MoMo' : 'MBBank (Ngân hàng Quân Đội)',
+                                        selected == PaymentMethod.momo ? 'Ví điện tử MoMo' : _storeBankName,
                                         style: GoogleFonts.plusJakartaSans(
                                           fontSize: 11,
                                           fontWeight: FontWeight.bold,
@@ -4505,14 +4536,14 @@ class _ShipperScreenState extends State<ShipperScreen>
                             const SizedBox(height: 6),
                             TextButton.icon(
                               onPressed: () {
-                                Clipboard.setData(const ClipboardData(text: '0818606505'));
-                                _showToast('Đã sao chép 0818606505 vào bộ nhớ tạm');
+                                Clipboard.setData(ClipboardData(text: _storeBankAccountNo));
+                                _showToast('Đã sao chép $_storeBankAccountNo vào bộ nhớ tạm');
                               },
                               icon: const Icon(Icons.copy, size: 14),
                               label: Text(
                                 selected == PaymentMethod.momo
-                                    ? 'Sao chép SĐT MoMo: 0818606505'
-                                    : 'Sao chép STK MBBank: 0818606505',
+                                    ? 'Sao chép SĐT MoMo: $_storeBankAccountNo'
+                                    : 'Sao chép STK: $_storeBankAccountNo',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,

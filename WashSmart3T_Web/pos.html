@@ -1497,6 +1497,12 @@
       await loadRealCareOptionsFromApi();
       updateBillCalculations();
 
+      // Tự động đồng bộ lại cấu hình ngân hàng nếu admin vừa sửa bên tab Cấu hình cửa hàng
+      window.addEventListener('focus', async () => {
+        await loadStoreBankConfig();
+        updateBillCalculations();
+      });
+
       // Gắn tự động gợi ý địa chỉ chuẩn Việt Nam (Provinces Open API & GPS)
       if (window.VnAddressAutocomplete) {
         window.VnAddressAutocomplete.attach('#homeDeliveryAddress', {
