@@ -51,6 +51,7 @@ public class PromotionsController : ControllerBase
         string tier = "Gold"; // Mặc định Gold nếu demo chưa đăng nhập
         int points = 1450;
         string customerName = "Chị Kiều Như";
+        string? phone = null;
 
         if (userId.HasValue)
         {
@@ -60,6 +61,7 @@ public class PromotionsController : ControllerBase
                 tier = string.IsNullOrWhiteSpace(user.MembershipTier) ? "Bronze" : user.MembershipTier;
                 points = user.LoyaltyPoints;
                 customerName = user.FullName;
+                phone = user.Phone;
             }
         }
 
@@ -186,6 +188,39 @@ public class PromotionsController : ControllerBase
                 isAvailable = true
             }
         };
+
+        // Nạp thêm các voucher thực tế trong DB mà khách hàng sở hữu hoặc voucher chung còn hiệu lực
+        var now = DateTime.UtcNow;
+        var dbPromos = await _context.Promotions
+            .Where(p => p.IsActive && p.StartDate <= now && p.EndDate >= now && p.UsedCount < p.UsageLimit)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync();
+
+        foreach (var p in dbPromos)
+        {
+            bool isPersonal = !string.IsNullOrEmpty(phone) && (p.Description.Contains(phone) || p.Title.Contains(customerName));
+            bool isGeneral = !p.Description.Contains("Đền Bù") && !p.Title.Contains("Đền Bù") && !p.Description.Contains("đền bù");
+
+            if (isPersonal || isGeneral)
+            {
+                allVouchers.Insert(0, new
+                {
+                    code = p.Code,
+                    title = p.Title,
+                    description = p.Description,
+                    discountTag = p.DiscountType == "Percentage" ? "GIẢM" : "VOUCHER",
+                    discountValue = p.DiscountType == "Percentage" ? $"{p.DiscountValue}%" : $"{p.DiscountValue / 1000:N0}k",
+                    discountAmount = p.DiscountValue,
+                    minOrderAmount = p.MinOrderAmount,
+                    requiredTier = "Bronze",
+                    tierLabel = isPersonal ? "Tặng Riêng Bạn" : "Toàn hệ thống",
+                    badgeText = isPersonal ? "3T CARE ĐỀN BÙ" : "ƯU ĐÃI",
+                    category = "Voucher & Đền bù 3T Care",
+                    expiry = p.EndDate.ToString("dd/MM/yyyy"),
+                    isAvailable = true
+                });
+            }
+        }
 
         return Ok(new
         {

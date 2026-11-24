@@ -26,6 +26,9 @@ public class ResolveComplaintRequest
     public string? Resolution { get; set; }
     public decimal? ApprovedAmount { get; set; }
     public string? StaffNote { get; set; }
+    public int? AssignedShipperId { get; set; }
+    public string? VoucherCode { get; set; }
+    public decimal? VoucherAmount { get; set; }
 }
 
 [ApiController]
@@ -333,7 +336,7 @@ public class ComplaintsController : ControllerBase
     [Authorize(Roles = "Admin,Staff")]
     public async Task<IActionResult> ResolveComplaint(int id, [FromBody] ResolveComplaintRequest request)
     {
-        var (_, role, _, staffName) = GetCurrentUser();
+        var (currentUserId, role, _, staffName) = GetCurrentUser();
         if (string.IsNullOrWhiteSpace(staffName))
         {
             staffName = role == "Admin" ? "Quản trị viên" : "Nhân viên tiếp nhận";
@@ -359,37 +362,211 @@ public class ComplaintsController : ControllerBase
         item.ResolvedBy = staffName;
         item.UpdatedAt = DateTime.UtcNow;
 
-        // Tự động kích hoạt ghi nhận bồi hoàn/hoàn tiền vào Payment của đơn hàng
-        if (item.ApprovedAmount.HasValue && item.ApprovedAmount.Value > 0 && item.OrderId.HasValue && item.OrderId.Value > 0)
+        var resLower = (item.Resolution ?? "").ToLower();
+
+        // ================================================================
+        // 1. PHƯƠNG ÁN 1: GIẶT & PHỤC HỒI MIỄN PHÍ -> TẠO ĐƠN & GÁN SHIPPER ĐI LẤY ĐỒ
+        // ================================================================
+        int? createdRewashOrderId = null;
+        if (resLower.Contains("giặt") || resLower.Contains("phục hồi") || resLower.Contains("rewash"))
         {
-            try
+            var originalOrder = item.OrderId.HasValue && item.OrderId.Value > 0
+                ? await _context.Orders.Include(o => o.OrderDetails).FirstOrDefaultAsync(o => o.Id == item.OrderId.Value)
+                : null;
+
+            User? assignedShipper = null;
+            if (request.AssignedShipperId.HasValue && request.AssignedShipperId.Value > 0)
             {
+                assignedShipper = await _context.Users.FirstOrDefaultAsync(u => u.Id == request.AssignedShipperId.Value);
+            }
+
+            var pickupAddr = originalOrder?.DeliveryAddress ?? originalOrder?.PickupAddress ?? item.Customer?.Address ?? "140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú, TP.HCM";
+            var deliveryAddr = originalOrder?.DeliveryAddress ?? originalOrder?.PickupAddress ?? item.Customer?.Address ?? "140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú, TP.HCM";
+            var phone = item.Customer?.Phone ?? originalOrder?.ContactPhone ?? "";
+
+            var rewashOrder = new Order
+            {
+                CustomerId = item.CustomerId ?? (originalOrder?.CustomerId ?? 1),
+                OrderType = "HomeDelivery",
+                PickupAddress = pickupAddr,
+                DeliveryAddress = deliveryAddr,
+                ContactPhone = phone,
+                Note = $"[BẢO HÀNH 3T CARE - GIẶT PHỤC HỒI] Sự cố #{item.TicketCode}: {item.ItemDescription}. Đơn gốc: #{item.OrderCode}. Ghi chú: {request.StaffNote}",
+                TotalAmount = 0,
+                ShippingFee = 0,
+                AddonFee = 0,
+                DiscountAmount = 0,
+                PaymentMethod = "FreeWarranty",
+                ShipperId = assignedShipper?.Id,
+                Status = assignedShipper != null ? OrderStatus.PickingUp : OrderStatus.Confirmed,
+                SealCode = $"WS-SEAL-{item.TicketCode.Replace("-", "")}",
+                SealStatus = "Intact",
+                DrumCode = "Lồng giặt sấy chuyên sâu 3T Care",
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
+            };
+            _context.Orders.Add(rewashOrder);
+            await _context.SaveChangesAsync();
+
+            createdRewashOrderId = rewashOrder.Id;
+
+            // Thêm dịch vụ giặt lại miễn phí
+            if (originalOrder != null && originalOrder.OrderDetails.Any())
+            {
+                foreach (var od in originalOrder.OrderDetails)
+                {
+                    _context.OrderDetails.Add(new OrderDetail
+                    {
+                        OrderId = rewashOrder.Id,
+                        ServiceId = od.ServiceId,
+                        Quantity = od.Quantity,
+                        Unit = od.Unit,
+                        UnitPrice = 0,
+                        TotalPrice = 0
+                    });
+                }
+            }
+            else
+            {
+                var defaultService = await _context.Services.FirstOrDefaultAsync(s => s.IsActive);
+                if (defaultService != null)
+                {
+                    _context.OrderDetails.Add(new OrderDetail
+                    {
+                        OrderId = rewashOrder.Id,
+                        ServiceId = defaultService.Id,
+                        Quantity = 1,
+                        Unit = "gói",
+                        UnitPrice = 0,
+                        TotalPrice = 0
+                    });
+                }
+            }
+
+            _context.OrderStatusHistories.Add(new OrderStatusHistory
+            {
+                OrderId = rewashOrder.Id,
+                Status = rewashOrder.Status,
+                Note = assignedShipper != null
+                    ? $"[Bảo hành 3T Care] Khởi tạo đơn giặt lại miễn phí 0đ theo khiếu nại #{item.TicketCode}. Gán cho Shipper {assignedShipper.FullName} ({assignedShipper.Phone}) đi lấy lại đồ."
+                    : $"[Bảo hành 3T Care] Khởi tạo đơn giặt lại miễn phí 0đ theo khiếu nại #{item.TicketCode}. Chờ điều phối shipper.",
+                ChangedByUserId = currentUserId,
+                ChangedAt = DateTime.UtcNow
+            });
+
+            if (originalOrder != null)
+            {
+                _context.OrderStatusHistories.Add(new OrderStatusHistory
+                {
+                    OrderId = originalOrder.Id,
+                    Status = originalOrder.Status,
+                    Note = $"[Khiếu nại #{item.TicketCode}] Đã lập đơn giặt phục hồi bảo hành #WS3T-{rewashOrder.Id:D4} cho khách.",
+                    ChangedByUserId = currentUserId,
+                    ChangedAt = DateTime.UtcNow
+                });
+            }
+
+            item.StaffNote = (request.StaffNote ?? "") + $" (Đã tạo đơn lấy đồ giặt lại #WS3T-{rewashOrder.Id:D4}" + (assignedShipper != null ? $" - Gán Shipper: {assignedShipper.FullName}" : "") + ").";
+        }
+
+        // ================================================================
+        // 2. PHƯƠNG ÁN 2: HOÀN TIỀN DỊCH VỤ GIẶT -> CẬP NHẬT PAYMENT & LỊCH SỬ KẾ TOÁN
+        // ================================================================
+        if (resLower.Contains("hoàn tiền") || resLower.Contains("refund"))
+        {
+            if (item.OrderId.HasValue && item.OrderId.Value > 0)
+            {
+                var originalOrder = await _context.Orders.FirstOrDefaultAsync(o => o.Id == item.OrderId.Value);
                 var payment = await _context.Payments.FirstOrDefaultAsync(p => p.OrderId == item.OrderId.Value);
                 if (payment != null)
                 {
-                    payment.RefundedAmount = item.ApprovedAmount.Value;
-                    payment.RefundReason = $"Bồi hoàn bảo hiểm theo khiếu nại #{item.TicketCode}: {item.IncidentType}";
+                    payment.RefundedAmount = amount > 0 ? amount : payment.Amount;
+                    payment.RefundReason = $"Hoàn tiền dịch vụ giặt theo khiếu nại #{item.TicketCode}: {item.IncidentType}";
                     payment.RefundedAt = DateTime.UtcNow;
                     payment.RefundedBy = staffName;
                     payment.ComplaintId = item.Id;
-                    if (payment.RefundedAmount >= payment.Amount)
+                    payment.Status = PaymentStatus.Refunded;
+                }
+                else if (originalOrder != null)
+                {
+                    payment = new Payment
                     {
-                        payment.Status = PaymentStatus.Refunded;
-                    }
+                        OrderId = originalOrder.Id,
+                        Amount = originalOrder.TotalAmount,
+                        RefundedAmount = amount > 0 ? amount : originalOrder.TotalAmount,
+                        Method = originalOrder.PaymentMethod == "VietQR" ? PaymentMethod.BankTransfer : PaymentMethod.Cash,
+                        Status = PaymentStatus.Refunded,
+                        PaidAt = originalOrder.CreatedAt,
+                        RefundedAt = DateTime.UtcNow,
+                        RefundedBy = staffName,
+                        RefundReason = $"Hoàn tiền dịch vụ giặt theo khiếu nại #{item.TicketCode}",
+                        ComplaintId = item.Id,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.Payments.Add(payment);
+                }
+
+                if (originalOrder != null)
+                {
+                    _context.OrderStatusHistories.Add(new OrderStatusHistory
+                    {
+                        OrderId = originalOrder.Id,
+                        Status = originalOrder.Status,
+                        Note = $"[Hoàn tiền sự cố #{item.TicketCode}] Đã hoàn {amount:N0} VNĐ tiền dịch vụ giặt cho khách hàng ({staffName}).",
+                        ChangedByUserId = currentUserId,
+                        ChangedAt = DateTime.UtcNow
+                    });
                 }
             }
-            catch { }
         }
 
-        // Nếu khách hàng chọn bồi hoàn qua Tích Điểm / 3T Xu hoặc Voucher:
-        if (item.Customer != null && amount > 0)
+        // ================================================================
+        // 3. PHƯƠNG ÁN 3: TẶNG VOUCHER ĐỀN BÙ -> PHÁT CHÍNH XÁC CHO KHÁCH ĐÓ & CỘNG XU
+        // ================================================================
+        string? generatedVoucher = null;
+        if (resLower.Contains("voucher") || resLower.Contains("xu") || resLower.Contains("point"))
         {
-            var resLower = (item.Resolution ?? "").ToLower();
-            if (resLower.Contains("voucher") || resLower.Contains("xu") || resLower.Contains("point"))
+            var voucherVal = request.VoucherAmount.HasValue && request.VoucherAmount.Value > 0
+                ? request.VoucherAmount.Value
+                : (amount > 0 ? amount : 50000m);
+
+            var custPhone = item.Customer?.Phone ?? "";
+            var phoneTail = custPhone.Length >= 4 ? custPhone[^4..] : "CARE";
+            var voucherCode = !string.IsNullOrWhiteSpace(request.VoucherCode)
+                ? request.VoucherCode.Trim().ToUpperInvariant()
+                : $"VIP3T-{phoneTail}-{item.Id:D3}";
+
+            var existingPromo = await _context.Promotions.FirstOrDefaultAsync(p => p.Code == voucherCode);
+            if (existingPromo == null)
             {
-                int bonusCoins = (int)(amount / 10m);
+                var promo = new Promotion
+                {
+                    Code = voucherCode,
+                    Title = $"Voucher Đền Bù 3T Care - {item.Customer?.FullName ?? "Khách hàng"}",
+                    Description = $"Ưu đãi đền bù trị giá {voucherVal:N0}đ dành riêng cho quý khách {item.Customer?.FullName} ({custPhone}) theo sự cố #{item.TicketCode}.",
+                    DiscountType = "FixedAmount",
+                    DiscountValue = voucherVal,
+                    MinOrderAmount = 0,
+                    UsageLimit = 1,
+                    UsedCount = 0,
+                    StartDate = DateTime.UtcNow,
+                    EndDate = DateTime.UtcNow.AddMonths(6),
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.Promotions.Add(promo);
+            }
+
+            generatedVoucher = voucherCode;
+
+            // Đồng thời tặng điểm 3T Xu vào ví App nếu khách đã có tài khoản
+            if (item.Customer != null && voucherVal > 0)
+            {
+                int bonusCoins = (int)(voucherVal / 10m);
                 LoyaltyService.CompensatePoints(item.Customer, bonusCoins);
             }
+
+            item.StaffNote = (request.StaffNote ?? "") + $" (Đã phát Voucher riêng mã {voucherCode} trị giá {voucherVal:N0}đ cho khách).";
         }
 
         await _context.SaveChangesAsync();

@@ -254,6 +254,7 @@
     let currentTab = 'pending';
     let selectedTicketId = null;
     let searchQuery = '';
+    let availableShippersList = [];
 
     // Phân loại hướng giải quyết khách hàng mong muốn
     function detectCustomerDesiredPlan(item) {
@@ -262,16 +263,7 @@
       const reqRefund = Number(item.requestedRefund || 0);
       const orderTotal = Number(item.orderTotal || 0);
 
-      if (note.includes('bồi thường') || note.includes('đền bù') || reqRefund >= 100000) {
-        const compAmt = reqRefund > 0 ? reqRefund : 50000;
-        return {
-          planKey: 'compensation',
-          planTitle: 'Bồi thường giá trị sản phẩm',
-          amount: compAmt,
-          label: `Khách yêu cầu bồi thường giá trị sản phẩm (${formatCurrency(compAmt)})`
-        };
-      }
-      if (note.includes('hoàn tiền') || note.includes('hoàn lại tiền') || (reqRefund > 0 && reqRefund < 100000)) {
+      if (note.includes('hoàn tiền') || note.includes('hoàn lại tiền') || note.includes('bồi thường') || note.includes('đền bù') || reqRefund > 0) {
         const refundAmt = orderTotal > 0 ? orderTotal : (reqRefund > 0 ? reqRefund : 50000);
         return {
           planKey: 'refund',
@@ -302,22 +294,28 @@
         return 'Cửa hàng WashSmart 3T xin lỗi quý khách về sự cố. Chúng tôi tiếp nhận lại trang phục để thực hiện quy trình giặt sấy / hấp phục hồi chuyên sâu hoàn toàn miễn phí trong vòng 24h.';
       } else if (planKey === 'refund') {
         return `Cửa hàng đã hoàn lại 100% tiền dịch vụ giặt (${formatCurrency(amount)}) về tài khoản quý khách. Rất mong quý khách tiếp tục tin tưởng đồng hành cùng 3T!`;
-      } else if (planKey === 'compensation') {
-        return `Cửa hàng đã chi trả bồi thường ${formatCurrency(amount)} theo cam kết bảo hiểm chất lượng trang phục 3T Care. Kính chúc quý khách hài lòng!`;
       } else if (planKey === 'voucher') {
-        return 'Cửa hàng gửi tặng quý khách mã Voucher 100.000đ áp dụng cho các lần giặt tiếp theo cùng lời xin lỗi chân thành từ ban quản lý.';
+        return 'Cửa hàng gửi tặng quý khách mã Voucher áp dụng cho các lần giặt tiếp theo cùng lời xin lỗi chân thành từ ban quản lý.';
       }
       return 'Đã giải quyết sự cố theo quy chuẩn bảo hành của WashSmart 3T.';
     }
 
     async function loadComplaints() {
       try {
+        try {
+          if (Api.Orders && typeof Api.Orders.availableShippers === 'function') {
+            availableShippersList = await Api.Orders.availableShippers() || [];
+          }
+        } catch (_) {}
+
         const list = await Api.Complaints.all();
         complaintsData = (list || []).map(item => {
           const desired = detectCustomerDesiredPlan(item);
           const isDone = (item.status || '').toLowerCase() === 'completed';
           const currentPlan = isDone && item.resolution ? item.resolution : desired.planKey;
           const currentAmount = item.approvedAmount != null ? Number(item.approvedAmount) : desired.amount;
+          const phoneTail = (item.customerPhone || '3T').replace(/\D/g, '').slice(-4) || 'CARE';
+          const defaultVoucherCode = `VIP3T-${phoneTail}-${item.id}`;
           
           return {
             id: item.id,
@@ -336,6 +334,8 @@
             desiredPlan: desired,
             selectedPlan: currentPlan,
             planAmount: currentAmount,
+            assignedShipperId: null,
+            voucherCode: defaultVoucherCode,
             staffNote: item.staffNote || getDefaultStaffNote(desired.planKey, desired.amount),
             sealCode: item.sealCode || (item.orderId ? `WS-SEAL-${String(item.orderId).padStart(4, '0')}` : 'WS-SEAL-TRỰC TIẾP'),
             sealStatus: item.sealStatus || 'Intact',
@@ -602,7 +602,7 @@
             </span>
           </div>
 
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
             
             <!-- Phương án 1: Giặt & phục hồi miễn phí -->
             <label class="p-3 rounded-xl bg-surface-container-low border-2 ${item.selectedPlan === 'rewash' ? 'border-primary bg-primary/5' : 'border-surface-container'} ${isCompleted ? 'pointer-events-none opacity-80' : 'cursor-pointer hover:border-primary/50'} block space-y-1.5 transition-all">
@@ -613,7 +613,7 @@
                 </div>
                 <span class="material-symbols-outlined text-primary text-base">auto_fix_high</span>
               </div>
-              <p class="text-[11px] text-secondary pl-5">Spa hấp tơ tằm, khử khuẩn & tẩy vết ố chuyên sâu. Giao lại trong 24h.</p>
+              <p class="text-[11px] text-secondary pl-5">Spa hấp tơ tằm, khử khuẩn & tẩy vết ố chuyên sâu. Gán Shipper đi lấy lại đồ.</p>
               <div class="pl-5 pt-0.5 text-primary font-bold text-xs">Chi phí khách: 0 đ (Miễn phí 100%)</div>
             </label>
 
@@ -626,46 +626,98 @@
                 </div>
                 <span class="material-symbols-outlined text-primary text-base">replay</span>
               </div>
-              <p class="text-[11px] text-secondary pl-5">Hoàn 100% tiền hóa đơn của đơn #${item.orderCode} về phương thức thanh toán của khách.</p>
-              <div class="pl-5 pt-0.5 text-primary font-bold text-xs">Số tiền: ${formatCurrency(item.orderTotal > 0 ? item.orderTotal : (item.requestedRefund > 0 ? item.requestedRefund : 50000))} (100% hóa đơn)</div>
+              <p class="text-[11px] text-secondary pl-5">Hoàn tiền giặt của đơn #${item.orderCode} qua VietQR hoặc tiền mặt tại quầy.</p>
+              <div class="pl-5 pt-0.5 text-primary font-bold text-xs">Số tiền: ${formatCurrency(item.orderTotal > 0 ? item.orderTotal : (item.requestedRefund > 0 ? item.requestedRefund : 50000))}</div>
             </label>
 
-            <!-- Phương án 3: Bồi thường giá trị sản phẩm -->
-            <label class="p-3 rounded-xl bg-surface-container-low border-2 ${item.selectedPlan === 'compensation' ? 'border-primary bg-primary/5' : 'border-surface-container'} ${isCompleted ? 'pointer-events-none opacity-80' : 'cursor-pointer hover:border-primary/50'} block space-y-1.5 transition-all">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-2">
-                  <input type="radio" name="plan_radio" value="compensation" ${item.selectedPlan === 'compensation' ? 'checked' : ''} ${isCompleted ? 'disabled' : ''} onchange="updatePlan('${item.id}', 'compensation', ${item.requestedRefund > 0 ? item.requestedRefund : 50000})" class="accent-primary">
-                  <span class="font-bold text-xs text-on-surface">3. Bồi thường giá trị món đồ</span>
-                </div>
-                <span class="material-symbols-outlined text-primary text-base">payments</span>
-              </div>
-              <p class="text-[11px] text-secondary pl-5">Chi trả thiệt hại món đồ theo bảo hiểm cam kết chất lượng 3T Care.</p>
-              <div class="pl-5 pt-0.5 text-primary font-bold text-xs">Mức đền bù: ${formatCurrency(item.requestedRefund > 0 ? item.requestedRefund : 50000)} (Theo yêu cầu khách)</div>
-            </label>
-
-            <!-- Phương án 4: Tặng Voucher ưu đãi -->
+            <!-- Phương án 3: Tặng Voucher ưu đãi (gắn chính xác cho khách) -->
             <label class="p-3 rounded-xl bg-surface-container-low border-2 ${item.selectedPlan === 'voucher' ? 'border-primary bg-primary/5' : 'border-surface-container'} ${isCompleted ? 'pointer-events-none opacity-80' : 'cursor-pointer hover:border-primary/50'} block space-y-1.5 transition-all">
               <div class="flex items-center justify-between">
                 <div class="flex items-center gap-2">
                   <input type="radio" name="plan_radio" value="voucher" ${item.selectedPlan === 'voucher' ? 'checked' : ''} ${isCompleted ? 'disabled' : ''} onchange="updatePlan('${item.id}', 'voucher', 50000)" class="accent-primary">
-                  <span class="font-bold text-xs text-on-surface">4. Tặng Voucher / Xu đền bù</span>
+                  <span class="font-bold text-xs text-on-surface">3. Tặng Voucher / Xu đền bù</span>
                 </div>
                 <span class="material-symbols-outlined text-primary text-base">redeem</span>
               </div>
-              <p class="text-[11px] text-secondary pl-5">Quy đổi đền bù thành 5.000 điểm 3T Xu cộng vào ví hoặc tặng Voucher cho đơn sau.</p>
-              <div class="pl-5 pt-0.5 text-primary font-bold text-xs">Trị giá: 50.000 đ (Quy đổi 5.000 Xu)</div>
+              <p class="text-[11px] text-secondary pl-5">Phát mã Voucher độc quyền cấp riêng vào App của SĐT khách hàng.</p>
+              <div class="pl-5 pt-0.5 text-primary font-bold text-xs">Trị giá: ${formatCurrency(item.planAmount || 50000)} (kèm điểm 3T Xu)</div>
             </label>
 
           </div>
 
-          <!-- Ô chỉnh sửa số tiền đền bù nếu cần -->
-          ${!isCompleted && (item.selectedPlan === 'compensation' || item.selectedPlan === 'refund') ? `
-            <div class="p-3 bg-surface-container-low rounded-lg flex items-center justify-between gap-3 text-xs border border-surface-container">
-              <span class="text-secondary font-medium">Số tiền chốt bồi hoàn (VNĐ):</span>
-              <div class="flex items-center gap-2">
-                <input type="number" step="10000" min="0" value="${item.planAmount || 0}" onchange="updateAmount('${item.id}', this.value)" class="w-36 p-1.5 rounded border border-surface-container text-right font-bold text-primary text-xs focus:ring-1 focus:ring-primary focus:outline-none">
-                <span class="font-bold text-secondary">VNĐ</span>
+          <!-- CHI TIẾT THỰC THI PHƯƠNG ÁN ĐÃ CHỌN -->
+          ${!isCompleted && item.selectedPlan === 'rewash' ? `
+            <div class="p-3.5 bg-blue-50/70 border border-blue-200 rounded-xl space-y-2 text-xs">
+              <div class="flex items-center gap-1.5 font-bold text-blue-900">
+                <span class="material-symbols-outlined text-base text-blue-600">two_wheeler</span>
+                <span>Phân công Shipper đi lấy lại đồ giặt phục hồi bảo hành:</span>
               </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label class="block font-semibold text-blue-950 text-[11px] mb-1">Chọn Shipper phụ trách:</label>
+                  <select id="rewash-shipper-select" onchange="updateRewashShipper('${item.id}', this.value)" class="w-full bg-white border border-blue-200 rounded-lg p-2 text-xs font-semibold text-slate-800 focus:ring-1 focus:ring-primary focus:outline-none">
+                    <option value="">-- Chưa gán (Lưu đơn chờ điều phối) --</option>
+                    ${(availableShippersList || []).map(s => `
+                      <option value="${s.id}" ${item.assignedShipperId == s.id ? 'selected' : ''}>
+                        ${s.fullName} (${s.phone}) ${s.isOnline ? '🟢 Đang trực ca' : '⚪'}
+                      </option>
+                    `).join('')}
+                  </select>
+                </div>
+                <div>
+                  <label class="block font-semibold text-blue-950 text-[11px] mb-1">Địa điểm Shipper tới lấy lại đồ:</label>
+                  <div class="p-2 bg-white rounded-lg border border-blue-200 text-[11px] text-slate-700 font-medium truncate flex items-center gap-1">
+                    <span class="material-symbols-outlined text-sm text-primary">location_on</span>
+                    <span>${item.orderDeliveryAddress || item.customerAddress || '140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú'}</span>
+                  </div>
+                </div>
+              </div>
+              <p class="text-[11px] text-blue-700">✓ Hệ thống sẽ tự động tạo đơn giặt lại bảo hành <strong>0 VNĐ</strong> và thông báo trực tiếp đến App của Shipper đã chọn để tới lấy đồ.</p>
+            </div>
+          ` : ''}
+
+          ${!isCompleted && item.selectedPlan === 'refund' ? `
+            <div class="p-3.5 bg-amber-50/70 border border-amber-200 rounded-xl space-y-2 text-xs">
+              <div class="flex items-center justify-between border-b border-amber-200/80 pb-2">
+                <div class="flex items-center gap-1.5 font-bold text-amber-900">
+                  <span class="material-symbols-outlined text-base text-amber-600">payments</span>
+                  <span>Xác nhận số tiền hoàn trả dịch vụ giặt:</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                  <input type="number" step="10000" min="0" value="${item.planAmount || 0}" onchange="updateAmount('${item.id}', this.value)" class="w-32 p-1.5 rounded-lg border border-amber-300 text-right font-bold text-primary text-xs focus:ring-1 focus:ring-primary focus:outline-none bg-white">
+                  <span class="font-bold text-amber-900">VNĐ</span>
+                </div>
+              </div>
+              <div class="space-y-1 text-[11px] text-amber-900">
+                <p class="font-semibold text-slate-800">Quy trình thực hiện hoàn tiền dịch vụ giặt:</p>
+                <p>• <strong>Khách chuyển khoản VietQR:</strong> Nhân viên chuyển hoàn trực tiếp về tài khoản ngân hàng của khách (ghi chú <em>"Hoàn tiền đơn ${item.orderCode}"</em>). Hệ thống sẽ chuyển trạng thái thanh toán sang <strong>Đã hoàn tiền (Refunded)</strong> và ghi log đối soát kế toán.</p>
+                <p>• <strong>Khách thanh toán Tiền mặt / COD:</strong> Nhân viên hoàn tiền mặt trực tiếp tại quầy hoặc tạo lệnh chi quỹ hoàn tiền qua Shipper khi giao nhận đồ.</p>
+              </div>
+            </div>
+          ` : ''}
+
+          ${!isCompleted && item.selectedPlan === 'voucher' ? `
+            <div class="p-3.5 bg-purple-50/70 border border-purple-200 rounded-xl space-y-2 text-xs">
+              <div class="flex items-center gap-1.5 font-bold text-purple-900">
+                <span class="material-symbols-outlined text-base text-purple-600">redeem</span>
+                <span>Phát hành Voucher độc quyền cấp riêng cho khách:</span>
+              </div>
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label class="block font-semibold text-purple-950 text-[11px] mb-1">Mã Voucher phát hành:</label>
+                  <input type="text" id="voucher-code-input" value="${item.voucherCode || `VIP3T-${(item.customerPhone || '3T').slice(-4)}-${item.id}`}" onchange="updateVoucherCode('${item.id}', this.value)" class="w-full p-2 rounded-lg border border-purple-200 font-mono font-bold text-primary text-xs uppercase bg-white focus:ring-1 focus:ring-primary focus:outline-none">
+                </div>
+                <div>
+                  <label class="block font-semibold text-purple-950 text-[11px] mb-1">Trị giá Voucher giảm giá:</label>
+                  <div class="flex items-center gap-1.5">
+                    <input type="number" step="10000" min="0" value="${item.planAmount || 50000}" onchange="updateAmount('${item.id}', this.value)" class="w-full p-2 rounded-lg border border-purple-200 text-right font-bold text-primary text-xs bg-white focus:ring-1 focus:ring-primary focus:outline-none">
+                    <span class="font-bold text-purple-950">VNĐ</span>
+                  </div>
+                </div>
+              </div>
+              <p class="text-[11px] text-purple-800">
+                ✓ Voucher sẽ được liên kết chính xác với tài khoản <strong>${item.customerName} (${item.customerPhone})</strong>. Khi khách đăng nhập App WashSmart 3T sẽ thấy ngay voucher này trong mục <strong>Ưu Đãi Của Tôi</strong> (áp dụng giảm trực tiếp 0đ đơn tối thiểu).
+              </p>
             </div>
           ` : ''}
         </div>
@@ -708,6 +760,25 @@
       }
     }
 
+    function updateRewashShipper(ticketId, val) {
+      const item = complaintsData.find(x => x.id == ticketId);
+      if (item) {
+        item.assignedShipperId = val ? Number(val) : null;
+        const sp = (availableShippersList || []).find(s => s.id == val);
+        if (sp) {
+          item.staffNote = `Cửa hàng WashSmart 3T cử Shipper ${sp.fullName} (${sp.phone}) tới lấy lại đồ giặt phục hồi miễn phí 100% cho quý khách.`;
+        }
+        renderDetailPanel();
+      }
+    }
+
+    function updateVoucherCode(ticketId, code) {
+      const item = complaintsData.find(x => x.id == ticketId);
+      if (item) {
+        item.voucherCode = (code || '').toUpperCase().trim();
+      }
+    }
+
     function updateAmount(ticketId, newAmount) {
       const item = complaintsData.find(x => x.id == ticketId);
       if (item) {
@@ -741,7 +812,6 @@
       const planTitleMap = {
         'rewash': 'Giặt & phục hồi miễn phí',
         'refund': 'Hoàn tiền dịch vụ giặt',
-        'compensation': 'Bồi thường giá trị sản phẩm',
         'voucher': 'Tặng Voucher đền bù'
       };
 
@@ -750,12 +820,17 @@
 
       try {
         const staffName = (window.Auth && Auth.getFullName()) ? Auth.getFullName() : 'Nguyễn Kiều Như';
-        await Api.Complaints.resolve(ticketId, {
+        const payload = {
           resolution: resolvedTitle,
           approvedAmount: approvedAmount,
           staffNote: item.staffNote || 'Đã giải quyết thỏa đáng theo đúng yêu cầu khiếu nại.',
-          resolvedBy: staffName
-        });
+          resolvedBy: staffName,
+          assignedShipperId: item.selectedPlan === 'rewash' ? (item.assignedShipperId || null) : null,
+          voucherCode: item.selectedPlan === 'voucher' ? (item.voucherCode || null) : null,
+          voucherAmount: item.selectedPlan === 'voucher' ? approvedAmount : null
+        };
+
+        await Api.Complaints.resolve(ticketId, payload);
 
         showToast(`🎉 Đã giải quyết khiếu nại #${item.ticketCode} theo phương án: ${resolvedTitle}!`);
         await loadComplaints();
