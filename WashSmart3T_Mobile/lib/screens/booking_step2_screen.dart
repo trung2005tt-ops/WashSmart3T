@@ -146,6 +146,24 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
     return math.max(0.5, roadDist);
   }
 
+  // 🚀 Logic tính thời gian thực di chuyển xe máy shipper (vận tốc nội đô ~22km/h)
+  int calculateTravelTimeMinutes(double distanceKm) {
+    if (distanceKm <= 0.2) return 2;
+    final minutes = ((distanceKm / 22.0) * 60).round() + 2;
+    return math.max(3, minutes);
+  }
+
+  String formatTravelTime(double distanceKm) {
+    final mins = calculateTravelTimeMinutes(distanceKm);
+    if (mins < 60) {
+      return '~$mins phút di chuyển';
+    } else {
+      final h = mins ~/ 60;
+      final m = mins % 60;
+      return m > 0 ? '~$h giờ $m phút di chuyển' : '~$h giờ di chuyển';
+    }
+  }
+
   void _showOutOfRadiusDialog(BuildContext ctx, String address, double dist) {
     showDialog(
       context: ctx,
@@ -197,7 +215,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Khoảng cách: ~$dist km (Vượt quá 10km)',
+                    'Khoảng cách: ~$dist km • ~${calculateTravelTimeMinutes(dist)} phút (Vượt quá 10km)',
                     style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.bold, color: primaryColor),
                   ),
                 ],
@@ -788,133 +806,252 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
-        builder: (context, setSheetState) => Container(
-          padding: EdgeInsets.only(
-            left: 20,
-            right: 20,
-            top: 20,
-            bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-          ),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
+        builder: (context, setSheetState) {
+          final currentInput = addrController.text.trim();
+          final liveDist = calculateDistanceToStore(currentInput);
+          final liveTime = calculateTravelTimeMinutes(liveDist);
+          final isLiveWithin10Km = liveDist <= 10.0;
+
+          return Container(
+            padding: EdgeInsets.only(
+              left: 20,
+              right: 20,
+              top: 20,
+              bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Đổi địa chỉ lấy đồ',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: onSurface,
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, size: 20),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: addrController,
+                  maxLines: 2,
+                  minLines: 1,
+                  onChanged: (_) => setSheetState(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'Nhập số nhà, tên đường, phường/xã...',
+                    filled: true,
+                    fillColor: surfaceLow,
+                    prefixIcon: const Icon(Icons.pin_drop, color: primaryColor, size: 20),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Gợi ý nhanh khu vực TP.HCM:',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey),
+                ),
+                const SizedBox(height: 6),
+                Wrap(
+                  spacing: 6,
+                  runSpacing: 6,
+                  children: quickSuggestions.map((suggestion) {
+                    final sDist = calculateDistanceToStore(suggestion);
+                    final sTime = calculateTravelTimeMinutes(sDist);
+                    final isOver = sDist > 10.0;
+                    final isSelected = addrController.text.trim() == suggestion;
+
+                    return InkWell(
+                      onTap: () {
+                        addrController.text = suggestion;
+                        setSheetState(() {});
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? (isOver ? const Color(0xFFFEE2E2) : primaryColor)
+                              : surfaceLow,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isOver
+                                ? const Color(0xFFEF4444)
+                                : (isSelected ? primaryColor : primaryColor.withOpacity(0.2)),
+                          ),
+                        ),
+                        child: Text(
+                          '${suggestion.split(',').take(2).join(',')} (~$sDist km • ~$sTime p)',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10,
+                            color: isSelected
+                                ? (isOver ? const Color(0xFF991B1B) : Colors.white)
+                                : (isOver ? const Color(0xFFB91C1C) : primaryColor),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 14),
+
+                // 🚀 BẢNG THÔNG SỐ TÍNH TOÁN KM & THỜI GIAN THỰC DI CHUYỂN
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Đổi địa chỉ lấy đồ',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: onSurface,
+                    color: isLiveWithin10Km ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isLiveWithin10Km ? const Color(0xFFA7F3D0) : const Color(0xFFFECACA),
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.close, size: 20),
-                    onPressed: () => Navigator.pop(ctx),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: addrController,
-                maxLines: 2,
-                minLines: 1,
-                decoration: InputDecoration(
-                  hintText: 'Nhập số nhà, tên đường, phường/xã...',
-                  filled: true,
-                  fillColor: surfaceLow,
-                  prefixIcon: const Icon(Icons.pin_drop, color: primaryColor, size: 20),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.two_wheeler,
+                                size: 16,
+                                color: isLiveWithin10Km ? const Color(0xFF047857) : const Color(0xFFB91C1C),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Khoảng cách: ~$liveDist km',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: isLiveWithin10Km ? const Color(0xFF065F46) : const Color(0xFF991B1B),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.timer_outlined,
+                                size: 15,
+                                color: isLiveWithin10Km ? const Color(0xFF047857) : const Color(0xFFB91C1C),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '~$liveTime phút di chuyển',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: isLiveWithin10Km ? const Color(0xFF065F46) : const Color(0xFF991B1B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          Icon(
+                            isLiveWithin10Km ? Icons.check_circle : Icons.error,
+                            size: 14,
+                            color: isLiveWithin10Km ? const Color(0xFF047857) : const Color(0xFFB91C1C),
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              isLiveWithin10Km
+                                  ? 'Trong bán kính giao nhận (≤ 10km từ Hub Xưởng 140 Lê Trọng Tấn, Tân Phú)'
+                                  : 'VƯỢT QUÁ BÁN KÍNH 10KM (~$liveDist km • ~$liveTime phút) - Vui lòng chọn địa chỉ khác!',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: isLiveWithin10Km ? const Color(0xFF065F46) : const Color(0xFF991B1B),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Gợi ý nhanh khu vực TP.HCM:',
-                style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey),
-              ),
-              const SizedBox(height: 6),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: quickSuggestions.map((suggestion) {
-                  return InkWell(
-                    onTap: () {
-                      addrController.text = suggestion;
-                      setSheetState(() {});
+                const SizedBox(height: 16),
+
+                SizedBox(
+                  width: double.infinity,
+                  height: 46,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      final newAddr = addrController.text.trim();
+                      if (newAddr.isEmpty) {
+                        _showToast('Vui lòng nhập địa chỉ lấy đồ');
+                        return;
+                      }
+                      if (!isLiveWithin10Km) {
+                        _showOutOfRadiusDialog(context, newAddr, liveDist);
+                        return;
+                      }
+                      setState(() {
+                        currentPickupAddress = newAddr;
+                      });
+                      Navigator.pop(ctx);
+                      _showToast('Đã đổi địa chỉ: ~$liveDist km • ~$liveTime phút di chuyển');
                     },
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: surfaceLow,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: primaryColor.withOpacity(0.2)),
-                      ),
-                      child: Text(
-                        suggestion.split(',').take(2).join(','),
-                        style: GoogleFonts.plusJakartaSans(fontSize: 10, color: primaryColor, fontWeight: FontWeight.w500),
-                      ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isLiveWithin10Km ? primaryColor : Colors.grey,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(23)),
                     ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                height: 46,
-                child: ElevatedButton(
-                  onPressed: () {
-                    final newAddr = addrController.text.trim();
-                    if (newAddr.isEmpty) {
-                      _showToast('Vui lòng nhập địa chỉ lấy đồ');
-                      return;
-                    }
-                    setState(() {
-                      currentPickupAddress = newAddr;
-                    });
-                    Navigator.pop(ctx);
-                    _showToast('Đã đổi địa chỉ lấy đồ thành công');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(23)),
-                  ),
-                  child: Text(
-                    'Xác nhận địa chỉ này',
-                    style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
+                    child: Text(
+                      isLiveWithin10Km
+                          ? 'Xác nhận địa chỉ này (~$liveDist km)'
+                          : 'Địa chỉ vượt quá 10km (Chưa hỗ trợ)',
+                      style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
 
   // --- WIDGET 3: PICKUP ADDRESS SECTION ---
   Widget _buildPickupAddressSection() {
+    final pickupDist = calculateDistanceToStore(currentPickupAddress);
+    final pickupTime = calculateTravelTimeMinutes(pickupDist);
+    final isPickupWithin10Km = pickupDist <= 10.0;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1046,21 +1183,86 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                     height: 1.3,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
 
-                Row(
-                  children: [
-                    const Icon(Icons.verified, size: 14, color: tertiaryColor),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Địa chỉ đã xác thực vệ tinh 3T Express',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: tertiaryColor,
-                      ),
+                // 🚀 THÔNG SỐ TÍNH TOÁN KM & THỜI GIAN THỰC DI CHUYỂN
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: isPickupWithin10Km ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isPickupWithin10Km ? const Color(0xFFA7F3D0) : const Color(0xFFFECACA),
                     ),
-                  ],
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.two_wheeler,
+                                size: 15,
+                                color: isPickupWithin10Km ? const Color(0xFF047857) : const Color(0xFFB91C1C),
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                'Khoảng cách: ~$pickupDist km',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: isPickupWithin10Km ? const Color(0xFF065F46) : const Color(0xFF991B1B),
+                                ),
+                              ),
+                            ],
+                          ),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.timer_outlined,
+                                size: 14,
+                                color: isPickupWithin10Km ? const Color(0xFF047857) : const Color(0xFFB91C1C),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '~$pickupTime phút di chuyển',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.bold,
+                                  color: isPickupWithin10Km ? const Color(0xFF065F46) : const Color(0xFF991B1B),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 5),
+                      Row(
+                        children: [
+                          Icon(
+                            isPickupWithin10Km ? Icons.verified : Icons.warning_amber_rounded,
+                            size: 13,
+                            color: isPickupWithin10Km ? const Color(0xFF047857) : const Color(0xFFB91C1C),
+                          ),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              isPickupWithin10Km
+                                  ? 'Bán kính hợp lệ ≤ 10km từ Hub Xưởng 140 Lê Trọng Tấn, Q. Tân Phú'
+                                  : 'VƯỢT QUÁ BÁN KÍNH 10KM (~$pickupDist km) - Vui lòng bấm Đổi địa chỉ!',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w600,
+                                color: isPickupWithin10Km ? const Color(0xFF047857) : const Color(0xFFB91C1C),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -1803,6 +2005,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                   // Ô nhập địa chỉ chi tiết
                   TextField(
                     controller: _deliveryAddressController,
+                    onChanged: (val) => setState(() {}),
                     style: GoogleFonts.plusJakartaSans(fontSize: 12, color: onSurface),
                     decoration: InputDecoration(
                       hintText: 'Nhập số nhà, tên đường, tòa nhà, phường, quận...',
@@ -1824,6 +2027,94 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                       ),
                     ),
                   ),
+                  if (_deliveryAddressController.text.trim().isNotEmpty) ...[
+                    Builder(builder: (ctx) {
+                      final delivAddr = _deliveryAddressController.text.trim();
+                      final delivDist = calculateDistanceToStore(delivAddr);
+                      final delivTime = calculateTravelTimeMinutes(delivDist);
+                      final isDelivWithin10Km = delivDist <= 10.0;
+
+                      return Container(
+                        margin: const EdgeInsets.only(top: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isDelivWithin10Km ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isDelivWithin10Km ? const Color(0xFFA7F3D0) : const Color(0xFFFECACA),
+                          ),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.two_wheeler,
+                                      size: 15,
+                                      color: isDelivWithin10Km ? const Color(0xFF047857) : const Color(0xFFB91C1C),
+                                    ),
+                                    const SizedBox(width: 5),
+                                    Text(
+                                      'Khoảng cách: ~$delivDist km',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDelivWithin10Km ? const Color(0xFF065F46) : const Color(0xFF991B1B),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Row(
+                                  children: [
+                                    Icon(
+                                      Icons.timer_outlined,
+                                      size: 14,
+                                      color: isDelivWithin10Km ? const Color(0xFF047857) : const Color(0xFFB91C1C),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      '~$delivTime phút di chuyển',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.bold,
+                                        color: isDelivWithin10Km ? const Color(0xFF065F46) : const Color(0xFF991B1B),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              children: [
+                                Icon(
+                                  isDelivWithin10Km ? Icons.verified : Icons.warning_amber_rounded,
+                                  size: 13,
+                                  color: isDelivWithin10Km ? const Color(0xFF047857) : const Color(0xFFB91C1C),
+                                ),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    isDelivWithin10Km
+                                        ? 'Bán kính hợp lệ ≤ 10km từ Hub 140 Lê Trọng Tấn'
+                                        : 'VƯỢT QUÁ BÁN KÍNH 10KM (~$delivDist km) - Vui lòng nhập địa chỉ ≤ 10km!',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDelivWithin10Km ? const Color(0xFF047857) : const Color(0xFFB91C1C),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
                   const SizedBox(height: 8),
 
                   // 2 cột: Tên & SĐT người nhận tại địa chỉ này
@@ -1932,6 +2223,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
         ? _deliveryAddressController.text.trim()
         : currentPickupAddress;
     final dist = calculateDistanceToStore(checkAddress);
+    final travelTime = calculateTravelTimeMinutes(dist);
     final isWithin10Km = dist <= 10.0;
 
     return Container(
@@ -1986,7 +2278,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Khoảng cách: ~$dist km từ Hub 140 Lê Trọng Tấn',
+                        'Khoảng cách: ~$dist km • ~$travelTime phút di chuyển từ Hub 140 Lê Trọng Tấn',
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 10,
                           color: onSurfaceVariant,
@@ -2028,8 +2320,8 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                 Expanded(
                   child: Text(
                     isWithin10Km
-                        ? 'Chấp nhận giao hàng: Bán kính $dist km (Hợp lệ ≤ 10km)'
-                        : 'VƯỢT QUÁ BÁN KÍNH 10KM ($dist km) - Chỉ nhận đơn trong bán kính 10km!',
+                        ? 'Chấp nhận giao hàng: Bán kính $dist km • ~$travelTime phút (Hợp lệ ≤ 10km)'
+                        : 'VƯỢT QUÁ BÁN KÍNH 10KM ($dist km • ~$travelTime phút) - Chỉ nhận đơn trong bán kính 10km!',
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,

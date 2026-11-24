@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
@@ -72,6 +73,13 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
     }
     return sum;
   }
+
+  int get travelTimeMinutes {
+    if (widget.distanceKm <= 0.2) return 2;
+    final minutes = ((widget.distanceKm / 22.0) * 60).round() + 2;
+    return math.max(3, minutes);
+  }
+
   final int shippingFee = 30000;
   final int coinDiscount = 5000;
 
@@ -1098,7 +1106,7 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
                           Icon(Icons.verified, size: 11, color: Colors.green.shade700),
                           const SizedBox(width: 4),
                           Text(
-                            'Bán kính: ~${widget.distanceKm} km (Hợp lệ ≤ 10km từ 140 Lê Trọng Tấn)',
+                            'Bán kính: ~${widget.distanceKm} km • ~$travelTimeMinutes phút di chuyển (Hợp lệ ≤ 10km từ 140 Lê Trọng Tấn)',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 9.5,
                               fontWeight: FontWeight.w600,
