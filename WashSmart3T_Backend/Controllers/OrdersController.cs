@@ -796,6 +796,14 @@ public class OrdersController : ControllerBase
             };
 
             _context.Orders.Add(order);
+
+            // Tự động đồng bộ địa chỉ giao/nhận cho tài khoản khách hàng nếu chưa có
+            var customerUser = await _context.Users.FindAsync(customerId);
+            if (customerUser != null && string.IsNullOrWhiteSpace(customerUser.Address) && !string.IsNullOrWhiteSpace(request.PickupAddress))
+            {
+                customerUser.Address = request.PickupAddress.Trim();
+            }
+
             await _context.SaveChangesAsync();
 
             // 6. Lưu lịch sử đơn hàng
@@ -1058,6 +1066,14 @@ public class OrdersController : ControllerBase
             };
 
             _context.Orders.Add(order);
+
+            // Tự động đồng bộ địa chỉ giao/nhận cho tài khoản khách hàng nếu chưa có
+            var customerUser = await _context.Users.FindAsync(customer.Id);
+            if (customerUser != null && string.IsNullOrWhiteSpace(customerUser.Address) && !string.IsNullOrWhiteSpace(request.PickupAddress))
+            {
+                customerUser.Address = request.PickupAddress.Trim();
+            }
+
             await _context.SaveChangesAsync();
 
             _context.OrderStatusHistories.Add(new OrderStatusHistory

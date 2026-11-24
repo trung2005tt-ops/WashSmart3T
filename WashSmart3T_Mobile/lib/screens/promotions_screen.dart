@@ -26,7 +26,7 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
 
   // States dữ liệu động từ backend
   bool _isLoading = true;
-  String _customerName = 'Chị Kiều Như';
+  String _customerName = 'Khách hàng';
   String _membershipTier = 'Gold';
   int _loyaltyPoints = 1450;
   List<Map<String, dynamic>> _vouchers = [];
@@ -55,7 +55,7 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
       final res = await ApiService.getMyVouchers();
       if (!mounted) return;
 
-      String name = res['customerName'] ?? 'Chị Kiều Như';
+      String name = res['customerName'] ?? 'Khách hàng';
       String tier = res['membershipTier'] ?? 'Gold';
       int points = (res['loyaltyPoints'] is num) ? (res['loyaltyPoints'] as num).toInt() : 1450;
 

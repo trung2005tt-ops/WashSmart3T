@@ -576,7 +576,15 @@ class _LoginScreenState extends State<LoginScreen> {
         throw Exception('Không xác định được vai trò tài khoản.');
       }
 
-      await AuthService.saveSession(token: token.toString(), role: role);
+      await AuthService.saveSession(
+        token: token.toString(),
+        role: role,
+        fullName: userData['fullName']?.toString(),
+        phone: userData['phone']?.toString(),
+        address: userData['address']?.toString(),
+        email: userData['email']?.toString(),
+        userId: (userData['id'] as num?)?.toInt(),
+      );
 
       if (!mounted) return;
 

@@ -661,7 +661,7 @@ class _ServiceRatingScreenState extends State<ServiceRatingScreen> {
                 ),
               ),
               Text(
-                'Ẩn họ tên "Kiều Như" khi hiển thị trên cộng đồng',
+                'Ẩn họ tên tài khoản của bạn khi hiển thị trên cộng đồng',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: 11,
                   color: outlineColor,

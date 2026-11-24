@@ -201,7 +201,7 @@ class _ConfirmReceiptScreenState extends State<ConfirmReceiptScreen> {
                   ),
                 ),
                 Text(
-                  'Đơn hàng #WS3T-8892 • Chị Kiều Như',
+                  'Đơn hàng giao tận nơi • WashSmart 3T Express',
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: 12,
                     color: outlineColor,

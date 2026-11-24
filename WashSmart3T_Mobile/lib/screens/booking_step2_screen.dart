@@ -13,6 +13,7 @@ class BookingStep2Screen extends StatefulWidget {
   final double estimatedWeight;
   final String pickupAddress;
   final String contactPhone;
+  final String customerName;
   final String initialNote;
   final int addonFee;
 
@@ -21,9 +22,9 @@ class BookingStep2Screen extends StatefulWidget {
     this.items = const [],
     this.selectedCareOptions = const [],
     this.estimatedWeight = 3.0,
-    this.pickupAddress =
-        'Căn hộ Heritage Manor, Căn 302, 128 Hai Bà Trưng, P. Bến Nghé, Quận 1, TP. Hồ Chí Minh',
-    this.contactPhone = '0908123456',
+    this.pickupAddress = '',
+    this.contactPhone = '',
+    this.customerName = '',
     this.initialNote = '',
     this.addonFee = 0,
   });
@@ -62,8 +63,8 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
   late final TextEditingController _deliveryReceiverPhoneController;
   late final TextEditingController _deliveryNoteController;
 
-  String userPhone = '0908123456';
-  String userName = 'Kiều Như';
+  String userPhone = '';
+  String userName = '';
   late String currentPickupAddress;
 
   String _formatCurrency(num amount) {
@@ -317,20 +318,41 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
 
     _pickupNoteController = TextEditingController();
 
+    userName = widget.customerName.trim();
+    userPhone = widget.contactPhone.replaceAll(RegExp(r'[^0-9+]'), '');
+    currentPickupAddress = widget.pickupAddress.trim();
+
     _deliveryAddressController = TextEditingController();
     _deliveryReceiverNameController = TextEditingController(text: userName);
     _deliveryReceiverPhoneController = TextEditingController(text: userPhone);
     _deliveryNoteController = TextEditingController();
 
-    userPhone = widget.contactPhone.replaceAll(RegExp(r'[^0-9+]'), '');
-    if (userPhone.isEmpty) userPhone = '0908123456';
-    _deliveryReceiverPhoneController.text = userPhone;
-    currentPickupAddress = widget.pickupAddress;
     _loadUserProfile();
   }
 
   Future<void> _loadUserProfile() async {
     try {
+      // 1. Tải nhanh từ bộ nhớ SharedPreferences nếu có
+      final cachedName = await AuthService.getFullName();
+      final cachedPhone = await AuthService.getPhone();
+      final cachedAddr = await AuthService.getAddress();
+      if (mounted) {
+        setState(() {
+          if (userName.isEmpty && cachedName != null && cachedName.isNotEmpty) {
+            userName = cachedName;
+            _deliveryReceiverNameController.text = userName;
+          }
+          if (userPhone.isEmpty && cachedPhone != null && cachedPhone.isNotEmpty) {
+            userPhone = cachedPhone;
+            _deliveryReceiverPhoneController.text = userPhone;
+          }
+          if (currentPickupAddress.isEmpty && cachedAddr != null && cachedAddr.isNotEmpty) {
+            currentPickupAddress = cachedAddr;
+          }
+        });
+      }
+
+      // 2. Đồng bộ tươi từ API /Auth/me của người dùng đang đăng nhập
       final token = await AuthService.getToken();
       if (token != null && token.isNotEmpty) {
         final res = await http.get(
@@ -343,24 +365,39 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
             setState(() {
               if (data['phone'] != null && data['phone'].toString().isNotEmpty) {
                 userPhone = data['phone'].toString().replaceAll(RegExp(r'[^0-9+]'), '');
-                if (_deliveryReceiverPhoneController.text.isEmpty || _deliveryReceiverPhoneController.text == '0908123456') {
-                  _deliveryReceiverPhoneController.text = userPhone;
-                }
+                _deliveryReceiverPhoneController.text = userPhone;
               }
               if (data['fullName'] != null && data['fullName'].toString().isNotEmpty) {
                 userName = data['fullName'].toString();
-                if (_deliveryReceiverNameController.text.isEmpty || _deliveryReceiverNameController.text == 'Kiều Như') {
-                  _deliveryReceiverNameController.text = userName;
-                }
+                _deliveryReceiverNameController.text = userName;
               }
               if (data['address'] != null && data['address'].toString().trim().isNotEmpty) {
                 currentPickupAddress = data['address'].toString().trim();
+              } else if (currentPickupAddress.isEmpty) {
+                currentPickupAddress = '140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú, TP. Hồ Chí Minh';
               }
             });
+            await AuthService.saveUserProfile(
+              fullName: data['fullName']?.toString(),
+              phone: data['phone']?.toString(),
+              address: data['address']?.toString(),
+              email: data['email']?.toString(),
+              userId: (data['id'] as num?)?.toInt(),
+            );
           }
         }
+      } else if (currentPickupAddress.isEmpty && mounted) {
+        setState(() {
+          currentPickupAddress = '140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú, TP. Hồ Chí Minh';
+        });
       }
-    } catch (_) {}
+    } catch (_) {
+      if (currentPickupAddress.isEmpty && mounted) {
+        setState(() {
+          currentPickupAddress = '140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú, TP. Hồ Chí Minh';
+        });
+      }
+    }
   }
 
   // Giá giặt chưa xác định cho đến khi shipper cân/đếm thực tế. Phí hỏa tốc chỉ áp dụng nếu đặt lấy gấp hôm nay.
@@ -1130,20 +1167,21 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                     Row(
                       children: [
                         Text(
-                          userName,
+                          userName.isNotEmpty ? userName : 'Khách hàng',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
                             color: onSurface,
                           ),
                         ),
-                        Text(
-                          ' • $userPhone',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            color: onSurfaceVariant,
+                        if (userPhone.isNotEmpty)
+                          Text(
+                            ' • $userPhone',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 11,
+                              color: onSurfaceVariant,
+                            ),
                           ),
-                        ),
                       ],
                     ),
                     Container(
@@ -2414,6 +2452,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                         builder: (context) => BookingStep3Screen(
                           pickupAddress: currentPickupAddress,
                           deliveryAddress: finalDeliveryAddress,
+                          customerName: receiverName,
                           contactPhone: receiverPhone,
                           note: [
                             if (widget.initialNote.trim().isNotEmpty)

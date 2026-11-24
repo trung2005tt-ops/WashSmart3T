@@ -10,6 +10,7 @@ import 'booking_success_screen.dart';
 class BookingStep3Screen extends StatefulWidget {
   final String pickupAddress;
   final String deliveryAddress;
+  final String customerName;
   final String contactPhone;
   final String? note;
   final List<Map<String, dynamic>> items;
@@ -25,6 +26,7 @@ class BookingStep3Screen extends StatefulWidget {
     super.key,
     this.pickupAddress = '',
     this.deliveryAddress = '',
+    this.customerName = '',
     this.contactPhone = '',
     this.note,
     this.items = const [],
@@ -57,6 +59,68 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
   static const Color onSurface = Color(0xFF370C14);
   static const Color onSurfaceVariant = Color(0xFF5B4041);
   static const Color outlineVariant = Color(0xFFE3BDBF);
+
+  // --- STATE TÀI KHOẢN NGƯỜI ĐĂNG NHẬP ---
+  String currentCustomerName = '';
+  String currentContactPhone = '';
+
+  @override
+  void initState() {
+    super.initState();
+    currentCustomerName = widget.customerName.trim();
+    currentContactPhone = widget.contactPhone.replaceAll(RegExp(r'[^0-9+]'), '');
+    _loadUserInfo();
+  }
+
+  Future<void> _loadUserInfo() async {
+    try {
+      if (currentCustomerName.isEmpty) {
+        final cached = await AuthService.getFullName();
+        if (cached != null && cached.isNotEmpty && mounted) {
+          setState(() => currentCustomerName = cached);
+        }
+      }
+      if (currentContactPhone.isEmpty) {
+        final cachedPhone = await AuthService.getPhone();
+        if (cachedPhone != null && cachedPhone.isNotEmpty && mounted) {
+          setState(() => currentContactPhone = cachedPhone);
+        }
+      }
+      // Luôn kiểm tra từ API /Auth/me để có dữ liệu tài khoản đăng nhập tươi mới
+      if (currentCustomerName.isEmpty || currentContactPhone.isEmpty) {
+        final token = await AuthService.getToken();
+        if (token != null && token.isNotEmpty) {
+          final res = await http.get(
+            Uri.parse('${ApiService.baseUrl}/Auth/me'),
+            headers: {'Authorization': 'Bearer $token'},
+          );
+          if (res.statusCode == 200) {
+            final data = jsonDecode(res.body);
+            if (mounted && data is Map) {
+              setState(() {
+                if (currentCustomerName.isEmpty && data['fullName'] != null && data['fullName'].toString().isNotEmpty) {
+                  currentCustomerName = data['fullName'].toString();
+                }
+                if (currentContactPhone.isEmpty && data['phone'] != null && data['phone'].toString().isNotEmpty) {
+                  currentContactPhone = data['phone'].toString().replaceAll(RegExp(r'[^0-9+]'), '');
+                }
+              });
+            }
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  String _getInitials(String name) {
+    final clean = name.trim();
+    if (clean.isEmpty) return 'KH';
+    final parts = clean.split(RegExp(r'\s+'));
+    if (parts.length == 1) {
+      return parts[0].substring(0, math.min(2, parts[0].length)).toUpperCase();
+    }
+    return '${parts.first[0]}${parts.last[0]}'.toUpperCase();
+  }
 
   // --- STATE TÍNH TIỀN & ĐẶT ĐƠN ---
   bool isCoinUsed = false;
@@ -339,11 +403,13 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
   }
 
   Future<void> _handleConfirmBooking() async {
-    final rawPhone = widget.contactPhone.replaceAll(RegExp(r'[^0-9+]'), '');
-    final cleanPhone = rawPhone.isNotEmpty ? rawPhone : '0908123456';
+    final rawPhone = currentContactPhone.isNotEmpty
+        ? currentContactPhone
+        : widget.contactPhone.replaceAll(RegExp(r'[^0-9+]'), '');
+    final cleanPhone = rawPhone.isNotEmpty ? rawPhone : '';
     final safePickupAddress = widget.pickupAddress.trim().isNotEmpty
         ? widget.pickupAddress.trim()
-        : 'Căn hộ Heritage Manor, Căn 302, 128 Hai Bà Trưng, P. Bến Nghé, Quận 1, TP. Hồ Chí Minh';
+        : '140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú, TP. Hồ Chí Minh';
     final safeDeliveryAddress = widget.deliveryAddress.trim().isNotEmpty
         ? widget.deliveryAddress.trim()
         : safePickupAddress;
@@ -1027,7 +1093,7 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
                   radius: 14,
                   backgroundColor: primaryFixed,
                   child: Text(
-                    'KN',
+                    _getInitials(currentCustomerName),
                     style: GoogleFonts.plusJakartaSans(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
@@ -1043,20 +1109,21 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
                       Row(
                         children: [
                           Text(
-                            'Kiều Như',
+                            currentCustomerName.isNotEmpty ? currentCustomerName : 'Khách hàng',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12,
                               fontWeight: FontWeight.bold,
                               color: onSurface,
                             ),
                           ),
-                          Text(
-                            ' • ${widget.contactPhone.isNotEmpty ? widget.contactPhone : '0908123456'}',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 11,
-                              color: onSurfaceVariant,
+                          if (currentContactPhone.isNotEmpty || widget.contactPhone.isNotEmpty)
+                            Text(
+                              ' • ${currentContactPhone.isNotEmpty ? currentContactPhone : widget.contactPhone}',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11,
+                                color: onSurfaceVariant,
+                              ),
                             ),
-                          ),
                         ],
                       ),
                       const SizedBox(height: 3),
@@ -1067,7 +1134,7 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              'Lấy: ${widget.pickupAddress.isNotEmpty ? widget.pickupAddress : 'Căn 302, 128 Hai Bà Trưng, P. Bến Nghé, Q.1, TP.HCM'}',
+                              'Lấy: ${widget.pickupAddress.isNotEmpty ? widget.pickupAddress : '140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú, TP.HCM'}',
                               style: GoogleFonts.plusJakartaSans(
                                 fontSize: 10,
                                 color: onSurfaceVariant,

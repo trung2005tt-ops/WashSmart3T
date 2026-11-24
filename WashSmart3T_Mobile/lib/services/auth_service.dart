@@ -5,6 +5,11 @@ class AuthService {
   static const String tokenKey = 'jwt_token_secure';
   static const String legacyTokenKey = 'jwt_token';
   static const String roleKey = 'user_role';
+  static const String fullNameKey = 'user_fullname';
+  static const String phoneKey = 'user_phone';
+  static const String addressKey = 'user_address';
+  static const String emailKey = 'user_email';
+  static const String userIdKey = 'user_id';
 
   // Khóa xor chống trích xuất plaintext từ bộ nhớ SharedPreferences
   static const int _obfKey = 0x5A;
@@ -34,11 +39,81 @@ class AuthService {
   static Future<void> saveSession({
     required String token,
     required String role,
+    String? fullName,
+    String? phone,
+    String? address,
+    String? email,
+    int? userId,
   }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(tokenKey, _obfuscate(token));
     await prefs.remove(legacyTokenKey);
     await prefs.setString(roleKey, role.trim().toLowerCase());
+    if (fullName != null && fullName.isNotEmpty) {
+      await prefs.setString(fullNameKey, fullName.trim());
+    }
+    if (phone != null && phone.isNotEmpty) {
+      await prefs.setString(phoneKey, phone.trim());
+    }
+    if (address != null && address.isNotEmpty) {
+      await prefs.setString(addressKey, address.trim());
+    }
+    if (email != null && email.isNotEmpty) {
+      await prefs.setString(emailKey, email.trim());
+    }
+    if (userId != null) {
+      await prefs.setInt(userIdKey, userId);
+    }
+  }
+
+  static Future<void> saveUserProfile({
+    String? fullName,
+    String? phone,
+    String? address,
+    String? email,
+    int? userId,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (fullName != null && fullName.isNotEmpty) {
+      await prefs.setString(fullNameKey, fullName.trim());
+    }
+    if (phone != null && phone.isNotEmpty) {
+      await prefs.setString(phoneKey, phone.trim());
+    }
+    if (address != null && address.isNotEmpty) {
+      await prefs.setString(addressKey, address.trim());
+    }
+    if (email != null && email.isNotEmpty) {
+      await prefs.setString(emailKey, email.trim());
+    }
+    if (userId != null) {
+      await prefs.setInt(userIdKey, userId);
+    }
+  }
+
+  static Future<String?> getFullName() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(fullNameKey);
+  }
+
+  static Future<String?> getPhone() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(phoneKey);
+  }
+
+  static Future<String?> getAddress() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(addressKey);
+  }
+
+  static Future<String?> getEmail() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(emailKey);
+  }
+
+  static Future<int?> getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getInt(userIdKey);
   }
 
   static Future<String?> getToken() async {
@@ -105,5 +180,10 @@ class AuthService {
     await prefs.remove(tokenKey);
     await prefs.remove(legacyTokenKey);
     await prefs.remove(roleKey);
+    await prefs.remove(fullNameKey);
+    await prefs.remove(phoneKey);
+    await prefs.remove(addressKey);
+    await prefs.remove(emailKey);
+    await prefs.remove(userIdKey);
   }
 }

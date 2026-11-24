@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'order_tracking_screen.dart'; // Import màn hình Chi tiết / Theo dõi tiến độ
 
@@ -37,6 +38,7 @@ class _OrdersListScreenState extends State<OrdersListScreen>
   List<Map<String, dynamic>> _orders = [];
   bool _isLoading = true;
   String? _loadError;
+  String _currentCustomerName = 'Khách hàng';
 
   List<Map<String, dynamic>> get _filteredOrders {
     final query = _searchController.text.trim().toLowerCase();
@@ -86,6 +88,10 @@ class _OrdersListScreenState extends State<OrdersListScreen>
     }
 
     try {
+      final cachedName = await AuthService.getFullName();
+      if (cachedName != null && cachedName.isNotEmpty && mounted) {
+        _currentCustomerName = cachedName;
+      }
       final result = await ApiService.getMyOrders();
 
       if (!mounted) return;
@@ -553,7 +559,7 @@ class _OrdersListScreenState extends State<OrdersListScreen>
                             children: [
                               const TextSpan(text: 'Khách hàng: '),
                               TextSpan(
-                                text: 'Kiều Như',
+                                text: _currentCustomerName,
                                 style: GoogleFonts.plusJakartaSans(
                                   fontWeight: FontWeight.bold,
                                   color: onSurface,
