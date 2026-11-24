@@ -374,8 +374,17 @@
       if (!map) return;
       const pts = [[STORE_HUB.lat, STORE_HUB.lng]];
       stopMarkers.forEach(m => pts.push(m.getLatLng()));
+      if (activePolyline) {
+        try {
+          const polyBounds = activePolyline.getBounds();
+          if (polyBounds && polyBounds.isValid()) {
+            pts.push(polyBounds.getSouthWest(), polyBounds.getNorthEast());
+          }
+        } catch (_) {}
+      }
       if (pts.length > 1) {
-        map.fitBounds(pts, { padding: [60, 60], maxZoom: 16 });
+        map.invalidateSize();
+        map.fitBounds(pts, { padding: [45, 45], maxZoom: 16 });
       } else {
         centerStoreHub();
       }
@@ -619,9 +628,6 @@
               <a href="tel:${o.contactPhone || ''}" class="flex-1 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-center font-bold text-[10px]">
                 Gọi khách
               </a>
-              <button onclick="openSingleStopNav(${o.coords.lat}, ${o.coords.lng}, '${o.customerName}')" class="flex-1 py-1 rounded-lg bg-primary hover:bg-primary-dark text-white text-center font-bold text-[10px]">
-                Chỉ đường
-              </button>
             </div>
           </div>
         `;
@@ -637,6 +643,7 @@
 
       // Fit map view
       fitAllMarkers();
+      setTimeout(fitAllMarkers, 350);
     }
 
     // TSP sequence solver

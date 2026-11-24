@@ -2568,6 +2568,10 @@ class _ShipperScreenState extends State<ShipperScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      constraints: BoxConstraints(
+        maxWidth: 960,
+        maxHeight: MediaQuery.of(context).size.height * 0.92,
+      ),
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         constraints: BoxConstraints(
@@ -4851,6 +4855,10 @@ class _ShipperScreenState extends State<ShipperScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      constraints: BoxConstraints(
+        maxWidth: 960,
+        maxHeight: MediaQuery.of(context).size.height * 0.92,
+      ),
       backgroundColor: Colors.transparent,
       builder: (context) => Container(
         padding: const EdgeInsets.all(20),
@@ -4903,7 +4911,7 @@ class _ShipperScreenState extends State<ShipperScreen>
               borderRadius: BorderRadius.circular(16),
               child: RouteMapEmbed(
                 url: 'http://localhost:5500/shipper_route_map.html$singleOrderQuery',
-                height: 240,
+                height: 360,
               ),
             ),
             const SizedBox(height: 12),
@@ -5051,6 +5059,10 @@ class _ShipperScreenState extends State<ShipperScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      constraints: BoxConstraints(
+        maxWidth: 960,
+        maxHeight: MediaQuery.of(context).size.height * 0.92,
+      ),
       backgroundColor: Colors.transparent,
       builder: (sheetCtx) => DefaultTabController(
         length: 2,
@@ -5218,7 +5230,7 @@ class _ShipperScreenState extends State<ShipperScreen>
                     children: [
                       RouteMapEmbed(
                         url: 'http://localhost:5500/shipper_route_map.html$embedQuery',
-                        height: 360,
+                        height: (MediaQuery.of(ctx).size.height * 0.56).clamp(440.0, 620.0),
                       ),
                       Positioned(
                         top: 10,
@@ -5937,6 +5949,10 @@ class _ShipperScreenState extends State<ShipperScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      constraints: BoxConstraints(
+        maxWidth: 960,
+        maxHeight: MediaQuery.of(context).size.height * 0.92,
+      ),
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         constraints: BoxConstraints(
@@ -6225,6 +6241,10 @@ class _ShipperScreenState extends State<ShipperScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      constraints: BoxConstraints(
+        maxWidth: 960,
+        maxHeight: MediaQuery.of(context).size.height * 0.92,
+      ),
       backgroundColor: Colors.transparent,
       builder: (sheetContext) => StatefulBuilder(
         builder: (sheetContext, setSheetState) {
@@ -6654,6 +6674,10 @@ class _ShipperScreenState extends State<ShipperScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      constraints: BoxConstraints(
+        maxWidth: 960,
+        maxHeight: MediaQuery.of(context).size.height * 0.92,
+      ),
       backgroundColor: Colors.transparent,
       builder: (sheetCtx) => StatefulBuilder(
         builder: (ctx, setSheetState) {
