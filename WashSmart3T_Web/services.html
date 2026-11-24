@@ -248,6 +248,26 @@
           </button>
         </div>
 
+        <!-- Tiêu đề phân nhóm Dịch Vụ Giặt Chính & Nút Thêm Mới -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+              <span class="material-symbols-outlined text-2xl">local_laundry_service</span>
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h2 class="font-bold text-base text-on-surface">Bảng Giá Dịch Vụ Giặt Ủi Chính</h2>
+                <span class="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold" id="badge-services-table-count">Đang tải...</span>
+              </div>
+              <p class="text-secondary text-xs mt-0.5">Dịch vụ giặt sấy theo kg và giặt hấp món cao cấp (comple, áo dài, giày sneaker, chăn mền...).</p>
+            </div>
+          </div>
+          <button onclick="openAddServiceModal()" class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-primary-container shadow-xs self-start sm:self-auto transition-colors">
+            <span class="material-symbols-outlined text-base">add_circle</span>
+            <span>+ Thêm Dịch Vụ Mới</span>
+          </button>
+        </div>
+
         <!-- Services Table -->
         <div class="bg-surface-card rounded-xl border border-surface-container overflow-hidden shadow-xs">
           <table class="w-full text-left border-collapse">
@@ -497,16 +517,29 @@
     }
 
     // Main Add Button Handlers
-    document.getElementById('open-add-service-modal')?.addEventListener('click', () => {
+    function openAddServiceModal() {
       editingServiceId = null;
       document.getElementById('modal-service-title').textContent = 'Thêm Dịch Vụ Mới';
       document.getElementById('input-service-name').value = '';
       document.getElementById('input-service-desc').value = '';
-      document.getElementById('input-service-price').value = '';
+      document.getElementById('input-service-price').value = '25000';
       document.getElementById('input-service-unit').value = 'kg';
       document.getElementById('input-service-type').value = 'kg';
       const modal = document.getElementById('service-modal');
       modal.classList.remove('hidden'); modal.classList.add('flex');
+    }
+    window.openAddServiceModal = openAddServiceModal;
+
+    document.getElementById('open-add-service-modal')?.addEventListener('click', openAddServiceModal);
+
+    document.getElementById('input-service-type')?.addEventListener('change', (e) => {
+      const unitInput = document.getElementById('input-service-unit');
+      if (!unitInput) return;
+      if (e.target.value === 'kg') {
+        unitInput.value = 'kg';
+      } else if (unitInput.value === 'kg') {
+        unitInput.value = 'cái';
+      }
     });
 
     // ============================================================
@@ -569,7 +602,7 @@
             <td class="py-3 px-4 text-center">
               <div class="flex items-center justify-center gap-1.5">
                 <button class="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-container-high text-on-surface font-semibold text-[11px] transition-colors" data-edit-service="${safeText(id)}">
-                  Sửa giá
+                  Sửa
                 </button>
                 <button class="px-2 py-1 rounded ${isActive ? 'text-amber-700 hover:bg-amber-50' : 'text-green-700 hover:bg-green-50'} text-[11px] font-medium transition-colors" data-toggle-service="${safeText(id)}">
                   ${isActive ? 'Tạm ngưng' : 'Kích hoạt'}
@@ -593,6 +626,8 @@
       if (kpiItemSvc) kpiItemSvc.innerHTML = `${totalItem} <span class="text-xs font-normal text-secondary">mục</span>`;
       const badgeSvc = document.getElementById('badge-services-count');
       if (badgeSvc) badgeSvc.textContent = serviceCache.length;
+      const badgeTableSvc = document.getElementById('badge-services-table-count');
+      if (badgeTableSvc) badgeTableSvc.textContent = `${serviceCache.length} dịch vụ`;
       const badgeAll = document.getElementById('badge-all-count');
       if (badgeAll) badgeAll.textContent = (serviceCache.length + careOptionsCache.length);
 
@@ -649,7 +684,7 @@
 
     function editService(id, name, price, unit, desc = '') {
       editingServiceId = id;
-      document.getElementById('modal-service-title').textContent = 'Chỉnh Sửa Dịch Vụ #' + id;
+      document.getElementById('modal-service-title').textContent = 'Chỉnh Sửa Dịch Vụ: ' + name;
       document.getElementById('input-service-name').value = name;
       document.getElementById('input-service-desc').value = desc;
       document.getElementById('input-service-price').value = price;
@@ -694,7 +729,7 @@
 
     async function loadServicesFromApi() {
       try {
-        const list = await Api.Services.all();
+        const list = await Api.Services.all(true);
         serviceCache = Array.isArray(list) ? list : (list?.data || list?.items || list?.result || []);
         renderServices();
       } catch (e) {

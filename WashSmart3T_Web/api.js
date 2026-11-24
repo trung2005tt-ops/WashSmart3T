@@ -255,6 +255,16 @@ var Api = window.Api = {
     return data;
   },
 
+  async delete(path) {
+    const res = await fetch(API_BASE + path, {
+      method: 'DELETE',
+      headers: Api.headers(),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || `Lỗi ${res.status}`);
+    return data;
+  },
+
   // Đơn hàng
   Orders: {
     // Lấy toàn bộ đơn (Admin/Staff xem TẤT CẢ đơn kể cả Pending từ app)
@@ -296,8 +306,8 @@ var Api = window.Api = {
 
   // Dịch vụ
   Services: {
-    async all() {
-      return Api.get('/Services');
+    async all(includeInactive = false) {
+      return Api.get(`/Services${includeInactive ? '?includeInactive=true' : ''}`);
     },
     async create(payload) {
       return Api.post('/Services', payload);

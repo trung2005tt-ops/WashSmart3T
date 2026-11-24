@@ -22,16 +22,22 @@ public class ServicesController : ControllerBase
     // GET: api/Services
     // =========================
     [HttpGet]
-    public async Task<IActionResult> GetServices()
+    public async Task<IActionResult> GetServices([FromQuery] bool includeInactive = false)
     {
-        var services = await _context.Services
-            .Where(x => x.IsActive)
+        var query = _context.Services.AsQueryable();
+        if (!includeInactive)
+        {
+            query = query.Where(x => x.IsActive);
+        }
+
+        var services = await query
             .Include(x => x.Prices)
             .Select(x => new
             {
                 x.Id,
                 x.Name,
                 x.Description,
+                x.IsActive,
 
                 Price = x.Prices
                     .Where(p => p.IsActive && p.EffectiveTo == null)
@@ -92,9 +98,9 @@ public class ServicesController : ControllerBase
 
     // =========================
     // POST: api/Services
-    // ADMIN
+    // ADMIN / STAFF
     // =========================
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Staff")]
     [HttpPost]
     public async Task<IActionResult> CreateService(
         ServiceCreateRequest request)
@@ -152,15 +158,16 @@ public class ServicesController : ControllerBase
 
     // =========================
     // PUT: api/Services/1
-    // ADMIN
+    // ADMIN / STAFF
     // =========================
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Staff")]
     [HttpPut("{id}")]
     public async Task<IActionResult> UpdateService(
         int id,
         ServiceCreateRequest request)
     {
         var service = await _context.Services
+            .Include(x => x.Prices)
             .FirstOrDefaultAsync(x => x.Id == id);
 
         if (service == null)
@@ -171,9 +178,56 @@ public class ServicesController : ControllerBase
             });
         }
 
-        service.Name = request.Name;
-        service.Description = request.Description;
+        if (!string.IsNullOrWhiteSpace(request.Name))
+        {
+            service.Name = request.Name;
+        }
+        service.Description = request.Description ?? string.Empty;
         service.UpdatedAt = DateTime.UtcNow;
+
+        // Cập nhật giá & đơn vị nếu được cung cấp
+        if (request.Price >= 0 && !string.IsNullOrWhiteSpace(request.Unit))
+        {
+            var currentPrice = service.Prices
+                .FirstOrDefault(x => x.IsActive && x.EffectiveTo == null);
+
+            if (currentPrice != null)
+            {
+                if (currentPrice.Price != request.Price || currentPrice.Unit != request.Unit)
+                {
+                    currentPrice.EffectiveTo = DateTime.UtcNow;
+                    currentPrice.IsActive = false;
+
+                    var newPrice = new ServicePrice
+                    {
+                        ServiceId = service.Id,
+                        Price = request.Price,
+                        Unit = request.Unit,
+                        MinimumPrice = request.MinimumPrice,
+                        EffectiveFrom = DateTime.UtcNow,
+                        EffectiveTo = null,
+                        IsActive = true,
+                        CreatedAt = DateTime.UtcNow
+                    };
+                    _context.ServicePrices.Add(newPrice);
+                }
+            }
+            else
+            {
+                var newPrice = new ServicePrice
+                {
+                    ServiceId = service.Id,
+                    Price = request.Price,
+                    Unit = request.Unit,
+                    MinimumPrice = request.MinimumPrice,
+                    EffectiveFrom = DateTime.UtcNow,
+                    EffectiveTo = null,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                };
+                _context.ServicePrices.Add(newPrice);
+            }
+        }
 
         await _context.SaveChangesAsync();
 
@@ -185,9 +239,9 @@ public class ServicesController : ControllerBase
 
     // =========================
     // PATCH: api/Services/1/status
-    // ADMIN
+    // ADMIN / STAFF
     // =========================
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Staff")]
     [HttpPatch("{id}/status")]
     public async Task<IActionResult> UpdateStatus(
         int id,
@@ -219,9 +273,9 @@ public class ServicesController : ControllerBase
 
     // =========================
     // PUT: api/Services/1/price
-    // ADMIN
+    // ADMIN / STAFF
     // =========================
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Staff")]
     [HttpPut("{id}/price")]
     public async Task<IActionResult> UpdatePrice(
         int id,
@@ -311,9 +365,9 @@ public class ServicesController : ControllerBase
 
     // =========================
     // DELETE: api/Services/{id}
-    // ADMIN: Xóa dịch vụ
+    // ADMIN / STAFF: Xóa dịch vụ
     // =========================
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,Staff")]
     [HttpDelete("{id}")]
     public async Task<IActionResult> DeleteService(int id)
     {
