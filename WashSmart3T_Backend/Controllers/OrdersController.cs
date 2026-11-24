@@ -61,6 +61,12 @@ public class OrdersController : ControllerBase
     {
         if (distanceKm <= 0) return 0;
 
+        var maxRadius = config.Tier3MaxKm > 0 ? config.Tier3MaxKm : 10.0;
+        if (distanceKm > maxRadius)
+        {
+            throw new InvalidOperationException($"Khoảng cách giao hàng ({distanceKm:F1} km) vượt quá bán kính phục vụ tối đa {maxRadius} km.");
+        }
+
         decimal fee = config.BaseShippingFee;
         if (distanceKm > config.Tier2MaxKm)
         {
@@ -77,6 +83,123 @@ public class OrdersController : ControllerBase
         }
 
         return fee;
+    }
+
+    public static double EstimateDistanceKm(string? address, double storeLat = 10.8070, double storeLng = 106.6287)
+    {
+        if (string.IsNullOrWhiteSpace(address)) return 2.5;
+
+        var q = address.ToLowerInvariant().Trim();
+
+        // 1. Phục vụ tại xưởng hoặc cùng đường Lê Trọng Tấn
+        if (q.Contains("140 lê trọng tấn") || q.Contains("tại xưởng") || q.Contains("tại cửa hàng"))
+            return 0.1;
+
+        // 2. Tra cứu tọa độ địa bàn khu vực TP.HCM
+        double targetLat = storeLat;
+        double targetLng = storeLng;
+        bool matched = false;
+
+        if (q.Contains("lê trọng tấn") || q.Contains("tây thạnh") || q.Contains("sơn kỳ") || q.Contains("chế lan viên"))
+        {
+            targetLat = 10.8090; targetLng = 106.6300; matched = true;
+        }
+        else if (q.Contains("celadon") || q.Contains("aeon") || q.Contains("bờ bao tân thắng"))
+        {
+            targetLat = 10.8020; targetLng = 106.6180; matched = true;
+        }
+        else if (q.Contains("tân kỳ tân quý") || q.Contains("bình long") || q.Contains("trường chinh"))
+        {
+            targetLat = 10.7980; targetLng = 106.6210; matched = true;
+        }
+        else if (q.Contains("lũy bán bích") || q.Contains("thoại ngọc hầu") || q.Contains("hòa bình") || q.Contains("tân phú"))
+        {
+            targetLat = 10.7830; targetLng = 106.6360; matched = true;
+        }
+        else if (q.Contains("cộng hòa") || q.Contains("hoàng hoa thám") || q.Contains("nguyễn sỹ sách") || q.Contains("bàu cát") || q.Contains("tân bình"))
+        {
+            targetLat = 10.8015; targetLng = 106.6530; matched = true;
+        }
+        else if (q.Contains("quang trung") || q.Contains("phan huy ích") || q.Contains("thống nhất") || q.Contains("gò vấp"))
+        {
+            targetLat = 10.8350; targetLng = 106.6620; matched = true;
+        }
+        else if (q.Contains("an sương") || q.Contains("nguyễn văn quá") || q.Contains("tân thới nhất") || q.Contains("quận 12") || q.Contains("q12") || q.Contains("q.12"))
+        {
+            targetLat = 10.8450; targetLng = 106.6200; matched = true;
+        }
+        else if (q.Contains("lý thường kiệt") || q.Contains("tô hiến thành") || q.Contains("thành thái") || q.Contains("quận 10") || q.Contains("q10") || q.Contains("q.10"))
+        {
+            targetLat = 10.7720; targetLng = 106.6570; matched = true;
+        }
+        else if (q.Contains("đầm sen") || q.Contains("lãnh binh thăng") || q.Contains("quận 11") || q.Contains("q11") || q.Contains("q.11"))
+        {
+            targetLat = 10.7680; targetLng = 106.6450; matched = true;
+        }
+        else if (q.Contains("bình tân") || q.Contains("tên lửa") || q.Contains("bình hưng hòa"))
+        {
+            targetLat = 10.7700; targetLng = 106.6080; matched = true;
+        }
+        else if (q.Contains("cách mạng tháng 8") || q.Contains("cmt8") || q.Contains("quận 3") || q.Contains("q3") || q.Contains("q.3"))
+        {
+            targetLat = 10.7790; targetLng = 106.6780; matched = true;
+        }
+        else if (q.Contains("phú nhuận") || q.Contains("phan xích long"))
+        {
+            targetLat = 10.7980; targetLng = 106.6800; matched = true;
+        }
+        else if (q.Contains("chợ lớn") || q.Contains("bình tây") || q.Contains("hậu giang") || q.Contains("quận 6") || q.Contains("q6") || q.Contains("q.6"))
+        {
+            targetLat = 10.7510; targetLng = 106.6380; matched = true;
+        }
+        else if (q.Contains("bến thành") || q.Contains("lê lợi") || q.Contains("nguyễn huệ") || q.Contains("quận 1") || q.Contains("q1") || q.Contains("q.1"))
+        {
+            targetLat = 10.7725; targetLng = 106.6980; matched = true;
+        }
+        // CÁC KHU VỰC VƯỢT QUÁ BÁN KÍNH 10KM:
+        else if (q.Contains("landmark") || q.Contains("bình thạnh") || q.Contains("thảo điền") || q.Contains("quận 2") || q.Contains("q2"))
+        {
+            targetLat = 10.8030; targetLng = 106.7250; matched = true;
+        }
+        else if (q.Contains("nguyễn thị thập") || q.Contains("phú mỹ hưng") || q.Contains("sunrise") || q.Contains("tân quy") || q.Contains("quận 7") || q.Contains("q7") || q.Contains("q.7"))
+        {
+            targetLat = 10.7380; targetLng = 106.7130; matched = true;
+        }
+        else if (q.Contains("quận 8") || q.Contains("q8") || q.Contains("q.8") || q.Contains("quận 4") || q.Contains("q4") || q.Contains("q.4"))
+        {
+            targetLat = 10.7450; targetLng = 106.6850; matched = true;
+        }
+        else if (q.Contains("nhà bè") || q.Contains("cần giờ"))
+        {
+            targetLat = 10.6800; targetLng = 106.7300; matched = true;
+        }
+        else if (q.Contains("thủ đức") || q.Contains("quận 9") || q.Contains("q9") || q.Contains("q.9") || q.Contains("suối tiên") || q.Contains("làng đại học"))
+        {
+            targetLat = 10.8510; targetLng = 106.7720; matched = true;
+        }
+        else if (q.Contains("bình chánh") || q.Contains("củ chi") || q.Contains("hóc môn"))
+        {
+            targetLat = 10.8800; targetLng = 106.5500; matched = true;
+        }
+        else if (q.Contains("bình dương") || q.Contains("đồng nai") || q.Contains("long an") || q.Contains("biên hòa"))
+        {
+            targetLat = 10.9500; targetLng = 106.7000; matched = true;
+        }
+
+        if (!matched)
+        {
+            return 2.5;
+        }
+
+        const double R = 6371.0;
+        double dLat = (targetLat - storeLat) * Math.PI / 180.0;
+        double dLon = (targetLng - storeLng) * Math.PI / 180.0;
+        double a = Math.Sin(dLat / 2.0) * Math.Sin(dLat / 2.0) +
+                   Math.Cos(storeLat * Math.PI / 180.0) * Math.Cos(targetLat * Math.PI / 180.0) *
+                   Math.Sin(dLon / 2.0) * Math.Sin(dLon / 2.0);
+        double c = 2.0 * Math.Atan2(Math.Sqrt(a), Math.Sqrt(1.0 - a));
+        double roadDist = Math.Round(R * c * 1.35, 1);
+        return Math.Max(0.5, roadDist);
     }
 
     // ============================================================
@@ -615,20 +738,34 @@ public class OrdersController : ControllerBase
                 subTotal += lineTotal;
             }
 
-            // 3. Tính phí ship động từ StoreConfig (không bỏ rơi cấu hình)
+            // 3. Tính phí ship động từ StoreConfig (Kiểm tra bán kính tối đa 10km)
             var storeConfig = GetStoreConfig();
             var orderType = string.IsNullOrWhiteSpace(request.OrderType) ? "Delivery" : request.OrderType.Trim();
             decimal shippingFee = 0;
             if (orderType == "Delivery")
             {
+                var maxRadius = storeConfig.Tier3MaxKm > 0 ? storeConfig.Tier3MaxKm : 10.0;
+                var effectiveDistance = request.DistanceKm.HasValue && request.DistanceKm.Value > 0
+                    ? request.DistanceKm.Value
+                    : EstimateDistanceKm(deliveryAddress, storeConfig.Latitude, storeConfig.Longitude);
+
+                if (effectiveDistance > maxRadius)
+                {
+                    return BadRequest(new
+                    {
+                        message = $"WashSmart 3T hiện chỉ phục vụ giao nhận trong bán kính tối đa {maxRadius} km từ cửa hàng (140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú). Địa chỉ của bạn cách cửa hàng khoảng {effectiveDistance:F1} km, vượt quá phạm vi giao hàng. Vui lòng chọn địa chỉ trong bán kính 10km.",
+                        distanceKm = effectiveDistance,
+                        maxRadiusKm = maxRadius
+                    });
+                }
+
                 if (request.ShippingFee > 0)
                 {
                     shippingFee = request.ShippingFee;
                 }
                 else
                 {
-                    var distance = request.DistanceKm ?? 2.5;
-                    shippingFee = CalculateShippingFee(distance, request.IsExpress, storeConfig);
+                    shippingFee = CalculateShippingFee(effectiveDistance, request.IsExpress, storeConfig);
                 }
             }
 
@@ -818,12 +955,26 @@ public class OrdersController : ControllerBase
                 customer.FullName = name;
             }
 
-            // Tính phí giao nhận theo cấu hình bậc khoảng cách từ StoreConfig (không hardcode)
+            // Tính phí giao nhận theo cấu hình bậc khoảng cách từ StoreConfig (Kiểm tra bán kính tối đa 10km)
             var storeConfig = GetStoreConfig();
             decimal actualDeliveryFee = 0;
             if (request.DeliveryMethod == "HomeDelivery")
             {
-                var dist = request.DistanceKm ?? 2.5;
+                var maxRadius = storeConfig.Tier3MaxKm > 0 ? storeConfig.Tier3MaxKm : 10.0;
+                var dist = request.DistanceKm.HasValue && request.DistanceKm.Value > 0
+                    ? request.DistanceKm.Value
+                    : EstimateDistanceKm(request.DeliveryAddress, storeConfig.Latitude, storeConfig.Longitude);
+
+                if (dist > maxRadius)
+                {
+                    return BadRequest(new
+                    {
+                        message = $"WashSmart 3T chỉ hỗ trợ giao hàng tận nơi trong bán kính tối đa {maxRadius} km từ cửa hàng 140 Lê Trọng Tấn. Địa chỉ nhận hàng ({dist:F1} km) vượt quá bán kính phục vụ.",
+                        distanceKm = dist,
+                        maxRadiusKm = maxRadius
+                    });
+                }
+
                 actualDeliveryFee = CalculateShippingFee(dist, false, storeConfig);
             }
 

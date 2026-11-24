@@ -19,6 +19,9 @@ public class StoreConfig
     public double Tier2MaxKm { get; set; } = 5.0;
     public double Tier3MaxKm { get; set; } = 10.0;
 
+    [System.ComponentModel.DataAnnotations.Schema.NotMapped]
+    public double MaxDeliveryRadiusKm => Tier3MaxKm > 0 ? Tier3MaxKm : 10.0;
+
     public decimal ExpressExtraFee { get; set; } = 25000;
     public decimal AddonComfortFee { get; set; } = 10000;
     public decimal AddonBagFee { get; set; } = 5000;

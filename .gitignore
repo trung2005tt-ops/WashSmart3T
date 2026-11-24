@@ -97,3 +97,7 @@ WashSmart3T_Backend/appsettings.Local.json
 WashSmart3T_Backend/wwwroot/uploads/*
 !WashSmart3T_Backend/wwwroot/uploads/.gitkeep
 
+# Office temporary files
+~$*.docx
+~$*.xlsx
+

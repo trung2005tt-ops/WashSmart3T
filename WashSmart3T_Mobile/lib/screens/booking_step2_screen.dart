@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
@@ -69,6 +70,171 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
     return amount.toInt().toString().replaceAllMapped(
       RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
       (Match m) => '${m[1]}.',
+    );
+  }
+
+  // 🚀 Logic tính khoảng cách từ Hub Xưởng WashSmart 3T (140 Lê Trọng Tấn)
+  double calculateDistanceToStore(String address) {
+    if (address.isEmpty) return 0.1;
+    final q = address.toLowerCase().trim();
+    if (q.contains('140 lê trọng tấn') || q.contains('tại xưởng') || q.contains('tại cửa hàng')) {
+      return 0.1;
+    }
+
+    double targetLat = 10.8070;
+    double targetLng = 106.6287;
+    bool matched = false;
+
+    if (q.contains('lê trọng tấn') || q.contains('tây thạnh') || q.contains('sơn kỳ') || q.contains('chế lan viên')) {
+      targetLat = 10.8090; targetLng = 106.6300; matched = true;
+    } else if (q.contains('celadon') || q.contains('aeon') || q.contains('bờ bao tân thắng')) {
+      targetLat = 10.8020; targetLng = 106.6180; matched = true;
+    } else if (q.contains('tân kỳ tân quý') || q.contains('bình long') || q.contains('trường chinh')) {
+      targetLat = 10.7980; targetLng = 106.6210; matched = true;
+    } else if (q.contains('lũy bán bích') || q.contains('thoại ngọc hầu') || q.contains('hòa bình') || q.contains('tân phú')) {
+      targetLat = 10.7830; targetLng = 106.6360; matched = true;
+    } else if (q.contains('cộng hòa') || q.contains('hoàng hoa thám') || q.contains('nguyễn sỹ sách') || q.contains('bàu cát') || q.contains('tân bình')) {
+      targetLat = 10.8015; targetLng = 106.6530; matched = true;
+    } else if (q.contains('quang trung') || q.contains('phan huy ích') || q.contains('thống nhất') || q.contains('gò vấp')) {
+      targetLat = 10.8350; targetLng = 106.6620; matched = true;
+    } else if (q.contains('an sương') || q.contains('nguyễn văn quá') || q.contains('tân thới nhất') || q.contains('quận 12') || q.contains('q12') || q.contains('q.12')) {
+      targetLat = 10.8450; targetLng = 106.6200; matched = true;
+    } else if (q.contains('lý thường kiệt') || q.contains('tô hiến thành') || q.contains('thành thái') || q.contains('quận 10') || q.contains('q10') || q.contains('q.10')) {
+      targetLat = 10.7720; targetLng = 106.6570; matched = true;
+    } else if (q.contains('đầm sen') || q.contains('lãnh binh thăng') || q.contains('quận 11') || q.contains('q11') || q.contains('q.11')) {
+      targetLat = 10.7680; targetLng = 106.6450; matched = true;
+    } else if (q.contains('bình tân') || q.contains('tên lửa') || q.contains('bình hưng hòa')) {
+      targetLat = 10.7700; targetLng = 106.6080; matched = true;
+    } else if (q.contains('cách mạng tháng 8') || q.contains('cmt8') || q.contains('quận 3') || q.contains('q3') || q.contains('q.3')) {
+      targetLat = 10.7790; targetLng = 106.6780; matched = true;
+    } else if (q.contains('phú nhuận') || q.contains('phan xích long')) {
+      targetLat = 10.7980; targetLng = 106.6800; matched = true;
+    } else if (q.contains('chợ lớn') || q.contains('bình tây') || q.contains('hậu giang') || q.contains('quận 6') || q.contains('q6') || q.contains('q.6')) {
+      targetLat = 10.7510; targetLng = 106.6380; matched = true;
+    } else if (q.contains('bến thành') || q.contains('lê lợi') || q.contains('nguyễn huệ') || q.contains('quận 1') || q.contains('q1') || q.contains('q.1')) {
+      targetLat = 10.7725; targetLng = 106.6980; matched = true;
+    }
+    // CÁC KHU VỰC VƯỢT QUÁ BÁN KÍNH 10KM:
+    else if (q.contains('landmark') || q.contains('bình thạnh') || q.contains('thảo điền') || q.contains('quận 2') || q.contains('q2')) {
+      targetLat = 10.8030; targetLng = 106.7250; matched = true;
+    } else if (q.contains('nguyễn thị thập') || q.contains('phú mỹ hưng') || q.contains('sunrise') || q.contains('tân quy') || q.contains('quận 7') || q.contains('q7') || q.contains('q.7')) {
+      targetLat = 10.7380; targetLng = 106.7130; matched = true;
+    } else if (q.contains('quận 8') || q.contains('q8') || q.contains('q.8') || q.contains('quận 4') || q.contains('q4') || q.contains('q.4')) {
+      targetLat = 10.7450; targetLng = 106.6850; matched = true;
+    } else if (q.contains('nhà bè') || q.contains('cần giờ')) {
+      targetLat = 10.6800; targetLng = 106.7300; matched = true;
+    } else if (q.contains('thủ đức') || q.contains('quận 9') || q.contains('q9') || q.contains('q.9') || q.contains('suối tiên') || q.contains('làng đại học')) {
+      targetLat = 10.8510; targetLng = 106.7720; matched = true;
+    } else if (q.contains('bình chánh') || q.contains('củ chi') || q.contains('hóc môn')) {
+      targetLat = 10.8800; targetLng = 106.5500; matched = true;
+    } else if (q.contains('bình dương') || q.contains('đồng nai') || q.contains('long an') || q.contains('biên hòa')) {
+      targetLat = 10.9500; targetLng = 106.7000; matched = true;
+    }
+
+    if (!matched) {
+      return 2.5;
+    }
+
+    const double R = 6371.0;
+    final double dLat = (targetLat - 10.8070) * math.pi / 180.0;
+    final double dLon = (targetLng - 106.6287) * math.pi / 180.0;
+    final double a = math.sin(dLat / 2.0) * math.sin(dLat / 2.0) +
+        math.cos(10.8070 * math.pi / 180.0) * math.cos(targetLat * math.pi / 180.0) *
+        math.sin(dLon / 2.0) * math.sin(dLon / 2.0);
+    final double c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a));
+    final double roadDist = (R * c * 1.35 * 10).round() / 10;
+    return math.max(0.5, roadDist);
+  }
+
+  void _showOutOfRadiusDialog(BuildContext ctx, String address, double dist) {
+    showDialog(
+      context: ctx,
+      builder: (dCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            const Icon(Icons.location_off, color: primaryColor, size: 24),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Ngoài Bán Kính 10km',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                  color: primaryColor,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'WashSmart 3T hiện CHỈ CHẤP NHẬN GIAO NHẬN trong bán kính tối đa 10km từ Xưởng Trung Tâm (140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú).',
+              style: GoogleFonts.plusJakartaSans(fontSize: 13, height: 1.4, color: onSurface),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: surfaceLow,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: primaryColor.withOpacity(0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Địa chỉ bạn chọn:',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.bold, color: onSurfaceVariant),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    address,
+                    style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600, color: onSurface),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Khoảng cách: ~$dist km (Vượt quá 10km)',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.bold, color: primaryColor),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Vui lòng chọn địa chỉ khác trong phạm vi 10km (Tân Phú, Tân Bình, Q.12, Gò Vấp, Q.10, Q.11, Q.3, Q.1...) để shipper phục vụ bạn tốt nhất.',
+              style: GoogleFonts.plusJakartaSans(fontSize: 12, color: onSurfaceVariant),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dCtx),
+            child: Text(
+              'Đóng',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, color: onSurfaceVariant),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(dCtx);
+              _showChangePickupAddressDialog();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryColor,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: Text(
+              'Đổi địa chỉ ngay',
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -611,9 +777,10 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
     final addrController = TextEditingController(text: currentPickupAddress);
     final quickSuggestions = [
       '140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú, TP.HCM',
-      'Chợ Bến Thành, Đường Lê Lợi, Phường Bến Thành, Quận 1, TP.HCM',
+      'Aeon Mall Tân Phú, 30 Bờ Bao Tân Thắng, P. Sơn Kỳ, Q. Tân Phú',
       '268 Lý Thường Kiệt, Phường 14, Quận 10, TP.HCM',
-      'Landmark 81, 720A Điện Biên Phủ, P. 22, Q. Bình Thạnh, TP.HCM',
+      'Chợ Bến Thành, Đường Lê Lợi, Phường Bến Thành, Quận 1, TP.HCM',
+      'Nguyễn Thị Thập, P. Tân Quy, Quận 7, TP.HCM (Thử nghiệm ngoài 10km)',
     ];
 
     showModalBottomSheet(
@@ -1761,11 +1928,21 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
 
   // --- WIDGET 6: SHIPPING FEE TRANSPARENCY ---
   Widget _buildShippingFeeSection() {
+    final checkAddress = isDifferentDeliveryAddress && _deliveryAddressController.text.trim().isNotEmpty
+        ? _deliveryAddressController.text.trim()
+        : currentPickupAddress;
+    final dist = calculateDistanceToStore(checkAddress);
+    final isWithin10Km = dist <= 10.0;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: cardBg,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isWithin10Km ? surfaceContainer : const Color(0xFFEF4444),
+          width: isWithin10Km ? 1 : 1.5,
+        ),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.04),
@@ -1774,54 +1951,93 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
           ),
         ],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: const BoxDecoration(
-                  color: tertiaryFixed,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.two_wheeler,
-                  size: 20,
-                  color: tertiaryColor,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              Row(
                 children: [
-                  Text(
-                    'Phí vận chuyển 2 chiều',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: onSurface,
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: isWithin10Km ? tertiaryFixed : const Color(0xFFFEE2E2),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.two_wheeler,
+                      size: 20,
+                      color: isWithin10Km ? tertiaryColor : const Color(0xFFB91C1C),
                     ),
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Lấy & Giao trả tận nơi',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      color: onSurfaceVariant,
-                    ),
+                  const SizedBox(width: 12),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Phí vận chuyển 2 chiều',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: onSurface,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Khoảng cách: ~$dist km từ Hub 140 Lê Trọng Tấn',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 10,
+                          color: onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
+              Text(
+                isWithin10Km ? '30.000 đ' : 'Ngoài vùng',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  color: isWithin10Km ? primaryColor : const Color(0xFFB91C1C),
+                ),
+              ),
             ],
           ),
-          Text(
-            '30.000 đ',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
-              fontWeight: FontWeight.bold,
-              color: primaryColor,
+          const SizedBox(height: 10),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: isWithin10Km ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: isWithin10Km ? const Color(0xFFA7F3D0) : const Color(0xFFFECACA),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isWithin10Km ? Icons.check_circle : Icons.error,
+                  size: 14,
+                  color: isWithin10Km ? const Color(0xFF047857) : const Color(0xFFB91C1C),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    isWithin10Km
+                        ? 'Chấp nhận giao hàng: Bán kính $dist km (Hợp lệ ≤ 10km)'
+                        : 'VƯỢT QUÁ BÁN KÍNH 10KM ($dist km) - Chỉ nhận đơn trong bán kính 10km!',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: isWithin10Km ? const Color(0xFF065F46) : const Color(0xFF991B1B),
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -1908,6 +2124,16 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                 height: 48,
                 child: ElevatedButton(
                   onPressed: () {
+                    final checkAddress = isDifferentDeliveryAddress &&
+                            _deliveryAddressController.text.trim().isNotEmpty
+                        ? _deliveryAddressController.text.trim()
+                        : currentPickupAddress;
+                    final dist = calculateDistanceToStore(checkAddress);
+                    if (dist > 10.0) {
+                      _showOutOfRadiusDialog(context, checkAddress, dist);
+                      return;
+                    }
+
                     if (_isSlotExpired(selectedTimeSlot, selectedDateIndex)) {
                       _showToast(
                         'Khung giờ này đã hết ca nhận đồ. Vui lòng chọn khung giờ khác hoặc ngày mai.',
@@ -2024,6 +2250,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                           deliveryTime: deliveryTimeFull,
                           expressFee: expressFee,
                           addonFee: widget.addonFee,
+                          distanceKm: dist,
                         ),
                       ),
                     );

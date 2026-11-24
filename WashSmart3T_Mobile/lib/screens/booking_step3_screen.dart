@@ -18,6 +18,7 @@ class BookingStep3Screen extends StatefulWidget {
   final String deliveryTime;
   final int expressFee;
   final int addonFee;
+  final double distanceKm;
 
   const BookingStep3Screen({
     super.key,
@@ -32,6 +33,7 @@ class BookingStep3Screen extends StatefulWidget {
     this.deliveryTime = '10:00 – 12:00 Ngày mai (Chuẩn 24h)',
     this.expressFee = 0,
     this.addonFee = 0,
+    this.distanceKm = 2.5,
   });
 
   @override
@@ -394,6 +396,7 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
           'discountAmount': totalDiscount,
           'paymentMethod': 'COD',
           'orderType': 'Delivery',
+          'distanceKm': widget.distanceKm,
           'items': safeItems,
         }),
       );
@@ -1089,6 +1092,21 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
                           ],
                         ),
                       ],
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(Icons.verified, size: 11, color: Colors.green.shade700),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Bán kính: ~${widget.distanceKm} km (Hợp lệ ≤ 10km từ 140 Lê Trọng Tấn)',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.green.shade800,
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
