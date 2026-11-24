@@ -366,78 +366,6 @@
             </div>
           </div>
 
-          <!-- Card: Tài Khoản Ngân Hàng Thật (VietQR Napas 247) -->
-          <div class="bg-surface-card rounded-2xl border border-surface-container p-5 shadow-sm space-y-4">
-            <div class="flex items-center justify-between pb-3 border-b border-surface-container">
-              <div class="flex items-center gap-2">
-                <span class="material-symbols-outlined text-emerald-700 text-xl">account_balance</span>
-                <h2 class="font-bold text-sm text-on-surface">Tài Khoản Ngân Hàng Thật (Chuyển Tiền Thật Qua VietQR)</h2>
-              </div>
-              <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-300">NAPAS 247 Live</span>
-            </div>
-
-            <p class="text-[11px] text-secondary">
-              Mỗi đơn hàng trên App Khách, App Shipper và POS quầy sẽ tự động sinh mã VietQR riêng biệt theo đúng thông tin tài khoản này. Khách hàng dùng bất kỳ ứng dụng ngân hàng nào quét mã đều chuyển tiền thật chính xác từng đồng vào tài khoản của bạn.
-            </p>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label class="block text-xs font-bold text-secondary mb-1">Ngân hàng thụ hưởng *</label>
-                <select id="bankBinSelect" onchange="onBankSelectChange()"
-                  class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-white text-xs font-semibold focus:outline-none focus:border-primary">
-                  <option value="970422|MBBank (Ngân hàng Quân Đội)">MBBank (Ngân hàng Quân Đội - BIN: 970422)</option>
-                  <option value="970436|Vietcombank (Ngoại thương VN)">Vietcombank (VCB - BIN: 970436)</option>
-                  <option value="970407|Techcombank (Kỹ thương VN)">Techcombank (TCB - BIN: 970407)</option>
-                  <option value="970415|VietinBank (Công thương VN)">VietinBank (CTG - BIN: 970415)</option>
-                  <option value="970418|BIDV (Đầu tư & Phát triển VN)">BIDV (BIN: 970418)</option>
-                  <option value="970416|ACB (Á Châu)">ACB (Á Châu - BIN: 970416)</option>
-                  <option value="970432|VPBank (Việt Nam Thịnh Vượng)">VPBank (BIN: 970432)</option>
-                  <option value="970423|TPBank (Tiên Phong)">TPBank (BIN: 970423)</option>
-                  <option value="970403|Sacombank (Sài Gòn Thương Tín)">Sacombank (BIN: 970403)</option>
-                </select>
-              </div>
-
-              <div>
-                <label class="block text-xs font-bold text-secondary mb-1">Số tài khoản nhận tiền thật *</label>
-                <input type="text" id="bankAccountNoInput" oninput="updateVietQrPreview()"
-                  placeholder="Ví dụ: 0908123456"
-                  class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-white text-xs font-bold text-primary focus:outline-none focus:border-primary">
-              </div>
-
-              <div class="md:col-span-2">
-                <label class="block text-xs font-bold text-secondary mb-1">Tên chủ tài khoản (Viết hoa không dấu) *</label>
-                <input type="text" id="bankAccountHolderInput" oninput="this.value = this.value.toUpperCase(); updateVietQrPreview();"
-                  placeholder="Ví dụ: NGUYEN THI KIEU NHU"
-                  class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-white text-xs font-bold text-on-surface focus:outline-none focus:border-primary">
-              </div>
-            </div>
-
-            <!-- Preview Thẻ VietQR -->
-            <div class="p-3 rounded-xl bg-surface-container-low border border-surface-container flex flex-col md:flex-row items-center gap-4">
-              <div class="w-28 h-28 shrink-0 bg-white p-1 rounded-lg border border-outline-variant shadow-sm flex items-center justify-center">
-                <img id="vietQrPreviewImg" src="https://img.vietqr.io/image/970422-0908123456-compact2.png?amount=50000&addInfo=TEST%20VIETQR&accountName=NGUYEN%20THI%20KIEU%20NHU"
-                  alt="VietQR Live" class="w-full h-full object-contain">
-              </div>
-              <div class="space-y-1 text-xs">
-                <div class="flex items-center gap-1 font-bold text-emerald-800">
-                  <span class="material-symbols-outlined text-base">verified</span>
-                  <span id="previewBankName">MBBank (Ngân hàng Quân Đội)</span>
-                </div>
-                <p class="text-secondary text-[11px]">STK: <strong id="previewAccountNo" class="text-on-surface">0908123456</strong></p>
-                <p class="text-secondary text-[11px]">Chủ TK: <strong id="previewHolderName" class="text-on-surface">NGUYEN THI KIEU NHU</strong></p>
-                <p class="text-[10px] text-emerald-700 italic">Mã QR động chuẩn VietQR Napas 247 sẵn sàng nhận tiền thật từ bất kỳ app ngân hàng nào.</p>
-              </div>
-            </div>
-
-            <div class="pt-2 flex items-center justify-end">
-              <button type="button" onclick="saveStoreConfig()"
-                class="px-5 py-2 rounded-lg bg-emerald-800 text-white text-xs font-bold hover:bg-emerald-900 shadow-sm transition-colors flex items-center gap-1">
-                <span class="material-symbols-outlined text-sm">save</span>
-                Lưu Tài Khoản Ngân Hàng
-              </button>
-            </div>
-          </div>
-
           <!-- Card: Cổng Gửi SMS Xác Thực SĐT Thật -->
           <div class="bg-surface-card rounded-2xl border border-surface-container p-5 shadow-sm space-y-4">
             <div class="flex items-center justify-between pb-3 border-b border-surface-container">
@@ -509,69 +437,79 @@
         <!-- Right Preview Column (5 Cols) -->
         <div class="lg:col-span-5 space-y-6">
 
-          <!-- Card 3: Minh họa tính phí giao hàng thời gian thực -->
+          <!-- Card: Tài Khoản Ngân Hàng Thật (VietQR Napas 247) -->
           <div class="bg-surface-card rounded-2xl border border-surface-container p-5 shadow-sm space-y-4">
-            <div class="flex items-center gap-2 pb-3 border-b border-surface-container">
-              <span class="material-symbols-outlined text-primary text-xl">calculate</span>
-              <h2 class="font-bold text-sm text-on-surface">Mô Phỏng Đối Chiếu Vị Trí Khách</h2>
+            <div class="flex items-center justify-between pb-3 border-b border-surface-container">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-emerald-700 text-xl">account_balance</span>
+                <h2 class="font-bold text-sm text-on-surface">Tài Khoản Ngân Hàng Thật (VietQR)</h2>
+              </div>
+              <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold border border-emerald-300">NAPAS 247 Live</span>
             </div>
 
-            <div class="space-y-3 text-xs">
-              <p class="text-secondary text-[11px]">
-                Kiểm tra thử nghiệm khoảng cách và phí ship khi khách hàng đặt đơn từ các địa điểm khác nhau:
-              </p>
+            <p class="text-[11px] text-secondary">
+              Mỗi đơn hàng trên App Khách, App Shipper và POS quầy sẽ tự động sinh mã VietQR riêng biệt theo đúng tài khoản này. Khách hàng dùng bất kỳ ứng dụng ngân hàng nào quét mã đều chuyển tiền thật chính xác từng đồng vào tài khoản của bạn.
+            </p>
 
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label class="block font-bold text-secondary mb-1">Chọn hoặc nhập địa chỉ khách hàng mẫu:</label>
-                <select id="mockCustomerSelect" onchange="runMockCalculation()"
-                  class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-white text-xs font-semibold focus:outline-none">
-                  <option value="10.7425,106.7050|150 Đường Số 79, P. Tân Quy, Quận 7">📍 150 Đường Số 79, Tân Quy (Gần
-                    cửa hàng - ~1.4 km)</option>
-                  <option value="10.7280,106.7210|Khu Đô Thị Phú Mỹ Hưng, Q7">📍 KĐT Phú Mỹ Hưng, Quận 7 (~2.2 km)
-                  </option>
-                  <option value="10.7550,106.7010|Chung cư Sunrise City, Nguyễn Hữu Thọ, Q7">📍 Sunrise City, Nguyễn Hữu
-                    Thọ, Q7 (~2.6 km)</option>
-                  <option value="10.7725,106.6980|Chợ Bến Thành, Lê Lợi, Quận 1">📍 Chợ Bến Thành, Quận 1 (~5.4 km)
-                  </option>
-                  <option value="10.8000,106.7350|Thảo Điền, TP. Thủ Đức">📍 Thảo Điền, TP. Thủ Đức (~9.5 km)</option>
+                <label class="block text-xs font-bold text-secondary mb-1">Ngân hàng thụ hưởng *</label>
+                <select id="bankBinSelect" onchange="onBankSelectChange()"
+                  class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-white text-xs font-semibold focus:outline-none focus:border-primary">
+                  <option value="970422|MBBank (Ngân hàng Quân Đội)">MBBank (Ngân hàng Quân Đội - BIN: 970422)</option>
+                  <option value="970436|Vietcombank (Ngoại thương VN)">Vietcombank (VCB - BIN: 970436)</option>
+                  <option value="970407|Techcombank (Kỹ thương VN)">Techcombank (TCB - BIN: 970407)</option>
+                  <option value="970415|VietinBank (Công thương VN)">VietinBank (CTG - BIN: 970415)</option>
+                  <option value="970418|BIDV (Đầu tư & Phát triển VN)">BIDV (BIN: 970418)</option>
+                  <option value="970416|ACB (Á Châu)">ACB (Á Châu - BIN: 970416)</option>
+                  <option value="970432|VPBank (Việt Nam Thịnh Vượng)">VPBank (BIN: 970432)</option>
+                  <option value="970423|TPBank (Tiên Phong)">TPBank (BIN: 970423)</option>
+                  <option value="970403|Sacombank (Sài Gòn Thương Tín)">Sacombank (BIN: 970403)</option>
                 </select>
               </div>
 
-              <!-- Kết quả tính toán tự động -->
-              <div class="p-4 rounded-xl bg-surface-container border border-surface-container space-y-3">
-                <div class="flex items-center justify-between pb-2 border-b border-white/60">
-                  <span class="font-bold text-secondary">Mốc xuất phát (Cửa hàng):</span>
-                  <span class="font-bold text-primary" id="calcStoreOrigin">123 Nguyễn Thị Thập, Q7</span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-secondary">Khoảng cách đường bộ (Haversine × 1.35):</span>
-                  <span class="font-bold text-base text-on-surface" id="calcDistance">1.4 km</span>
-                </div>
-                <div class="flex items-center justify-between">
-                  <span class="text-secondary">Thời gian shipper dự kiến tới lấy:</span>
-                  <span class="font-bold text-emerald-800" id="calcTime">~22 phút</span>
-                </div>
-                <div class="flex items-center justify-between pt-2 border-t border-white/60">
-                  <span class="font-bold text-on-surface">Phí vận chuyển hiển thị ở Bước 2 & 3:</span>
-                  <span class="font-bold text-lg text-primary" id="calcFee">20.000 đ</span>
-                </div>
+              <div>
+                <label class="block text-xs font-bold text-secondary mb-1">Số tài khoản nhận tiền thật *</label>
+                <input type="text" id="bankAccountNoInput" oninput="updateVietQrPreview()"
+                  placeholder="Ví dụ: 0908123456"
+                  class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-white text-xs font-bold text-primary focus:outline-none focus:border-primary">
               </div>
 
-              <!-- Thông tin đồng bộ -->
-              <div class="p-3 rounded-xl bg-blue-50/80 border border-blue-200 text-blue-900 text-[11px] space-y-1">
-                <div class="flex items-center gap-1.5 font-bold">
-                  <span class="material-symbols-outlined text-base">cloud_sync</span>
-                  <span>Cơ chế đồng bộ thời gian thực:</span>
-                </div>
-                <p>
-                  Khi Admin nhấn <strong>"Lưu Cấu Hình"</strong>, máy chủ API sẽ cập nhật ngay. Khách hàng mở ứng dụng
-                  hoặc chạm bản đồ sẽ được tính khoảng cách theo đúng mốc tọa độ mới mà bạn vừa lưu!
-                </p>
+              <div class="md:col-span-2">
+                <label class="block text-xs font-bold text-secondary mb-1">Tên chủ tài khoản (Viết hoa không dấu) *</label>
+                <input type="text" id="bankAccountHolderInput" oninput="this.value = this.value.toUpperCase(); updateVietQrPreview();"
+                  placeholder="Ví dụ: NGUYEN THI KIEU NHU"
+                  class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-white text-xs font-bold text-on-surface focus:outline-none focus:border-primary">
               </div>
+            </div>
+
+            <!-- Preview Thẻ VietQR -->
+            <div class="p-3 rounded-xl bg-surface-container-low border border-surface-container flex flex-col sm:flex-row items-center gap-3">
+              <div class="w-24 h-24 shrink-0 bg-white p-1 rounded-lg border border-outline-variant shadow-sm flex items-center justify-center">
+                <img id="vietQrPreviewImg" src="https://img.vietqr.io/image/970422-0908123456-compact2.png?amount=50000&addInfo=TEST%20VIETQR&accountName=NGUYEN%20THI%20KIEU%20NHU"
+                  alt="VietQR Live" class="w-full h-full object-contain">
+              </div>
+              <div class="space-y-1 text-xs">
+                <div class="flex items-center gap-1 font-bold text-emerald-800">
+                  <span class="material-symbols-outlined text-base">verified</span>
+                  <span id="previewBankName">MBBank (Ngân hàng Quân Đội)</span>
+                </div>
+                <p class="text-secondary text-[11px]">STK: <strong id="previewAccountNo" class="text-on-surface">0908123456</strong></p>
+                <p class="text-secondary text-[11px]">Chủ TK: <strong id="previewHolderName" class="text-on-surface">NGUYEN THI KIEU NHU</strong></p>
+                <p class="text-[10px] text-emerald-700 italic">Mã QR động chuẩn VietQR Napas 247 sẵn sàng nhận tiền thật.</p>
+              </div>
+            </div>
+
+            <div class="pt-1 flex items-center justify-end">
+              <button type="button" onclick="saveStoreConfig()"
+                class="px-5 py-2 rounded-lg bg-emerald-800 text-white text-xs font-bold hover:bg-emerald-900 shadow-sm transition-colors flex items-center gap-1">
+                <span class="material-symbols-outlined text-sm">save</span>
+                Lưu Tài Khoản Ngân Hàng
+              </button>
             </div>
           </div>
 
-          <!-- Card 4: Tóm tắt trạng thái kết nối -->
+          <!-- Card: Tóm tắt trạng thái kết nối -->
           <div class="bg-surface-card rounded-2xl border border-surface-container p-5 shadow-sm space-y-3">
             <h3 class="font-bold text-sm text-on-surface flex items-center gap-1.5">
               <span class="material-symbols-outlined text-emerald-600">verified</span>
@@ -636,7 +574,8 @@
 
         document.getElementById('headerStoreName').textContent = config.storeName || 'WashSmart 3T';
         document.getElementById('headerStoreAddress').textContent = config.address || '';
-        document.getElementById('calcStoreOrigin').textContent = config.address || '';
+        const originEl = document.getElementById('calcStoreOrigin');
+        if (originEl) originEl.textContent = config.address || '';
 
         if (config.updatedAt) {
           const d = new Date(config.updatedAt);
@@ -774,11 +713,11 @@
 
         document.getElementById('headerStoreName').textContent = storeName;
         document.getElementById('headerStoreAddress').textContent = address;
-        document.getElementById('calcStoreOrigin').textContent = address;
+        const originEl2 = document.getElementById('calcStoreOrigin');
+        if (originEl2) originEl2.textContent = address;
         document.getElementById('lastUpdatedLabel').textContent = new Date().toLocaleString('vi-VN');
 
         showAlert('Đã lưu cấu hình cửa hàng thành công! Mọi khách hàng trên App sẽ tự động được tính cước theo địa chỉ mới.', false, true);
-        runMockCalculation();
       } catch (err) {
         console.error('Lỗi lưu cấu hình:', err);
         showAlert('Lưu cấu hình thất bại: ' + (err.message || err), true);
@@ -817,28 +756,7 @@
     }
 
     function runMockCalculation() {
-      const storeLat = parseFloat(document.getElementById('latitudeInput').value) || 10.7380;
-      const storeLng = parseFloat(document.getElementById('longitudeInput').value) || 106.7130;
-
-      const baseFee = parseInt(document.getElementById('baseShippingFeeInput').value) || 20000;
-      const tier2Fee = parseInt(document.getElementById('tier2ShippingFeeInput').value) || 30000;
-      const tier3Fee = parseInt(document.getElementById('tier3ShippingFeeInput').value) || 45000;
-
-      const selectVal = document.getElementById('mockCustomerSelect').value;
-      const [coords, label] = selectVal.split('|');
-      const [cLat, cLng] = coords.split(',').map(parseFloat);
-
-      const distance = calculateDistanceKm(storeLat, storeLng, cLat, cLng);
-      const minutes = Math.round(distance * 5) + 15;
-
-      let fee = baseFee;
-      if (distance <= 3.0) fee = baseFee;
-      else if (distance <= 6.0) fee = tier2Fee;
-      else fee = tier3Fee;
-
-      document.getElementById('calcDistance').textContent = distance.toFixed(1) + ' km';
-      document.getElementById('calcTime').textContent = '~' + minutes + ' phút';
-      document.getElementById('calcFee').textContent = new Intl.NumberFormat('vi-VN').format(fee) + ' đ';
+      // Đã loại bỏ phần mô phỏng đối chiếu vị trí khách
     }
 
     
@@ -870,6 +788,7 @@
         showAlert('Đang kết nối cổng SMS gửi tin nhắn tới ' + phone + '...', false);
         const data = await Api.StoreConfig.testSms(phone);
         showAlert(`[${data.provider || "Gateway"}] ${data.message}`, false, true);
+      } catch (err) {
         showAlert('❌ Lỗi kết nối gửi SMS: ' + (err.message || err), true);
       }
     }
