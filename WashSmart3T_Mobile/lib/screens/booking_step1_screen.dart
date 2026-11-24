@@ -45,10 +45,7 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
   bool isLoadingCareOptions = false;
   String? careOptionsLoadError;
 
-  final TextEditingController _notesController = TextEditingController(
-    text:
-        'Vải mỏng cần giặt nhiệt dịu 55°C, bấm mã seal niêm phong trước mặt khi nhận đồ...',
-  );
+  final TextEditingController _notesController = TextEditingController();
 
   @override
   void initState() {
@@ -2112,6 +2109,7 @@ class _BookingStep1ScreenState extends State<BookingStep1Screen> {
           TextField(
             controller: _notesController,
             maxLines: 2,
+            onChanged: (val) => setState(() {}),
             style: GoogleFonts.plusJakartaSans(fontSize: 12, color: onSurface),
             decoration: InputDecoration(
               hintText:

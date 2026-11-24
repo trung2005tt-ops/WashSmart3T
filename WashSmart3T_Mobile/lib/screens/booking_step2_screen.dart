@@ -312,13 +312,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
       }
     }
 
-    final defaultNote = 'Bấm chuông căn 302 lầu 3 hoặc gửi lễ tân sảnh A';
-    _pickupNoteController = TextEditingController(
-      text: [
-        widget.initialNote.trim(),
-        defaultNote,
-      ].where((note) => note.isNotEmpty).join(' | '),
-    );
+    _pickupNoteController = TextEditingController();
 
     _deliveryAddressController = TextEditingController();
     _deliveryReceiverNameController = TextEditingController(text: userName);
@@ -1295,10 +1289,15 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                       fontSize: 11,
                       color: onSurface,
                     ),
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
+                      hintText: 'Ví dụ: Bấm chuông căn 302 lầu 3, gửi lễ tân sảnh A...',
+                      hintStyle: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        color: onSurfaceVariant.withValues(alpha: 0.5),
+                      ),
                       border: InputBorder.none,
                       isDense: true,
-                      contentPadding: EdgeInsets.symmetric(vertical: 10),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
                     ),
                   ),
                 ),
@@ -2528,8 +2527,12 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                           deliveryAddress: finalDeliveryAddress,
                           contactPhone: receiverPhone,
                           note: [
-                            _pickupNoteController.text.trim(),
-                            deliveryNote,
+                            if (widget.initialNote.trim().isNotEmpty)
+                              widget.initialNote.trim(),
+                            if (_pickupNoteController.text.trim().isNotEmpty)
+                              _pickupNoteController.text.trim(),
+                            if (deliveryNote.trim().isNotEmpty)
+                              deliveryNote.trim(),
                             if (isDifferentDeliveryAddress)
                               'Giao tới địa chỉ khác: $finalDeliveryAddress (Người nhận: $receiverName - $receiverPhone)',
                             'Lịch lấy đồ: $pickupTimeFull',
