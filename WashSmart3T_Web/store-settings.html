@@ -214,7 +214,7 @@
                     Tự động định vị GPS
                   </button>
                 </div>
-                <input type="text" id="addressInput" oninput="autoGeocodeStoreAddress(false)" onchange="autoGeocodeStoreAddress(true)"
+                <input type="text" id="addressInput" autocomplete="off" data-vn-address="true" oninput="autoGeocodeStoreAddress(false)" onchange="autoGeocodeStoreAddress(true)"
                   class="w-full px-3 py-2 rounded-lg border border-outline-variant bg-white text-xs font-semibold focus:ring-1 focus:ring-primary focus:outline-none"
                   placeholder="Ví dụ: 140 Lê Trọng Tấn, phường Tây Thạnh, TP. Hồ Chí Minh">
                 <div id="geocodeStatusBadge" class="hidden text-[11px] font-semibold text-emerald-600 mt-1 flex items-center gap-1">
@@ -540,6 +540,7 @@
 
   <!-- Scripts -->
   <script src="api.js?v=20261121_01"></script>
+  <script src="vn-address-autocomplete.js?v=20261125_01"></script>
   <script>
     let currentConfig = null;
 
@@ -550,6 +551,25 @@
       document.getElementById('userName').textContent = user.fullName || 'Admin';
       document.getElementById('userRole').textContent = user.role === 'Admin' ? 'Quản trị viên' : 'Nhân viên';
       document.getElementById('userAvatar').textContent = (user.fullName || 'AD').substring(0, 2).toUpperCase();
+
+      // Gắn tự động gợi ý địa chỉ chuẩn Việt Nam (Provinces Open API & GPS)
+      if (window.VnAddressAutocomplete) {
+        window.VnAddressAutocomplete.attach('#addressInput', {
+          onSelect: (item) => {
+            if (item.lat && item.lng) {
+              document.getElementById('latitudeInput').value = item.lat.toFixed(4);
+              document.getElementById('longitudeInput').value = item.lng.toFixed(4);
+              const badge = document.getElementById('geocodeStatusBadge');
+              if (badge) {
+                badge.classList.remove('hidden');
+                document.getElementById('geocodeStatusText').textContent = `Đã tự động cập nhật GPS: (${item.lat.toFixed(4)}, ${item.lng.toFixed(4)})`;
+              }
+            } else {
+              autoGeocodeStoreAddress(false);
+            }
+          }
+        });
+      }
 
       await loadStoreConfig();
     });
