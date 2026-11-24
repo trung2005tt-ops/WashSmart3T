@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'booking_step1_screen.dart';
 import 'orders_list_screen.dart';
+import 'order_tracking_screen.dart';
 import 'promotions_screen.dart';
 import 'profile_screen.dart';
 import '../services/api_service.dart';
-import '../services/auth_service.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -193,6 +193,9 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(width: 8),
+          // Chuông thông báo trạng thái đơn hàng
+          _buildNotificationBell(),
+          const SizedBox(width: 8),
           // Avatar người dùng trên App Bar - Bấm vào chuyển sang Tab Tài khoản
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
@@ -246,6 +249,586 @@ class _HomeScreenState extends State<HomeScreen> {
               _buildNavItem(3, Icons.account_circle_outlined, 'Tài khoản'),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // Chuông thông báo trạng thái đơn hàng trên AppBar
+  Widget _buildNotificationBell() {
+    final activeCount = _orders.where((o) {
+      final s = (o['status'] ?? '').toString().toLowerCase();
+      return s != 'completed' && s != 'cancelled';
+    }).length;
+
+    return GestureDetector(
+      onTap: () => _showNotificationsSheet(context),
+      child: Container(
+        width: 34,
+        height: 34,
+        decoration: const BoxDecoration(
+          color: surfaceContainer,
+          shape: BoxShape.circle,
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Icon(
+              activeCount > 0
+                  ? Icons.notifications_active_rounded
+                  : Icons.notifications_none_rounded,
+              color: activeCount > 0 ? primaryColor : textColor,
+              size: 19,
+            ),
+            if (activeCount > 0)
+              Positioned(
+                top: 2,
+                right: 2,
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
+                    color: primaryColor,
+                    shape: BoxShape.circle,
+                  ),
+                  constraints: const BoxConstraints(
+                    minWidth: 14,
+                    minHeight: 14,
+                  ),
+                  child: Center(
+                    child: Text(
+                      activeCount > 9 ? '9+' : '$activeCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 8,
+                        fontWeight: FontWeight.bold,
+                        height: 1,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Bảng thông báo trạng thái đơn hàng
+  void _showNotificationsSheet(BuildContext context) {
+    int filterIndex = 0; // 0: Tất cả, 1: Đang xử lý, 2: Hoàn thành
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (sheetContext, setSheetState) {
+            final activeOrders = _orders.where((o) {
+              final s = (o['status'] ?? '').toString().toLowerCase();
+              return s != 'completed' && s != 'cancelled';
+            }).toList();
+
+            final completedOrders = _orders.where((o) {
+              final s = (o['status'] ?? '').toString().toLowerCase();
+              return s == 'completed';
+            }).toList();
+
+            List<Map<String, dynamic>> displayedOrders;
+            if (filterIndex == 1) {
+              displayedOrders = activeOrders;
+            } else if (filterIndex == 2) {
+              displayedOrders = completedOrders;
+            } else {
+              displayedOrders = _orders;
+            }
+
+            return Container(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(ctx).size.height * 0.88,
+              ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Thanh kéo handle
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 10, bottom: 8),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+
+                  // Header
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 16, 12),
+                    child: Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: surfaceContainer,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.notifications_active_rounded,
+                            color: primaryColor,
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Thông Báo Đơn Hàng',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: textColor,
+                                ),
+                              ),
+                              Text(
+                                activeOrders.isNotEmpty
+                                    ? '${activeOrders.length} đơn giặt đang xử lý theo thời gian thực'
+                                    : 'Cập nhật tiến trình giặt sấy từ 3T Express',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 11,
+                                  color: textVariantColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          onPressed: () => Navigator.pop(ctx),
+                          icon: const Icon(Icons.close, size: 20, color: textVariantColor),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Filter Chips
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      children: [
+                        _buildSheetFilterChip(
+                          label: 'Tất cả (${_orders.length})',
+                          isSelected: filterIndex == 0,
+                          onTap: () => setSheetState(() => filterIndex = 0),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildSheetFilterChip(
+                          label: 'Đang xử lý (${activeOrders.length})',
+                          isSelected: filterIndex == 1,
+                          badgeColor: primaryColor,
+                          onTap: () => setSheetState(() => filterIndex = 1),
+                        ),
+                        const SizedBox(width: 8),
+                        _buildSheetFilterChip(
+                          label: 'Đã giao (${completedOrders.length})',
+                          isSelected: filterIndex == 2,
+                          onTap: () => setSheetState(() => filterIndex = 2),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(height: 1, color: Color(0xFFF0E5E5)),
+
+                  // Danh sách thông báo
+                  Flexible(
+                    child: displayedOrders.isEmpty
+                        ? _buildNotificationEmptyState(filterIndex)
+                        : RefreshIndicator(
+                            color: primaryColor,
+                            onRefresh: () async {
+                              await _loadHomeData();
+                              setSheetState(() {});
+                            },
+                            child: ListView.separated(
+                              padding: const EdgeInsets.all(16),
+                              itemCount: displayedOrders.length,
+                              separatorBuilder: (_, _) => const SizedBox(height: 12),
+                              itemBuilder: (itemCtx, index) {
+                                final order = displayedOrders[index];
+                                return _buildNotificationCard(ctx, order);
+                              },
+                            ),
+                          ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildNotificationCard(BuildContext sheetContext, Map<String, dynamic> order) {
+    final status = (order['status'] ?? '').toString().toLowerCase();
+    final orderId = order['id'] is int
+        ? order['id'] as int
+        : (int.tryParse(order['id']?.toString() ?? '') ?? 0);
+    final orderCode = order['orderCode'] ?? '#WS3T-$orderId';
+
+    // Status details
+    String statusTitle;
+    String statusDesc;
+    IconData statusIcon;
+    Color statusColor;
+    Color statusBg;
+
+    switch (status) {
+      case 'pickingup':
+        statusTitle = 'Shipper đang tới lấy đồ';
+        final shipper = order['shipperName'] ?? 'Shipper 3T';
+        statusDesc = 'Tài xế $shipper đang di chuyển tới địa chỉ của bạn để nhận đồ.';
+        statusIcon = Icons.two_wheeler_rounded;
+        statusColor = const Color(0xFF006577);
+        statusBg = const Color(0xFFE0F7FA);
+        break;
+      case 'received':
+        statusTitle = 'Đã nhận đồ vào xưởng 3T';
+        final seal = order['sealCode'] ?? '';
+        statusDesc = seal.toString().isNotEmpty
+            ? 'Đồ đã được cân thực tế và niêm phong an toàn với mã seal $seal.'
+            : 'Đồ giặt đã được đưa về xưởng giặt 3T Express an toàn.';
+        statusIcon = Icons.inventory_2_rounded;
+        statusColor = const Color(0xFF5B308C);
+        statusBg = const Color(0xFFF3E8FD);
+        break;
+      case 'washing':
+        statusTitle = 'Đang giặt sấy kháng khuẩn';
+        final drum = order['drumInfo'] ?? 'Lồng giặt thông minh Turbo';
+        statusDesc = 'Đồ giặt của bạn đang được xử lý bằng công nghệ $drum.';
+        statusIcon = Icons.local_laundry_service_rounded;
+        statusColor = primaryColor;
+        statusBg = const Color(0xFFFFEBEE);
+        break;
+      case 'ready':
+        statusTitle = 'Đã giặt xong & Đóng gói niêm phong';
+        statusDesc = 'Đồ sạch thơm ngát đã hoàn thành kiểm định và đóng túi nguyên seal.';
+        statusIcon = Icons.verified_rounded;
+        statusColor = const Color(0xFFB4136D);
+        statusBg = const Color(0xFFFCE4EC);
+        break;
+      case 'delivering':
+        statusTitle = 'Shipper đang giao hàng trả bạn';
+        final shipper = order['shipperName'] ?? 'Shipper 3T';
+        statusDesc = 'Tài xế $shipper đang mang đồ sạch gấp gọn tới tận cửa.';
+        statusIcon = Icons.delivery_dining_rounded;
+        statusColor = const Color(0xFFD97706);
+        statusBg = const Color(0xFFFEF3C7);
+        break;
+      case 'completed':
+        statusTitle = 'Đơn hàng giao thành công';
+        statusDesc = 'Cảm ơn bạn đã tin chọn WashSmart 3T. Chúc bạn có trang phục sạch thơm!';
+        statusIcon = Icons.task_alt_rounded;
+        statusColor = const Color(0xFF16A34A);
+        statusBg = const Color(0xFFDCFCE7);
+        break;
+      case 'cancelled':
+        statusTitle = 'Đơn hàng đã hủy';
+        statusDesc = 'Đơn hàng $orderCode đã được hủy theo yêu cầu.';
+        statusIcon = Icons.cancel_outlined;
+        statusColor = const Color(0xFF6B7280);
+        statusBg = const Color(0xFFF3F4F6);
+        break;
+      case 'confirmed':
+      default:
+        statusTitle = 'Đã xác nhận đơn hàng';
+        statusDesc = 'Hệ thống đã tiếp nhận đơn. Điều phối viên đang chỉ định Shipper tới lấy.';
+        statusIcon = Icons.check_circle_outline_rounded;
+        statusColor = const Color(0xFF006577);
+        statusBg = const Color(0xFFE0F7FA);
+        break;
+    }
+
+    // Items summary
+    final items = order['items'] is List ? order['items'] as List : <dynamic>[];
+    final itemsSummary = items
+        .whereType<Map>()
+        .map((it) => '${it['serviceName'] ?? ''}${it['quantity'] != null ? ' (${it['quantity']} ${it['unit'] ?? ''})' : ''}')
+        .where((s) => s.trim().isNotEmpty)
+        .join(', ');
+
+    // Date
+    String timeStr = '';
+    final createdRaw = (order['createdAt'] ?? '').toString();
+    if (createdRaw.isNotEmpty) {
+      final dt = DateTime.tryParse(createdRaw.endsWith('Z') || createdRaw.contains('+') ? createdRaw : '${createdRaw}Z')?.toLocal();
+      if (dt != null) {
+        timeStr = '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} · ${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}';
+      }
+    }
+
+    return InkWell(
+      onTap: () {
+        Navigator.pop(sheetContext);
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => OrderTrackingScreen(orderId: orderId),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: surfaceContainerLow,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: status == 'pickingup' || status == 'washing' || status == 'delivering'
+                ? statusColor.withValues(alpha: 0.3)
+                : const Color(0xFFF3E0E2),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.02),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Row 1: Status Icon + Title + Status Badge
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: statusBg,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(statusIcon, color: statusColor, size: 20),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              statusTitle,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: textColor,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: statusBg,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              orderCode,
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: statusColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        statusDesc,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          color: textVariantColor,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+
+            if (itemsSummary.isNotEmpty || timeStr.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  children: [
+                    if (itemsSummary.isNotEmpty) ...[
+                      const Icon(Icons.dry_cleaning_rounded, size: 14, color: primaryColor),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          itemsSummary,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                            color: textColor,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                    if (timeStr.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        timeStr,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 9,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+
+            const SizedBox(height: 8),
+            // Row action "Theo dõi đơn hàng >"
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Text(
+                  'Xem lộ trình & chi tiết',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: primaryColor,
+                  ),
+                ),
+                const SizedBox(width: 2),
+                const Icon(Icons.arrow_forward_ios_rounded, size: 10, color: primaryColor),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSheetFilterChip({
+    required String label,
+    required bool isSelected,
+    required VoidCallback onTap,
+    Color? badgeColor,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? primaryColor : surfaceContainer,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+            color: isSelected ? Colors.white : textColor,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationEmptyState(int filterIndex) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: const BoxDecoration(
+                color: surfaceContainer,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.notifications_none_rounded,
+                size: 28,
+                color: primaryColor,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text(
+              filterIndex == 1
+                  ? 'Không có đơn nào đang xử lý'
+                  : (filterIndex == 2
+                      ? 'Chưa có đơn hàng hoàn thành'
+                      : 'Chưa có thông báo đơn hàng'),
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: textColor,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Khi bạn đặt đơn giặt, mọi cập nhật trạng thái đơn (Shipper lấy đồ, Giặt sấy, Đóng gói, Giao hàng) sẽ được thông báo trực tiếp tại đây.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 11,
+                color: textVariantColor,
+                height: 1.4,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const BookingStep1Screen()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              ),
+              icon: const Icon(Icons.add, size: 16),
+              label: Text(
+                'Đặt lịch giặt ngay',
+                style: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
         ),
       ),
     );
