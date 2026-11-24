@@ -304,12 +304,13 @@
               <div id="homeDeliveryAddressBox" class="hidden space-y-2">
                 <div class="flex items-center justify-between">
                   <label for="homeDeliveryAddress" class="text-xs font-semibold text-secondary">Địa chỉ giao đồ sạch *</label>
-                  <span id="calculatedDistanceBadge" class="text-[11px] font-bold text-secondary bg-surface-container border border-surface-container px-2 py-0.5 rounded-full">Chưa nhập địa chỉ</span>
+                  <span id="calculatedDistanceBadge" class="hidden text-[11px] font-bold text-primary bg-red-50 border border-primary/30 px-2 py-0.5 rounded-full">Cách cửa hàng: 0.0 km</span>
                 </div>
-                <textarea id="homeDeliveryAddress" rows="2" placeholder="Số nhà, tên đường, phường, quận/huyện..."
+                <textarea id="homeDeliveryAddress" rows="2" placeholder="Nhập số nhà, tên đường, phường, quận/huyện để tính phí giao..."
                   class="w-full px-3 py-2 rounded-lg bg-surface-container-low border border-surface-container focus:outline-none focus:ring-1 focus:ring-primary text-xs font-medium"></textarea>
 
-                <div class="p-2.5 rounded-lg bg-surface-container-low border border-surface-container flex items-center justify-between text-xs">
+                <!-- Box thông tin khoảng cách & phí ship: Chỉ hiện sau khi ĐÃ NHẬP địa chỉ -->
+                <div id="deliveryFeeInfoBox" class="hidden p-2.5 rounded-lg bg-surface-container-low border border-surface-container flex items-center justify-between text-xs">
                   <div class="flex items-center gap-1.5 text-secondary">
                     <span class="material-symbols-outlined text-primary text-base">local_shipping</span>
                     <span>Khoảng cách: <strong id="deliveryKmText" class="text-on-surface font-bold">0.0 km</strong> (<span id="deliveryMinutesText">~0 phút</span>)</span>
@@ -318,6 +319,12 @@
                     <span class="text-secondary text-[11px]">Phí ship theo khoảng cách: </span>
                     <strong id="deliveryFeeText" class="text-primary font-bold text-sm">0 đ</strong>
                   </div>
+                </div>
+
+                <!-- Gợi ý khi chưa nhập địa chỉ -->
+                <div id="deliveryPromptBox" class="p-2.5 rounded-lg bg-surface-container-low/60 border border-dashed border-surface-container flex items-center gap-2 text-xs text-secondary">
+                  <span class="material-symbols-outlined text-secondary text-base shrink-0">edit_location</span>
+                  <span>Vui lòng nhập địa chỉ cụ thể của khách để hệ thống tính khoảng cách và phí ship.</span>
                 </div>
               </div>
             </div>
@@ -1029,7 +1036,9 @@
         }
       }
 
-      const deliveryFee = isHomeDelivery() ? currentDeliveryFee : 0;
+      const addr = (document.getElementById('homeDeliveryAddress')?.value || '').trim();
+      const hasDeliveryAddress = isHomeDelivery() && addr.length > 0 && currentDeliveryFee > 0;
+      const deliveryFee = hasDeliveryAddress ? currentDeliveryFee : 0;
       const subtotal = serviceTotal + totalAddonFee + deliveryFee;
       const discount = 0, grandTotal = subtotal;
 
@@ -1052,7 +1061,9 @@
       }
       if (deliveryRow) { 
         deliveryRow.classList.toggle('hidden', !deliveryFee); 
-        deliveryRow.innerHTML = `<span>Phí giao tận nhà (${currentDistanceKm} km)</span><span id="summaryDeliveryFee" class="font-bold">${formatCurrency(deliveryFee)}</span>`;
+        if (deliveryFee > 0) {
+          deliveryRow.innerHTML = `<span>Phí giao tận nhà (${currentDistanceKm} km)</span><span id="summaryDeliveryFee" class="font-bold text-on-surface">${formatCurrency(deliveryFee)}</span>`;
+        }
       }
       const change = Math.max(0, cashReceived - grandTotal); set('changeAmount', formatCurrency(change).replace('đ', 'VNĐ'));
       const posQr = document.getElementById('posVietQrImg');
@@ -1203,16 +1214,17 @@
       const minText = document.getElementById('deliveryMinutesText');
       const badgeEl = document.getElementById('calculatedDistanceBadge');
       const feeEl = document.getElementById('deliveryFeeText');
+      const infoBox = document.getElementById('deliveryFeeInfoBox');
+      const promptBox = document.getElementById('deliveryPromptBox');
 
       if (!addr) {
         currentDeliveryFee = 0;
         currentDistanceKm = 0;
+        if (infoBox) infoBox.classList.add('hidden');
+        if (promptBox) promptBox.classList.remove('hidden');
+        if (badgeEl) badgeEl.classList.add('hidden');
         if (kmEl) kmEl.textContent = '0.0 km';
         if (minText) minText.textContent = '~0 phút';
-        if (badgeEl) {
-          badgeEl.textContent = 'Chưa nhập địa chỉ';
-          badgeEl.className = 'text-[11px] font-bold text-secondary bg-surface-container border border-surface-container px-2 py-0.5 rounded-full';
-        }
         if (feeEl) feeEl.textContent = '0 đ';
         updateBillCalculations();
         return;
@@ -1234,11 +1246,13 @@
       }
 
       if (kmEl) kmEl.textContent = `${currentDistanceKm} km`;
+      if (feeEl) feeEl.textContent = formatCurrency(currentDeliveryFee);
       if (badgeEl) {
         badgeEl.textContent = `Cách cửa hàng: ${currentDistanceKm} km`;
-        badgeEl.className = 'text-[11px] font-bold text-primary bg-red-50 border border-primary/30 px-2 py-0.5 rounded-full';
+        badgeEl.classList.remove('hidden');
       }
-      if (feeEl) feeEl.textContent = formatCurrency(currentDeliveryFee);
+      if (infoBox) infoBox.classList.remove('hidden');
+      if (promptBox) promptBox.classList.add('hidden');
 
       updateBillCalculations();
     }
@@ -1247,12 +1261,14 @@
       const isHome = isHomeDelivery();
       document.getElementById('homeDeliveryAddressBox').classList.toggle('hidden', !isHome); 
       if (isHome) {
-        const addr = document.getElementById('homeDeliveryAddress')?.value || '';
+        const addr = (document.getElementById('homeDeliveryAddress')?.value || '').trim();
         recalculateDeliveryFeeFromAddress(addr);
         if (!addr) {
           document.getElementById('homeDeliveryAddress')?.focus();
         }
       } else {
+        currentDeliveryFee = 0;
+        currentDistanceKm = 0;
         updateBillCalculations();
       }
     }));
@@ -1260,9 +1276,14 @@
     let addrDebounce = null;
     document.getElementById('homeDeliveryAddress')?.addEventListener('input', (e) => {
       clearTimeout(addrDebounce);
-      addrDebounce = setTimeout(() => {
-        recalculateDeliveryFeeFromAddress(e.target.value);
-      }, 400);
+      const val = (e.target.value || '').trim();
+      if (!val) {
+        recalculateDeliveryFeeFromAddress('');
+      } else {
+        addrDebounce = setTimeout(() => {
+          recalculateDeliveryFeeFromAddress(val);
+        }, 350);
+      }
     });
 
 
