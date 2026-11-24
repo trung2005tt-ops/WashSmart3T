@@ -134,7 +134,6 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
 
   // --- STATE TÍNH TIỀN & ĐẶT ĐƠN ---
   bool isCoinUsed = false;
-  String paymentMethod = 'pickup_weigh';
   bool isSubmitting = false;
   bool _isNewCustomer = true;
 
@@ -738,12 +737,9 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
 
     setState(() => isSubmitting = true);
     try {
-      final paymentTimingNote = paymentMethod == 'pickup_weigh'
-          ? 'Thanh toán khi Shipper tới cân đồ'
-          : 'Thanh toán khi nhận lại đồ sạch';
       final fullNote = [
         widget.note?.trim(),
-        'Hình thức thanh toán: $paymentTimingNote',
+        'Thanh toán khi nhận đồ (Tiền mặt / VietQR)',
         if (selectedVoucherCode.isNotEmpty) 'Voucher: $selectedVoucherCode',
       ].where((s) => s != null && s.isNotEmpty).join(' | ');
 
@@ -835,11 +831,7 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
             isCoinUsed: isCoinUsed,
             coinDiscount: isCoinUsed ? coinDiscount : 0,
             finalPrice: finalPrice,
-            paymentMethod: paymentMethod == 'vietqr'
-                ? 'Chuyển khoản VietQR'
-                : (paymentMethod == 'washpay'
-                    ? 'Ví WashPay'
-                    : 'Thanh toán khi Shipper cân đồ (Tiền mặt / Quét VietQR)'),
+            paymentMethod: 'Tiền mặt / Quét VietQR khi nhận đồ',
           ),
         ),
         (route) => route.isFirst,
@@ -927,8 +919,6 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
                 _buildPriceBreakdownCard(),
                 const SizedBox(height: 12),
                 _buildImportantNoticeBox(),
-                const SizedBox(height: 16),
-                _buildPaymentMethodSection(),
               ],
             ),
           ),
@@ -2047,131 +2037,6 @@ class _BookingStep3ScreenState extends State<BookingStep3Screen> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildPaymentMethodSection() {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.payments, color: primaryColor, size: 20),
-              const SizedBox(width: 6),
-              Text(
-                'Phương thức thanh toán',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: onSurface,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildPaymentOptionTile(
-            value: 'pickup_weigh',
-            icon: Icons.scale,
-            iconColor: primaryColor,
-            title: 'Thanh toán khi Shipper tới cân đồ',
-            sub:
-                'Thanh toán tiền mặt hoặc quét VietQR ngay sau khi Shipper kiểm tra số kg thực tế tại cửa',
-          ),
-          const SizedBox(height: 8),
-          _buildPaymentOptionTile(
-            value: 'delivery_done',
-            icon: Icons.inventory_2,
-            iconColor: secondaryColor,
-            title: 'Thanh toán khi nhận lại đồ sạch',
-            sub:
-                'Thanh toán tiền mặt hoặc quét VietQR sau khi kiểm tra đồ giặt sấy thơm tho nguyên seal',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPaymentOptionTile({
-    required String value,
-    required IconData icon,
-    required Color iconColor,
-    required String title,
-    required String sub,
-  }) {
-    final bool isSelected = paymentMethod == value;
-
-    return InkWell(
-      onTap: () => setState(() => paymentMethod = value),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.all(10),
-        decoration: BoxDecoration(
-          color: surfaceLow,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected ? primaryColor : Colors.transparent,
-            width: isSelected ? 1.5 : 0,
-          ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: const BoxDecoration(
-                color: surfaceContainer,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, size: 18, color: iconColor),
-            ),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: onSurface,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    sub,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 10,
-                      color: onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Radio<String>(
-              value: value,
-              groupValue: paymentMethod,
-              activeColor: primaryColor,
-              onChanged: (val) {
-                if (val != null) setState(() => paymentMethod = val);
-              },
-            ),
-          ],
-        ),
       ),
     );
   }
