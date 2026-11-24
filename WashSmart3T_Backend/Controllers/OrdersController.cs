@@ -924,7 +924,31 @@ public class OrdersController : ControllerBase
             .FirstOrDefaultAsync(u => u.Phone == cleanPhone && u.Role != null && u.Role.Name == "Customer");
 
         if (customer == null) return Ok(new { found = false });
-        return Ok(new { found = true, customer.Id, fullName = customer.FullName, phone = customer.Phone });
+
+        // Lấy địa chỉ giao hàng của khách: ưu tiên customer.Address, nếu chưa có thì lấy từ đơn hàng gần nhất
+        string? address = customer.Address;
+        if (string.IsNullOrWhiteSpace(address))
+        {
+            var storeConfig = GetStoreConfig();
+            var storeAddr = storeConfig.Address;
+            address = await _context.Orders
+                .AsNoTracking()
+                .Where(o => o.CustomerId == customer.Id && !string.IsNullOrWhiteSpace(o.DeliveryAddress) && (string.IsNullOrEmpty(storeAddr) || o.DeliveryAddress != storeAddr))
+                .OrderByDescending(o => o.CreatedAt)
+                .Select(o => o.DeliveryAddress)
+                .FirstOrDefaultAsync();
+        }
+
+        return Ok(new
+        {
+            found = true,
+            customer.Id,
+            fullName = customer.FullName,
+            phone = customer.Phone,
+            address = address ?? "",
+            membershipTier = customer.MembershipTier,
+            loyaltyPoints = customer.LoyaltyPoints
+        });
     }
 
     public class PosCreateOrderRequest
@@ -984,15 +1008,25 @@ public class OrdersController : ControllerBase
                     Email = $"pos-{cleanPhone}@customer.washsmart.local",
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N")),
                     RoleId = customerRole.Id,
+                    Address = request.DeliveryMethod == "HomeDelivery" && !string.IsNullOrWhiteSpace(request.DeliveryAddress) && request.DeliveryAddress != request.PickupAddress
+                        ? request.DeliveryAddress.Trim()
+                        : null,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
                 };
                 _context.Users.Add(customer);
                 await _context.SaveChangesAsync();
             }
-            else if (string.IsNullOrWhiteSpace(customer.FullName) || customer.FullName == cleanPhone)
+            else
             {
-                customer.FullName = name;
+                if (string.IsNullOrWhiteSpace(customer.FullName) || customer.FullName == cleanPhone)
+                {
+                    customer.FullName = name;
+                }
+                if (request.DeliveryMethod == "HomeDelivery" && !string.IsNullOrWhiteSpace(request.DeliveryAddress) && request.DeliveryAddress != request.PickupAddress)
+                {
+                    customer.Address = request.DeliveryAddress.Trim();
+                }
             }
 
             // Tính phí giao nhận theo cấu hình bậc khoảng cách từ StoreConfig (Kiểm tra bán kính tối đa 10km)

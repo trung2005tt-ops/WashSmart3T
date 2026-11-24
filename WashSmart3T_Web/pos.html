@@ -304,38 +304,19 @@
               <div id="homeDeliveryAddressBox" class="hidden space-y-2">
                 <div class="flex items-center justify-between">
                   <label for="homeDeliveryAddress" class="text-xs font-semibold text-secondary">Địa chỉ giao đồ sạch *</label>
-                  <span id="calculatedDistanceBadge" class="text-[11px] font-bold text-primary bg-red-50 border border-primary/30 px-2 py-0.5 rounded-full">Cách cửa hàng: 1.7 km</span>
+                  <span id="calculatedDistanceBadge" class="text-[11px] font-bold text-secondary bg-surface-container border border-surface-container px-2 py-0.5 rounded-full">Chưa nhập địa chỉ</span>
                 </div>
                 <textarea id="homeDeliveryAddress" rows="2" placeholder="Số nhà, tên đường, phường, quận/huyện..."
                   class="w-full px-3 py-2 rounded-lg bg-surface-container-low border border-surface-container focus:outline-none focus:ring-1 focus:ring-primary text-xs font-medium"></textarea>
-                
-                <!-- Quick Address Chips -->
-                <div class="space-y-1">
-                  <p class="text-[10px] text-secondary font-semibold uppercase tracking-wider">Chọn nhanh điểm giao để kiểm tra phí ship theo khoảng cách:</p>
-                  <div class="flex flex-wrap gap-1.5" id="addressQuickChips">
-                    <button type="button" class="addr-chip px-2.5 py-1 rounded-md bg-surface-container hover:bg-surface-container-high text-[11px] text-on-surface font-medium transition-colors" data-addr="2 Nguyễn Sỹ Sách, P.15, Tân Bình">
-                      📍 2 Nguyễn Sỹ Sách (1.7 km · 20k)
-                    </button>
-                    <button type="button" class="addr-chip px-2.5 py-1 rounded-md bg-surface-container hover:bg-surface-container-high text-[11px] text-on-surface font-medium transition-colors" data-addr="Chợ Tân Bình, Lý Thường Kiệt, Tân Bình">
-                      📍 Chợ Tân Bình (3.2 km · 30k)
-                    </button>
-                    <button type="button" class="addr-chip px-2.5 py-1 rounded-md bg-surface-container hover:bg-surface-container-high text-[11px] text-on-surface font-medium transition-colors" data-addr="Chợ Bến Thành, Quận 1, TP.HCM">
-                      📍 Chợ Bến Thành Q1 (11.5 km · 45k)
-                    </button>
-                    <button type="button" class="addr-chip px-2.5 py-1 rounded-md bg-surface-container hover:bg-surface-container-high text-[11px] text-on-surface font-medium transition-colors" data-addr="Lotte Mart, Quận 7, TP.HCM">
-                      📍 Lotte Mart Q7 (16.2 km · 45k)
-                    </button>
-                  </div>
-                </div>
 
                 <div class="p-2.5 rounded-lg bg-surface-container-low border border-surface-container flex items-center justify-between text-xs">
                   <div class="flex items-center gap-1.5 text-secondary">
                     <span class="material-symbols-outlined text-primary text-base">local_shipping</span>
-                    <span>Khoảng cách: <strong id="deliveryKmText" class="text-on-surface font-bold">1.7 km</strong> (<span id="deliveryMinutesText">~24 phút</span>)</span>
+                    <span>Khoảng cách: <strong id="deliveryKmText" class="text-on-surface font-bold">0.0 km</strong> (<span id="deliveryMinutesText">~0 phút</span>)</span>
                   </div>
                   <div class="text-right">
                     <span class="text-secondary text-[11px]">Phí ship theo khoảng cách: </span>
-                    <strong id="deliveryFeeText" class="text-primary font-bold text-sm">20.000 đ</strong>
+                    <strong id="deliveryFeeText" class="text-primary font-bold text-sm">0 đ</strong>
                   </div>
                 </div>
               </div>
@@ -685,8 +666,8 @@
     let isPayNow = true;
     let cashReceived = 0;
     // Tính phí giao hàng động theo khoảng cách từ địa chỉ khách nhập
-    let currentDeliveryFee = 20000;
-    let currentDistanceKm = 1.7;
+    let currentDeliveryFee = 0;
+    let currentDistanceKm = 0;
     const STORE_ADDRESS = 'Cửa hàng WashSmart 3T - Chi nhánh CS1, TP.HCM';
     const HOME_DELIVERY_FEE = 20000;
 
@@ -1092,23 +1073,97 @@
       return { subtotal, discount, grandTotal, serviceTotal, addonFee: totalAddonFee, selectedCareItems, deliveryFee };
     }
     async function lookupCustomer() {
-      const phone = document.getElementById('customerPhoneInput').value.replace(/\D/g, '');
-      const name = document.getElementById('customerNameInput').value.trim();
+      const phoneInput = document.getElementById('customerPhoneInput');
+      const phone = phoneInput ? phoneInput.value.replace(/\D/g, '') : '';
+      const nameInput = document.getElementById('customerNameInput');
       const status = document.getElementById('customer-lookup-status');
-      if (phone.length < 9 || phone.length > 11) { showToast('Vui lòng nhập số điện thoại hợp lệ.', true); return; }
+      const custNameText = document.getElementById('cust-name-text');
+      const custAvatarText = document.getElementById('cust-avatar-text');
+      const addressInput = document.getElementById('homeDeliveryAddress');
+
+      if (phone.length < 9 || phone.length > 11) {
+        showToast('Vui lòng nhập số điện thoại hợp lệ (9 - 11 chữ số).', true);
+        return;
+      }
+
+      if (status) status.textContent = 'Đang kiểm tra thông tin khách hàng...';
+
       try {
         const found = await Api.get(`/Orders/pos/customer?phone=${encodeURIComponent(phone)}`);
         if (found && (found.found ?? found.Found)) {
+          // KHÁCH HÀNG CŨ (Đã có trong hệ thống)
           const foundName = found.fullName ?? found.FullName ?? '';
-          document.getElementById('customerNameInput').value = foundName || name;
-          document.getElementById('cust-name-text').textContent = foundName || 'Đã tìm thấy khách hàng';
-          document.getElementById('cust-avatar-text').textContent = (foundName || 'KH').trim().split(/\s+/).slice(-1)[0].slice(0, 2).toUpperCase();
-          status.textContent = 'Đã tìm thấy khách hàng trong hệ thống.';
-        } else { document.getElementById('cust-name-text').textContent = name || 'Khách hàng mới'; document.getElementById('cust-avatar-text').textContent = 'KH'; status.textContent = 'Chưa có hồ sơ theo số điện thoại; sẽ tạo hồ sơ khi lập đơn.'; }
-      } catch (e) { status.textContent = 'Chưa tra cứu được. Có thể tiếp tục nhập thông tin; máy chủ sẽ kiểm tra khi tạo đơn.'; showToast(e.message || 'Không tra cứu được khách hàng.', true); }
+          const foundAddr = found.address ?? found.Address ?? '';
+
+          if (nameInput) nameInput.value = foundName;
+          if (custNameText) custNameText.textContent = foundName || 'Khách hàng thành viên';
+          if (custAvatarText) {
+            custAvatarText.textContent = (foundName || 'KH').trim().split(/\s+/).slice(-1)[0].slice(0, 2).toUpperCase();
+          }
+          if (status) {
+            status.innerHTML = `<span class="text-emerald-700 font-bold">✓ Khách cũ:</span> ${found.membershipTier ? `Hạng ${found.membershipTier}` : 'Đã tìm thấy trong hệ thống'}`;
+          }
+
+          // Tự động nạp địa chỉ giao đồ sạch nếu khách đã từng có địa chỉ
+          if (foundAddr && addressInput) {
+            addressInput.value = foundAddr;
+            if (isHomeDelivery()) {
+              recalculateDeliveryFeeFromAddress(foundAddr);
+            }
+          }
+
+          showToast(`Đã tìm thấy khách hàng cũ: ${foundName}`);
+        } else {
+          // KHÁCH HÀNG MỚI (Chưa có trong hệ thống -> Nhân viên phải tự nhập)
+          if (nameInput) {
+            nameInput.value = '';
+            nameInput.placeholder = 'Nhập họ tên khách hàng mới *';
+            nameInput.focus();
+          }
+          if (custNameText) custNameText.textContent = 'Khách hàng mới';
+          if (custAvatarText) custAvatarText.textContent = 'KH';
+          if (status) {
+            status.innerHTML = `<span class="text-amber-700 font-bold">★ Khách mới:</span> Chưa có trong hệ thống, nhân viên vui lòng nhập họ tên & địa chỉ giao đồ lần đầu.`;
+          }
+
+          // Xóa địa chỉ cũ nếu có để nhân viên nhập địa chỉ mới
+          if (addressInput) {
+            addressInput.value = '';
+            addressInput.placeholder = 'Nhập số nhà, tên đường, phường, quận/huyện cho khách mới...';
+          }
+          recalculateDeliveryFeeFromAddress('');
+
+          showToast('Khách hàng mới! Nhân viên vui lòng tự nhập họ tên & địa chỉ lần đầu.');
+        }
+      } catch (e) {
+        if (status) status.textContent = 'Chưa tra cứu được thông tin. Nhân viên có thể tự nhập thông tin.';
+        showToast(e.message || 'Lỗi tra cứu khách hàng.', true);
+      }
     }
+
     document.getElementById('btnSearchCustomer')?.addEventListener('click', lookupCustomer);
-    document.getElementById('customerNameInput')?.addEventListener('input', e => { document.getElementById('cust-name-text').textContent = e.target.value.trim() || 'Khách hàng mới / chưa tra cứu'; });
+
+    // Tự động kiểm tra khách hàng khi nhập đủ 10 số hoặc nhấn Enter
+    let phoneLookupDebounce = null;
+    document.getElementById('customerPhoneInput')?.addEventListener('input', (e) => {
+      const cleanPhone = e.target.value.replace(/\D/g, '');
+      if (cleanPhone.length >= 10) {
+        clearTimeout(phoneLookupDebounce);
+        phoneLookupDebounce = setTimeout(() => {
+          lookupCustomer();
+        }, 350);
+      }
+    });
+    document.getElementById('customerPhoneInput')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        lookupCustomer();
+      }
+    });
+
+    document.getElementById('customerNameInput')?.addEventListener('input', e => {
+      document.getElementById('cust-name-text').textContent = e.target.value.trim() || 'Khách hàng mới';
+    });
     document.getElementById('btnPlusWeight')?.addEventListener('click', () => {
       const activeItem = selectedCart.find(x => x.serviceId === activeServiceId) || (selectedCart.length ? selectedCart[0] : null);
       if (!activeItem) { showToast('Vui lòng chọn dịch vụ trước khi điều chỉnh.', true); return; }
@@ -1144,61 +1199,63 @@
     
     async function recalculateDeliveryFeeFromAddress(address) {
       const addr = (address || '').trim();
+      const kmEl = document.getElementById('deliveryKmText');
+      const minText = document.getElementById('deliveryMinutesText');
+      const badgeEl = document.getElementById('calculatedDistanceBadge');
+      const feeEl = document.getElementById('deliveryFeeText');
+
       if (!addr) {
-        currentDeliveryFee = 20000;
-        currentDistanceKm = 1.7;
+        currentDeliveryFee = 0;
+        currentDistanceKm = 0;
+        if (kmEl) kmEl.textContent = '0.0 km';
+        if (minText) minText.textContent = '~0 phút';
+        if (badgeEl) {
+          badgeEl.textContent = 'Chưa nhập địa chỉ';
+          badgeEl.className = 'text-[11px] font-bold text-secondary bg-surface-container border border-surface-container px-2 py-0.5 rounded-full';
+        }
+        if (feeEl) feeEl.textContent = '0 đ';
         updateBillCalculations();
         return;
       }
+
       try {
         const res = await Api.get('/Orders/calculate-shipping-fee?address=' + encodeURIComponent(addr));
         if (res && res.shippingFee != null) {
           currentDeliveryFee = Number(res.shippingFee);
-          currentDistanceKm = Number(res.distanceKm || 1.7);
-          const minText = document.getElementById('deliveryMinutesText');
+          currentDistanceKm = Number(res.distanceKm || 0);
           if (minText && res.estimatedMinutes) minText.textContent = `~${res.estimatedMinutes} phút`;
         }
       } catch (_) {
         const q = addr.toLowerCase();
-        if (q.includes('nguyễn sỹ sách')) { currentDistanceKm = 1.7; currentDeliveryFee = 20000; }
-        else if (q.includes('tân bình') || q.includes('tân phú') || q.includes('trường chinh')) { currentDistanceKm = 3.2; currentDeliveryFee = 30000; }
+        if (q.includes('tân bình') || q.includes('tân phú') || q.includes('trường chinh') || q.includes('nguyễn sỹ sách')) { currentDistanceKm = 2.5; currentDeliveryFee = 20000; }
         else if (q.includes('quận 1') || q.includes('quận 3') || q.includes('bến thành') || q.includes('quận 10')) { currentDistanceKm = 5.8; currentDeliveryFee = 30000; }
         else if (q.includes('quận 7') || q.includes('thủ đức') || q.includes('lotte') || q.includes('quận 2')) { currentDistanceKm = 11.5; currentDeliveryFee = 45000; }
-        else { currentDistanceKm = 2.0; currentDeliveryFee = 20000; }
+        else { currentDistanceKm = 3.0; currentDeliveryFee = 25000; }
       }
 
-      const kmEl = document.getElementById('deliveryKmText');
       if (kmEl) kmEl.textContent = `${currentDistanceKm} km`;
-      const badgeEl = document.getElementById('calculatedDistanceBadge');
-      if (badgeEl) badgeEl.textContent = `Cách cửa hàng: ${currentDistanceKm} km`;
-      const feeEl = document.getElementById('deliveryFeeText');
+      if (badgeEl) {
+        badgeEl.textContent = `Cách cửa hàng: ${currentDistanceKm} km`;
+        badgeEl.className = 'text-[11px] font-bold text-primary bg-red-50 border border-primary/30 px-2 py-0.5 rounded-full';
+      }
       if (feeEl) feeEl.textContent = formatCurrency(currentDeliveryFee);
 
       updateBillCalculations();
     }
-document.querySelectorAll('input[name="returnMethod"]').forEach(el => el.addEventListener('change', () => { 
+
+    document.querySelectorAll('input[name="returnMethod"]').forEach(el => el.addEventListener('change', () => { 
       const isHome = isHomeDelivery();
       document.getElementById('homeDeliveryAddressBox').classList.toggle('hidden', !isHome); 
       if (isHome) {
         const addr = document.getElementById('homeDeliveryAddress')?.value || '';
         recalculateDeliveryFeeFromAddress(addr);
+        if (!addr) {
+          document.getElementById('homeDeliveryAddress')?.focus();
+        }
       } else {
         updateBillCalculations();
       }
     }));
-
-    // Gắn sự kiện tính phí ship theo địa chỉ
-    document.querySelectorAll('.addr-chip').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const addr = btn.dataset.addr;
-        const input = document.getElementById('homeDeliveryAddress');
-        if (input) {
-          input.value = addr;
-          recalculateDeliveryFeeFromAddress(addr);
-          showToast(`Đã chọn địa chỉ: ${addr}`);
-        }
-      });
-    });
 
     let addrDebounce = null;
     document.getElementById('homeDeliveryAddress')?.addEventListener('input', (e) => {
