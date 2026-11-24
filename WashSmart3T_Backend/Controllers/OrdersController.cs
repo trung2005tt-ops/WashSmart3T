@@ -1977,4 +1977,141 @@ public class OrdersController : ControllerBase
             return StatusCode(500, new { message = "Lỗi cập nhật trạng thái đơn hàng: " + ex.Message });
         }
     }
+
+    // =========================
+    // DELETE: api/Orders/{id}
+    // ADMIN / STAFF: Xóa đơn hàng
+    // =========================
+    [Authorize(Roles = "Admin,Staff")]
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> DeleteOrder(int id)
+    {
+        var order = await _context.Orders.FirstOrDefaultAsync(x => x.Id == id);
+        if (order == null)
+        {
+            return NotFound(new { message = "Không tìm thấy đơn hàng." });
+        }
+
+        using var tx = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            // 1. Xóa các khiếu nại liên kết
+            var complaints = await _context.Complaints.Where(x => x.OrderId == id).ToListAsync();
+            if (complaints.Any())
+            {
+                _context.Complaints.RemoveRange(complaints);
+            }
+
+            // 2. Xóa các đánh giá liên kết
+            var reviews = await _context.Reviews.Where(x => x.OrderId == id).ToListAsync();
+            if (reviews.Any())
+            {
+                _context.Reviews.RemoveRange(reviews);
+            }
+
+            // 3. Xóa các thanh toán liên kết
+            var payments = await _context.Payments.Where(x => x.OrderId == id).ToListAsync();
+            if (payments.Any())
+            {
+                _context.Payments.RemoveRange(payments);
+            }
+
+            // 4. Xóa lịch sử trạng thái đơn hàng
+            var histories = await _context.OrderStatusHistories.Where(x => x.OrderId == id).ToListAsync();
+            if (histories.Any())
+            {
+                _context.OrderStatusHistories.RemoveRange(histories);
+            }
+
+            // 5. Xóa chi tiết các món/dịch vụ trong đơn
+            var details = await _context.OrderDetails.Where(x => x.OrderId == id).ToListAsync();
+            if (details.Any())
+            {
+                _context.OrderDetails.RemoveRange(details);
+            }
+
+            // 6. Xóa đơn hàng
+            _context.Orders.Remove(order);
+
+            await _context.SaveChangesAsync();
+            await tx.CommitAsync();
+
+            try
+            {
+                await _hubContext.Clients.All.SendAsync("OrderDeleted", new { orderId = id });
+                await _hubContext.Clients.All.SendAsync("DashboardStatsUpdated");
+            }
+            catch { }
+
+            return Ok(new { message = $"Đã xóa đơn hàng #WS3T-{id} thành công." });
+        }
+        catch (Exception ex)
+        {
+            await tx.RollbackAsync();
+            _logger.LogError(ex, "Lỗi xóa đơn hàng {OrderId}.", id);
+            return StatusCode(500, new { message = "Lỗi xóa đơn hàng: " + ex.Message });
+        }
+    }
+
+    // =========================
+    // POST: api/Orders/cleanup-old
+    // ADMIN / STAFF: Xóa các đơn hàng cũ đã hủy hoặc hoàn tất
+    // =========================
+    [Authorize(Roles = "Admin,Staff")]
+    [HttpPost("cleanup-old")]
+    public async Task<IActionResult> CleanupOldOrders()
+    {
+        var oldOrders = await _context.Orders
+            .Where(x => x.Status == OrderStatus.Cancelled || x.Status == OrderStatus.Completed)
+            .ToListAsync();
+
+        if (!oldOrders.Any())
+        {
+            return Ok(new { message = "Không có đơn hàng cũ nào cần dọn dẹp.", deletedCount = 0 });
+        }
+
+        var ids = oldOrders.Select(x => x.Id).ToList();
+
+        using var tx = await _context.Database.BeginTransactionAsync();
+        try
+        {
+            var complaints = await _context.Complaints.Where(x => x.OrderId != null && ids.Contains(x.OrderId.Value)).ToListAsync();
+            if (complaints.Any()) _context.Complaints.RemoveRange(complaints);
+
+            var reviews = await _context.Reviews.Where(x => ids.Contains(x.OrderId)).ToListAsync();
+            if (reviews.Any()) _context.Reviews.RemoveRange(reviews);
+
+            var payments = await _context.Payments.Where(x => ids.Contains(x.OrderId)).ToListAsync();
+            if (payments.Any()) _context.Payments.RemoveRange(payments);
+
+            var histories = await _context.OrderStatusHistories.Where(x => ids.Contains(x.OrderId)).ToListAsync();
+            if (histories.Any()) _context.OrderStatusHistories.RemoveRange(histories);
+
+            var details = await _context.OrderDetails.Where(x => ids.Contains(x.OrderId)).ToListAsync();
+            if (details.Any()) _context.OrderDetails.RemoveRange(details);
+
+            _context.Orders.RemoveRange(oldOrders);
+
+            await _context.SaveChangesAsync();
+            await tx.CommitAsync();
+
+            try
+            {
+                await _hubContext.Clients.All.SendAsync("DashboardStatsUpdated");
+            }
+            catch { }
+
+            return Ok(new
+            {
+                message = $"Đã dọn dẹp thành công {oldOrders.Count} đơn hàng cũ.",
+                deletedCount = oldOrders.Count
+            });
+        }
+        catch (Exception ex)
+        {
+            await tx.RollbackAsync();
+            _logger.LogError(ex, "Lỗi dọn dẹp đơn hàng cũ.");
+            return StatusCode(500, new { message = "Lỗi dọn dẹp đơn hàng cũ: " + ex.Message });
+        }
+    }
 }

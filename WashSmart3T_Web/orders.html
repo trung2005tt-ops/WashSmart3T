@@ -177,6 +177,12 @@
         </div>
 
         <div class="flex items-center gap-2">
+          <button onclick="cleanupOldOrders()"
+            class="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-red-200 bg-red-50 hover:bg-red-100 text-red-700 text-xs font-semibold transition-colors"
+            title="Dọn dẹp và xóa các đơn hàng cũ đã hủy hoặc hoàn tất">
+            <span class="material-symbols-outlined text-base text-red-600">delete_sweep</span>
+            <span>Dọn dẹp đơn cũ</span>
+          </button>
           <button onclick="loadOrders(true)"
             class="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-semibold transition-colors">
             <span class="material-symbols-outlined text-base text-primary">sync</span>
@@ -694,9 +700,10 @@
         ${window.renderOrderNoteHtml ? window.renderOrderNoteHtml(note) : `<section class="p-4 rounded-lg border border-primary/20 bg-primary/5"><h3 class="font-bold text-sm mb-2">Thông tin phân loại & Dịch vụ</h3><div class="text-sm whitespace-pre-wrap break-words">${note.trim() ? escapeHtml(note) : "Chưa có ghi chú"}</div></section>`}
         <section class="flex items-center justify-between p-4 rounded-lg bg-surface-container-low"><span class="font-bold text-sm">Tổng tiền hiện tại</span><span class="font-bold text-lg text-primary">${formatMoney(Number(order.totalAmount ?? order.TotalAmount ?? 0))}</span></section>
         <p class="text-xs text-secondary">Tổng tiền đã được đồng bộ chuẩn xác từ app (gồm tiền giặt dự kiến, phụ phí tiện ích và cước giao nhận theo cự ly). Shipper sẽ đối soát khi cân đồ thực tế.</p>`;
+      const codeStr = orderCode(id);
       actions.innerHTML = status === 'Pending'
-        ? `<button type="button" onclick="closeOrderDetails()" class="px-4 py-2 rounded-lg border border-surface-container font-semibold text-sm">Đóng, xem sau</button><button type="button" onclick="confirmOrderFromDetails(${Number(id)})" class="px-4 py-2 rounded-lg bg-primary text-white font-bold text-sm"><span class="material-symbols-outlined text-base align-middle mr-1">task_alt</span>Xác nhận đơn hàng</button>`
-        : `<button type="button" onclick="closeOrderDetails()" class="px-4 py-2 rounded-lg bg-primary text-white font-bold text-sm">Đóng chi tiết</button>`;
+        ? `<button type="button" onclick="closeOrderDetails()" class="px-4 py-2 rounded-lg border border-surface-container font-semibold text-sm">Đóng, xem sau</button><button type="button" onclick="deleteSingleOrder(${Number(id)}, '${codeStr}')" class="px-3.5 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold flex items-center gap-1 transition-colors"><span class="material-symbols-outlined text-sm">delete</span> Xóa đơn</button><button type="button" onclick="confirmOrderFromDetails(${Number(id)})" class="px-4 py-2 rounded-lg bg-primary text-white font-bold text-sm"><span class="material-symbols-outlined text-base align-middle mr-1">task_alt</span>Xác nhận đơn hàng</button>`
+        : `<button type="button" onclick="deleteSingleOrder(${Number(id)}, '${codeStr}')" class="px-3.5 py-2 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold flex items-center gap-1 transition-colors mr-auto"><span class="material-symbols-outlined text-sm">delete</span> Xóa đơn hàng</button><button type="button" onclick="closeOrderDetails()" class="px-4 py-2 rounded-lg bg-primary text-white font-bold text-sm">Đóng chi tiết</button>`;
       const modal = document.getElementById('orderDetailsModal'); modal.classList.remove('hidden'); modal.classList.add('flex');
     }
 
@@ -719,6 +726,35 @@
         openOrderDetails(orderId);
       }
     }
+
+    async function deleteSingleOrder(orderId, orderCode) {
+      if (!orderId) return;
+      const displayCode = orderCode || orderId;
+      const confirmed = confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn đơn hàng #WS3T-${displayCode} không?\n\nLưu ý: Thao tác này sẽ xóa toàn bộ chi tiết đơn và lịch sử liên quan, không thể khôi phục.`);
+      if (!confirmed) return;
+      try {
+        if (typeof closeOrderDetails === 'function') closeOrderDetails();
+        const res = await Api.Orders.delete(orderId);
+        alert(res.message || `Đã xóa đơn hàng #WS3T-${displayCode} thành công.`);
+        await loadOrders(true);
+      } catch (err) {
+        alert('Xóa đơn hàng thất bại: ' + (err.message || err));
+      }
+    }
+    window.deleteSingleOrder = deleteSingleOrder;
+
+    async function cleanupOldOrders() {
+      const confirmed = confirm("Bạn có chắc chắn muốn xóa TOÀN BỘ các đơn hàng cũ (đã hoàn tất hoặc đã bị hủy) không?\n\nCác đơn đang xử lý (chờ duyệt, đang giặt, đang giao) sẽ được giữ nguyên an toàn.");
+      if (!confirmed) return;
+      try {
+        const res = await Api.Orders.cleanupOld();
+        alert(res.message || "Đã dọn dẹp các đơn hàng cũ thành công.");
+        await loadOrders(true);
+      } catch (err) {
+        alert('Dọn dẹp đơn cũ thất bại: ' + (err.message || err));
+      }
+    }
+    window.cleanupOldOrders = cleanupOldOrders;
 
     function buildOrderCard(order) {
       const code = orderCode(order.id || order.Id);
@@ -789,6 +825,10 @@
               <span class="material-symbols-outlined text-sm">${isCancelled ? 'cancel' : 'check_circle'}</span>
               <span>${isCancelled ? 'Đơn đã bị hủy' : '✓ Đã hoàn tất & Đã nhận tiền'}</span>
             </div>
+            <button class="w-full mt-1.5 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-[11px] font-bold flex items-center justify-center gap-1 transition-colors" onclick="deleteSingleOrder(${Number(order.id || order.Id)}, '${code}')" type="button">
+              <span class="material-symbols-outlined text-sm">delete</span>
+              <span>Xóa đơn hàng cũ</span>
+            </button>
           </div>`;
       }
 
@@ -803,6 +843,9 @@
               <p class="font-bold text-xs text-on-surface mt-1">${order.customerName || order.CustomerName || 'Khách vãng lai'}</p>
               <p class="text-[11px] text-secondary">${order.customerPhone || order.CustomerPhone || order.contactPhone || ''}</p>
             </div>
+            <button type="button" onclick="deleteSingleOrder(${Number(order.id || order.Id)}, '${code}')" title="Xóa đơn hàng này" class="p-1 rounded-lg text-slate-300 hover:text-red-600 hover:bg-red-50 transition-colors">
+              <span class="material-symbols-outlined text-base">delete</span>
+            </button>
           </div>
           <div class="p-2.5 rounded-lg bg-surface-container-low border border-surface-container text-xs space-y-1">
             <p class="text-[11px] text-secondary truncate">${items || 'Gói Giặt Sấy Tinh Tươm'}</p>

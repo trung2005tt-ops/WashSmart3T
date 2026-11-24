@@ -302,6 +302,16 @@ var Api = window.Api = {
       // Endpoint quản lý danh sách shipper dành cho Admin/Staff.
       return Api.get('/Orders/management/shippers');
     },
+
+    // Xóa một đơn hàng
+    async delete(orderId) {
+      return Api.delete(`/Orders/${orderId}`);
+    },
+
+    // Xóa toàn bộ đơn hàng cũ (đã hủy hoặc hoàn tất)
+    async cleanupOld() {
+      return Api.post('/Orders/cleanup-old', {});
+    },
   },
 
   // Dịch vụ
