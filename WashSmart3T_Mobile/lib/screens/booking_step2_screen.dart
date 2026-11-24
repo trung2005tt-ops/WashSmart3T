@@ -1817,7 +1817,10 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
     );
     final pickupDate = dates[selectedDateIndex];
 
-    // Kiểm tra xem đơn hàng có đồ cần chăm sóc chuyên sâu (Vest, dạ hội, giày, rèm...) không
+    // Phân loại đồ để tính thời gian xử lý thực tế:
+    // - Đồ chuyên sâu (Vest, Dạ hội, Giày, Rèm...): 48 giờ
+    // - Đồ cồng kềnh (Chăn, Mền, Ga, Gấu bông...): 36 giờ
+    // - Quần áo thông thường: 24 giờ
     final bool hasSpecialItems = widget.items.any((item) {
       final name = (item['serviceName'] ?? item['name'] ?? '').toString().toLowerCase();
       return name.contains('vest') ||
@@ -1829,6 +1832,22 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
           name.contains('rèm') ||
           name.contains('màn');
     });
+
+    final bool hasBulkyItems = widget.items.any((item) {
+      final name = (item['serviceName'] ?? item['name'] ?? '').toString().toLowerCase();
+      return name.contains('chăn') ||
+          name.contains('mền') ||
+          name.contains('ga') ||
+          name.contains('gối') ||
+          name.contains('gấu') ||
+          name.contains('topper');
+    });
+
+    final selectedServiceNames = widget.items
+        .map((item) => (item['serviceName'] ?? item['name'] ?? '').toString().trim())
+        .where((s) => s.isNotEmpty)
+        .toSet()
+        .join(', ');
 
     const slotRanges = [
       'Gấp sau 3.5 – 4 giờ',
@@ -1844,23 +1863,37 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
     String returnSub;
 
     if (selectedTimeSlot == 0) {
+      final estStart = today.add(const Duration(hours: 3, minutes: 30));
+      final estEnd = today.add(const Duration(hours: 4));
+      final fmtStart = '${estStart.hour.toString().padLeft(2, '0')}:${estStart.minute.toString().padLeft(2, '0')}';
+      final fmtEnd = '${estEnd.hour.toString().padLeft(2, '0')}:${estEnd.minute.toString().padLeft(2, '0')}';
       final dateStr = selectedDateIndex == 0
           ? 'Hôm nay'
           : selectedDateIndex == 1
               ? 'Ngày mai'
               : '${pickupDate.day}/${pickupDate.month}';
-      returnTitle = 'Giao hỏa tốc sau 3.5 – 4 giờ ($dateStr)';
-      returnSub = 'Xưởng ưu tiên xử lý cấp tốc • Bán kính giao ≤ 5km';
+      returnTitle = selectedDateIndex == 0
+          ? 'Dự kiến nhận lại: $fmtStart – $fmtEnd ($dateStr)'
+          : 'Giao hỏa tốc sau 3.5 – 4 giờ ($dateStr)';
+      returnSub = 'Xưởng ưu tiên xử lý cấp tốc (4h)${selectedServiceNames.isNotEmpty ? ' • $selectedServiceNames' : ''}';
     } else if (hasSpecialItems) {
       final returnDate = pickupDate.add(const Duration(days: 2));
       final returnDateStr = '${returnDate.day.toString().padLeft(2, '0')}/${returnDate.month.toString().padLeft(2, '0')}';
-      returnTitle = '$currentSlotRange Ngày $returnDateStr (Quy trình 48h)';
-      returnSub = 'Đơn có trang phục cao cấp (Vest/Dạ hội/Giày/Rèm) cần hấp sấy dưỡng chất 48h';
+      returnTitle = 'Dự kiến nhận lại: $currentSlotRange Ngày $returnDateStr (Sau 48h)';
+      returnSub = 'Đồ chuyên sâu (${selectedServiceNames.isNotEmpty ? selectedServiceNames : 'Vest/Giày/Rèm'}) cần xử lý & dưỡng phom 48h';
+    } else if (hasBulkyItems) {
+      // Đồ cồng kềnh (+36h): nếu lấy ca sáng (1, 2) -> trả ca chiều tối ngày mai (17:00 – 19:00); nếu lấy ca chiều/tối (3,4,5) -> trả sáng ngày mốt (08:00 – 10:00)
+      final isMorningSlot = selectedTimeSlot == 1 || selectedTimeSlot == 2;
+      final returnDate = pickupDate.add(Duration(days: isMorningSlot ? 1 : 2));
+      final returnSlot = isMorningSlot ? '17:00 – 19:00' : '08:00 – 10:00';
+      final returnDateStr = '${returnDate.day.toString().padLeft(2, '0')}/${returnDate.month.toString().padLeft(2, '0')}';
+      returnTitle = 'Dự kiến nhận lại: $returnSlot Ngày $returnDateStr (Sau 36h)';
+      returnSub = 'Đồ cồng kềnh (${selectedServiceNames.isNotEmpty ? selectedServiceNames : 'Chăn/Mền/Gối'}) cần sấy sâu diệt khuẩn 36h';
     } else {
       final returnDate = pickupDate.add(const Duration(days: 1));
       final returnDateStr = '${returnDate.day.toString().padLeft(2, '0')}/${returnDate.month.toString().padLeft(2, '0')}';
-      returnTitle = '$currentSlotRange Ngày $returnDateStr (Chuẩn 24h)';
-      returnSub = 'Chuẩn quy trình 24h: Giặt sạch • Sấy diệt khuẩn • Ủi nếp tinh tươm';
+      returnTitle = 'Dự kiến nhận lại: $currentSlotRange Ngày $returnDateStr (Sau 24h)';
+      returnSub = 'Quy trình chuẩn 24h${selectedServiceNames.isNotEmpty ? ' • $selectedServiceNames' : ''} • Giặt sạch, sấy thơm & gấp gọn';
     }
 
     return Container(
