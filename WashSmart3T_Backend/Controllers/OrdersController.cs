@@ -40,6 +40,33 @@ public class OrdersController : ControllerBase
 
     private static readonly System.Collections.Concurrent.ConcurrentDictionary<int, ShipperPresenceInfo> _shipperPresence = new();
 
+    public static void RecordShipperOnline(int shipperId)
+    {
+        _shipperPresence.AddOrUpdate(shipperId,
+            new ShipperPresenceInfo
+            {
+                ShipperId = shipperId,
+                IsOnline = true,
+                LastSeenAt = DateTime.UtcNow,
+                Latitude = 10.8031, // Cửa hàng WashSmart 3T (140 Lê Trọng Tấn)
+                Longitude = 106.6268
+            },
+            (id, existing) =>
+            {
+                existing.IsOnline = true;
+                existing.LastSeenAt = DateTime.UtcNow;
+                return existing;
+            });
+    }
+
+    public static void RecordShipperOffline(int shipperId)
+    {
+        if (_shipperPresence.TryGetValue(shipperId, out var existing))
+        {
+            existing.IsOnline = false;
+        }
+    }
+
     public OrdersController(
         ApplicationDbContext context,
         IWebHostEnvironment env,
@@ -329,7 +356,7 @@ public class OrdersController : ControllerBase
     // ============================================================
     [HttpGet("management/shippers")]
     [Authorize(Roles = "Admin,Staff")]
-    public async Task<IActionResult> GetActiveShippers()
+    public async Task<IActionResult> GetActiveShippers([FromQuery] bool onlyOnline = false)
     {
         var shipperUsers = await _context.Users
             .AsNoTracking()
@@ -387,6 +414,11 @@ public class OrdersController : ControllerBase
             if (!isOnline && activeOrders.Any(o => o.status == "PickingUp" || o.status == "Delivering"))
             {
                 isOnline = true;
+            }
+
+            if (onlyOnline && !isOnline)
+            {
+                continue;
             }
 
             shippers.Add(new

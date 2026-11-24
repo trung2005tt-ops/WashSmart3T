@@ -417,6 +417,12 @@ public class AuthController : ControllerBase
         // Sinh JWT token bảo mật
         var token = GenerateJwtToken(user);
 
+        // Nếu là Shipper đăng nhập -> Đánh dấu ngay lập tức là Online / Đang trực ca
+        if (user.Role?.Name == "Shipper")
+        {
+            OrdersController.RecordShipperOnline(user.Id);
+        }
+
         // Đồng bộ cấp bậc thành viên theo điểm và tổng chi tiêu
         var calculatedTier = LoyaltyService.CalculateTier(user.TotalSpent, user.LoyaltyPoints);
         if (user.MembershipTier != calculatedTier)
@@ -443,6 +449,22 @@ public class AuthController : ControllerBase
                 totalSpent = user.TotalSpent
             }
         });
+    }
+
+    // ============================================================
+    // POST: api/Auth/logout
+    // Đăng xuất: Đồng bộ tài xế offline khỏi hàng đợi điều phối
+    // ============================================================
+    [HttpPost("logout")]
+    [Authorize]
+    public IActionResult Logout()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (int.TryParse(userIdClaim, out int userId))
+        {
+            OrdersController.RecordShipperOffline(userId);
+        }
+        return Ok(new { message = "Đăng xuất thành công." });
     }
 
     // ============================================================

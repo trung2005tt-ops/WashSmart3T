@@ -998,13 +998,13 @@
       
       let badge = '';
       if (activeCount > 0) {
-        badge = ` (Đang ghép ${activeCount} đơn)`;
+        badge = ` (Đang ghép ${activeCount}/5 đơn)`;
       } else {
-        badge = ` (Sẵn sàng)`;
+        badge = ` (Trực tuyến • Sẵn sàng)`;
       }
       if (busy && !currentShipper) badge = ` (ĐÃ ĐẦY ${activeCount}/5 đơn)`;
 
-      return `<option value="${s.id}" ${busy && !currentShipper ? 'disabled' : ''} ${currentShipper ? 'selected' : ''}>${s.fullName} (${s.phone})${badge}</option>`;
+      return `<option value="${s.id}" ${busy && !currentShipper ? 'disabled' : ''} ${currentShipper ? 'selected' : ''}>🟢 ${s.fullName} (${s.phone})${badge}</option>`;
     }
 
     function shipperCell(order) {
@@ -1013,6 +1013,14 @@
 
       if (!sid || isEditing) {
         const isPending = order.status === 'Pending';
+        const onlineShippers = shippers.filter(s => s.isOnline);
+        let optionsHtml = '';
+        if (onlineShippers.length === 0) {
+          optionsHtml = '<option value="" disabled selected>-- Chưa có tài xế nào đăng nhập hệ thống --</option>';
+        } else {
+          optionsHtml = '<option value="">-- Chọn tài xế (Đang trực tuyến) --</option>' +
+            onlineShippers.map(s => shipperOption(s, order)).join('');
+        }
         return `
           <div class="space-y-1.5 min-w-[170px]" onclick="event.stopPropagation()">
             <span class="inline-flex items-center gap-1 text-[11px] ${isPending ? 'text-amber-700 bg-amber-50' : 'text-red-700 bg-red-50'} font-bold px-2 py-0.5 rounded">
@@ -1021,8 +1029,7 @@
             </span>
             <select id="shipperSelect-${order.id}"
               class="w-full bg-surface-container-low border border-surface-container rounded-lg px-2 py-1 text-xs text-on-surface focus:outline-none focus:ring-1 focus:ring-primary font-medium">
-              <option value="">-- Chọn tài xế --</option>
-              ${shippers.map(s => shipperOption(s, order)).join('')}
+              ${optionsHtml}
             </select>
             <div class="flex gap-1">
               <button class="flex-1 bg-primary hover:bg-primary-container text-white px-2 py-1 rounded-lg text-[11px] font-bold transition-colors flex items-center justify-center gap-1 shadow-sm"
@@ -1039,7 +1046,7 @@
       }
 
       const sp = shippers.find(x => x.id === sid);
-      const initials = sp ? sp.fullName.split(' ').map(w => w[0]).join('').slice(-2).toUpperCase() : 'S?';
+      const initials = sp ? sp.fullName.split(' ').map(w => w[0]).join('').slice(-2).toUpperCase() : (order.shipperName ? order.shipperName.split(' ').map(w => w[0]).join('').slice(-2).toUpperCase() : 'S?');
       const activeCount = shipperActiveOrderCount(sid);
 
       return `
@@ -1047,7 +1054,7 @@
           <div class="flex items-center gap-2 p-1.5 rounded-lg bg-surface-container-low border border-surface-container">
             <span class="w-7 h-7 rounded-full bg-primary text-white font-bold text-[10px] flex items-center justify-center shrink-0">${initials}</span>
             <div class="min-w-0">
-              <p class="font-bold text-xs text-on-surface truncate">${sp ? sp.fullName : 'Shipper #' + sid}</p>
+              <p class="font-bold text-xs text-on-surface truncate">${sp ? sp.fullName : (order.shipperName || 'Shipper #' + sid)}</p>
               <p class="text-[10px] text-secondary truncate">${sp ? sp.phone : ''} ${activeCount > 1 ? '• <strong class="text-primary font-bold">Ghép ' + activeCount + ' đơn</strong>' : ''}</p>
             </div>
           </div>
@@ -1276,8 +1283,13 @@
       const inspectBtnText = document.getElementById('inspectAssignBtnText');
 
       if (inspectSel) {
-        inspectSel.innerHTML = '<option value="">-- Chọn tài xế điều phối --</option>' +
-          shippers.map(s => shipperOption(s, order)).join('');
+        const onlineShippers = shippers.filter(s => s.isOnline);
+        if (onlineShippers.length === 0) {
+          inspectSel.innerHTML = '<option value="" disabled selected>-- Chưa có tài xế nào đăng nhập hệ thống --</option>';
+        } else {
+          inspectSel.innerHTML = '<option value="">-- Chọn tài xế điều phối (Đang trực tuyến) --</option>' +
+            onlineShippers.map(s => shipperOption(s, order)).join('');
+        }
         if (order.shipperId) {
           inspectSel.value = order.shipperId;
           if (inspectTitle) inspectTitle.textContent = 'Đổi tài xế phụ trách';
@@ -1905,14 +1917,19 @@
         `;
       }).join('');
 
-      // Populate Shipper Selector
+      // Populate Shipper Selector (Chỉ hiển thị shipper đã đăng nhập hệ thống)
       const sel = document.getElementById('bundleShipperSelect');
-      sel.innerHTML = '<option value="">-- Chọn shipper phụ trách --</option>' +
-        shippers.map(s => {
-          const count = shipperActiveOrderCount(s.id);
-          const busy = count >= 5;
-          return `<option value="${s.id}" ${busy ? 'disabled' : ''}>${s.fullName} (${s.phone}) — ${count > 0 ? 'Đang chở ' + count + ' đơn' : 'Rảnh'}</option>`;
-        }).join('');
+      const onlineShippers = shippers.filter(s => s.isOnline);
+      if (onlineShippers.length === 0) {
+        sel.innerHTML = '<option value="" disabled selected>-- Chưa có tài xế nào đăng nhập hệ thống --</option>';
+      } else {
+        sel.innerHTML = '<option value="">-- Chọn shipper phụ trách (Đang trực tuyến) --</option>' +
+          onlineShippers.map(s => {
+            const count = shipperActiveOrderCount(s.id);
+            const busy = count >= 5;
+            return `<option value="${s.id}" ${busy ? 'disabled' : ''}>🟢 ${s.fullName} (${s.phone}) — ${count > 0 ? 'Đang chở ' + count + '/5 đơn' : 'Sẵn sàng'}</option>`;
+          }).join('');
+      }
 
       // Compute Route if at least 1 order selected
       if (selectedBundleOrderIds.size === 0) {
@@ -2331,12 +2348,24 @@
       }
     }
 
-    // Populate Shipper live list in Tab 2
+    // Populate Shipper live list in Tab 2 (Chỉ hiển thị shipper đã đăng nhập hệ thống)
     function updateShippersTabUI() {
       const container = document.getElementById('shippersLiveList');
       if (!container) return;
 
-      container.innerHTML = shippers.map(s => {
+      const onlineShippers = shippers.filter(s => s.isOnline);
+      if (onlineShippers.length === 0) {
+        container.innerHTML = `
+          <div class="p-6 text-center text-secondary bg-surface-card rounded-xl border border-dashed border-surface-container space-y-2">
+            <span class="material-symbols-outlined text-3xl text-secondary">no_accounts</span>
+            <p class="font-bold text-xs text-on-surface">Chưa có tài xế trực tuyến</p>
+            <p class="text-[11px]">Chỉ tài xế đã đăng nhập vào hệ thống mới hiển thị tại đây và sẵn sàng nhận điều phối.</p>
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = onlineShippers.map(s => {
         const activeOrders = allOrders.filter(o =>
           Number(o.shipperId) === Number(s.id) &&
           ['Confirmed', 'PickingUp', 'Ready', 'Delivering'].includes(o.status)
@@ -2345,11 +2374,11 @@
         const isOnline = !!s.isOnline;
 
         return `
-          <div class="p-3 rounded-xl bg-surface-card border ${isOnline ? 'border-surface-container hover:border-primary' : 'border-slate-100 opacity-70'} transition-all shadow-xs space-y-2 cursor-pointer"
+          <div class="p-3 rounded-xl bg-surface-card border border-surface-container hover:border-primary transition-all shadow-xs space-y-2 cursor-pointer"
             onclick="focusShipperRoute(${s.id})">
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-2">
-                <span class="w-8 h-8 rounded-full ${isOnline ? 'bg-sky-600 text-white' : 'bg-slate-300 text-slate-600'} font-bold text-xs flex items-center justify-center">
+                <span class="w-8 h-8 rounded-full bg-sky-600 text-white font-bold text-xs flex items-center justify-center">
                   <span class="material-symbols-outlined text-base">two_wheeler</span>
                 </span>
                 <div>
@@ -2358,15 +2387,9 @@
                 </div>
               </div>
               <div class="text-right">
-                ${isOnline ? `
-                  <span class="px-2 py-0.5 rounded text-[10px] font-bold ${count > 0 ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'}">
-                    ${count > 0 ? `Đang chở ${count} đơn` : 'Trực tại Cửa hàng'}
-                  </span>
-                ` : `
-                  <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500">
-                    Chưa vào ca (Offline)
-                  </span>
-                `}
+                <span class="px-2 py-0.5 rounded text-[10px] font-bold ${count > 0 ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'}">
+                  ${count > 0 ? `Đang chở ${count} đơn` : 'Trực tại Cửa hàng'}
+                </span>
               </div>
             </div>
 
@@ -2378,24 +2401,20 @@
                   return `<p class="truncate">• #${code}: ${o.customerName} (${o.deliveryAddress || o.pickupAddress || ''})</p>`;
                 }).join('')}
               </div>
-            ` : (isOnline ? `
+            ` : `
               <p class="text-[10px] text-emerald-700 font-semibold bg-emerald-50/70 p-1.5 rounded-lg border border-emerald-100">
                 📍 Đang có mặt tại Cửa hàng (140 Lê Trọng Tấn) • Sẵn sàng nhận đơn
               </p>
-            ` : '')}
+            `}
 
             <div class="flex items-center justify-between pt-1 text-[10px]">
-              <span class="${isOnline ? 'text-sky-700 font-bold' : 'text-slate-400 font-medium'} flex items-center gap-1">
-                <span class="w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-slate-300'}"></span>
-                ${isOnline ? 'Trực tuyến (GPS Hub)' : 'Chưa đăng nhập'}
+              <span class="text-sky-700 font-bold flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                Trực tuyến (GPS Hub)
               </span>
-              ${isOnline ? `
-                <button onclick="event.stopPropagation(); focusShipperRoute(${s.id})" class="text-primary font-bold hover:underline">
-                  Xem trên bản đồ &rarr;
-                </button>
-              ` : `
-                <span class="text-slate-400 italic">Không hiển thị bản đồ</span>
-              `}
+              <button onclick="event.stopPropagation(); focusShipperRoute(${s.id})" class="text-primary font-bold hover:underline">
+                Xem trên bản đồ &rarr;
+              </button>
             </div>
           </div>
         `;
@@ -2449,16 +2468,17 @@
       return eligible;
     }
 
-    // Auto Select Best/Free Shipper
+    // Auto Select Best/Free Shipper (Chỉ tự động chọn trong số tài xế đã đăng nhập)
     function autoSelectBestShipper() {
       const sel = document.getElementById('bundleShipperSelect');
       if (!sel || !shippers || shippers.length === 0) return null;
 
-      // Find idle shipper (0 orders) or least loaded shipper
+      // Find idle shipper (0 orders) or least loaded shipper among ONLINE shippers
       let chosen = null;
       let minLoad = Infinity;
+      const onlineShippers = shippers.filter(s => s.isOnline);
 
-      for (const s of shippers) {
+      for (const s of onlineShippers) {
         const load = shipperActiveOrderCount(s.id);
         if (load < minLoad && load < 5) {
           minLoad = load;
