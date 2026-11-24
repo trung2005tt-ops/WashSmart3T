@@ -470,10 +470,6 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
 
                 // 5. DELIVERY METHOD & EXPECTED RETURN TIME
                 _buildDeliveryMethodSection(),
-                const SizedBox(height: 16),
-
-                // 6. SHIPPING FEE TRANSPARENCY
-                _buildShippingFeeSection(),
               ],
             ),
           ),
@@ -1363,7 +1359,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
         'badge': 'Hỏa tốc 4h',
         'badgeBg': const Color(0xFFFFDAD6),
         'badgeText': const Color(0xFF93000A),
-        'price': '+25.000 đ',
+        'price': '55.000 đ',
         'isPricePrimary': true,
         'extraFee': 25000,
       },
@@ -1375,7 +1371,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
         'badge': 'Buổi sáng',
         'badgeBg': secondaryFixed,
         'badgeText': const Color(0xFF3E0022),
-        'price': 'Miễn phí',
+        'price': '30.000 đ',
         'isPricePrimary': false,
         'extraFee': 0,
       },
@@ -1387,7 +1383,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
         'badge': 'Buổi trưa',
         'badgeBg': surfaceContainer,
         'badgeText': onSurfaceVariant,
-        'price': 'Miễn phí',
+        'price': '30.000 đ',
         'isPricePrimary': false,
         'extraFee': 0,
       },
@@ -1399,7 +1395,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
         'badge': 'Tối ưu nhất',
         'badgeBg': tertiaryFixed,
         'badgeText': const Color(0xFF001F26),
-        'price': 'Miễn phí',
+        'price': '30.000 đ',
         'isPricePrimary': false,
         'extraFee': 0,
       },
@@ -1411,7 +1407,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
         'badge': 'Tan tầm',
         'badgeBg': surfaceVariant,
         'badgeText': onSurface,
-        'price': 'Miễn phí',
+        'price': '30.000 đ',
         'isPricePrimary': false,
         'extraFee': 0,
       },
@@ -1423,7 +1419,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
         'badge': 'Ca tối',
         'badgeBg': surfaceContainer,
         'badgeText': onSurfaceVariant,
-        'price': 'Miễn phí',
+        'price': '30.000 đ',
         'isPricePrimary': false,
         'extraFee': 0,
       },
@@ -1710,13 +1706,15 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                                   ? 'Đã đóng'
                                   : (slot['price'] as String),
                               style: GoogleFonts.plusJakartaSans(
-                                fontSize: 11,
+                                fontSize: 12,
                                 fontWeight: FontWeight.bold,
                                 color: isSlotDisabled
                                     ? Colors.grey.shade400
-                                    : (slot['isPricePrimary'] == true)
-                                    ? primaryColor
-                                    : tertiaryColor,
+                                    : (isSelected
+                                        ? primaryColor
+                                        : (slot['isPricePrimary'] == true)
+                                            ? primaryColor
+                                            : onSurface),
                               ),
                             ),
                           ],
@@ -2227,127 +2225,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
     );
   }
 
-  // --- WIDGET 6: SHIPPING FEE TRANSPARENCY ---
-  Widget _buildShippingFeeSection() {
-    final checkAddress = isDifferentDeliveryAddress && _deliveryAddressController.text.trim().isNotEmpty
-        ? _deliveryAddressController.text.trim()
-        : currentPickupAddress;
-    final dist = calculateDistanceToStore(checkAddress);
-    final travelTime = calculateTravelTimeMinutes(dist);
-    final isWithin10Km = dist <= 10.0;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isWithin10Km ? surfaceContainer : const Color(0xFFEF4444),
-          width: isWithin10Km ? 1 : 1.5,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: isWithin10Km ? tertiaryFixed : const Color(0xFFFEE2E2),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.two_wheeler,
-                      size: 20,
-                      color: isWithin10Km ? tertiaryColor : const Color(0xFFB91C1C),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Phí vận chuyển 2 chiều',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Khoảng cách: ~$dist km • ~$travelTime phút di chuyển từ Hub 140 Lê Trọng Tấn',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
-                          color: onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-              Text(
-                isWithin10Km ? '30.000 đ' : 'Ngoài vùng',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                  color: isWithin10Km ? primaryColor : const Color(0xFFB91C1C),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: isWithin10Km ? const Color(0xFFECFDF5) : const Color(0xFFFEF2F2),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(
-                color: isWithin10Km ? const Color(0xFFA7F3D0) : const Color(0xFFFECACA),
-              ),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  isWithin10Km ? Icons.check_circle : Icons.error,
-                  size: 14,
-                  color: isWithin10Km ? const Color(0xFF047857) : const Color(0xFFB91C1C),
-                ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    isWithin10Km
-                        ? 'Chấp nhận giao hàng: Bán kính $dist km • ~$travelTime phút (Hợp lệ ≤ 10km)'
-                        : 'VƯỢT QUÁ BÁN KÍNH 10KM ($dist km • ~$travelTime phút) - Chỉ nhận đơn trong bán kính 10km!',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: isWithin10Km ? const Color(0xFF065F46) : const Color(0xFF991B1B),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- WIDGET 7: STICKY BOTTOM CHECKOUT ACTION BAR (GIỮ NGUYÊN LUỒNG BƯỚC 3) ---
+  // --- WIDGET 6: STICKY BOTTOM CHECKOUT ACTION BAR (GIỮ NGUYÊN LUỒNG BƯỚC 3) ---
   Widget _buildBottomActionBar(BuildContext context) {
     return Positioned(
       left: 0,
@@ -2392,7 +2270,7 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                     textBaseline: TextBaseline.alphabetic,
                     children: [
                       Text(
-                        '${transportTotal.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}',
+                        transportTotal.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.'),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: 22,
                           fontWeight: FontWeight.bold,
