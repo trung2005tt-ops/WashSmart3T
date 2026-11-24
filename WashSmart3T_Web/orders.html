@@ -478,6 +478,39 @@
     </div>
   </div>
 
+  <!-- MODAL: Hộp thoại xác nhận hoàn tất / chuyển trạng thái -->
+  <div id="advanceConfirmModal"
+    class="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="bg-surface-card rounded-2xl max-w-md w-full p-6 border border-surface-container shadow-2xl space-y-4">
+      <div class="flex items-start gap-3">
+        <div id="advanceConfirmIconWrap" class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
+          <span id="advanceConfirmIcon" class="material-symbols-outlined text-2xl">verified</span>
+        </div>
+        <div class="flex-1">
+          <h3 id="advanceConfirmTitle" class="font-bold text-sm text-on-surface">Xác nhận hoàn tất giặt sấy</h3>
+          <p id="advanceConfirmMessage" class="text-xs text-secondary mt-1.5 leading-relaxed">
+            Xác nhận mẻ đồ <strong id="advanceConfirmOrderCode" class="text-primary font-mono font-bold">#WS3T-0</strong> đã hoàn tất giặt sấy, gấp gọn và dán tem Seal niêm phong?
+          </p>
+        </div>
+        <button onclick="closeAdvanceConfirmModal()" class="text-secondary hover:text-on-surface p-1 rounded-lg">
+          <span class="material-symbols-outlined text-lg">close</span>
+        </button>
+      </div>
+
+      <div class="flex items-center justify-end gap-2.5 pt-3 border-t border-surface-container">
+        <button onclick="closeAdvanceConfirmModal()"
+          class="px-4 py-2 rounded-xl bg-surface-container hover:bg-surface-container-high text-xs font-semibold text-on-surface transition-colors">
+          Hủy bỏ
+        </button>
+        <button id="advanceConfirmBtn" onclick="executeAdvanceOrder()"
+          class="px-4 py-2 rounded-xl bg-primary hover:bg-primary-container text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 active:scale-[0.98]">
+          <span class="material-symbols-outlined text-sm">check_circle</span>
+          <span id="advanceConfirmBtnText">Đúng, đã hoàn tất</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Realtime Status Indicator -->
   <div
     class="fixed bottom-5 right-5 z-40 bg-surface-card/90 backdrop-blur-md px-3.5 py-2 rounded-full border border-surface-container shadow-lg flex items-center gap-3 text-xs">
@@ -783,6 +816,13 @@
             <span class="material-symbols-outlined text-base">two_wheeler</span>
             <span>${st === 'Ready' ? 'Gán Shipper giao đồ sạch' : 'Điều phối Shipper lấy đồ'}</span>
           </button>`;
+        if (st === 'Ready') {
+          buttons += `
+            <button class="w-full mt-1.5 py-1.5 rounded-lg border border-amber-200 text-amber-700 hover:bg-amber-50 text-[11px] font-semibold flex items-center justify-center gap-1 transition-colors" onclick="rollbackToWashing(${order.id || order.Id}, '${code}')" type="button" title="Hoàn tác lại về trạng thái Đang giặt & sấy nếu ấn nhầm">
+              <span class="material-symbols-outlined text-sm">undo</span>
+              <span>Hoàn tác về Đang giặt & sấy</span>
+            </button>`;
+        }
       }
       else if (st === 'PickingUp') {
         buttons += `
@@ -800,7 +840,7 @@
       }
       else if (nextStatus && !isCancelled) {
         buttons += `
-          <button class="w-full py-2 rounded-lg bg-primary hover:bg-primary-container text-white font-semibold text-xs flex items-center justify-center gap-1 shadow-sm transition-all active:scale-[0.98]" onclick="advanceOrder(${order.id || order.Id}, '${nextStatus}')" type="button">
+          <button class="w-full py-2 rounded-lg bg-primary hover:bg-primary-container text-white font-semibold text-xs flex items-center justify-center gap-1 shadow-sm transition-all active:scale-[0.98]" onclick="promptAdvanceOrder(${order.id || order.Id}, '${nextStatus}', '${code}')" type="button">
             <span>Chuyển: ${STATUS_LABELS[nextStatus]}</span>
             <span class="material-symbols-outlined text-base">arrow_forward</span>
           </button>`;
@@ -1115,11 +1155,7 @@
       try {
         await Api.Orders.updateStatus(activeTargetOrderId, 'Cancelled', 'Hủy đơn từ web: ' + extraNote);
         closeCancelModal();
-        await loadOrders();
-    const urlParams = new URLSearchParams(window.location.search);
-    const autoOpenId = urlParams.get('auto_open');
-    if (autoOpenId) {
-      }
+        await loadOrders(true);
       } catch (err) { alert('Hủy đơn thất bại: ' + err.message); }
     }
 
@@ -1136,12 +1172,105 @@
 
     function executePrint() { alert('Lệnh in tag nhiệt đã gửi thành công tới máy in POS-80.'); closePrintModal(); }
 
-    async function advanceOrder(orderId, nextStatus) {
-      try {
-        await Api.Orders.updateStatus(orderId, nextStatus, 'Chuyển trạng thái từ Web Admin');
-        await loadOrders();
-      } catch (err) { alert('Chuyển trạng thái thất bại: ' + err.message); }
+    let pendingAdvance = null;
+
+    function promptAdvanceOrder(orderId, nextStatus, code) {
+      const displayCode = code || orderCode(orderId);
+      pendingAdvance = { orderId, nextStatus, code: displayCode };
+      const modal = document.getElementById('advanceConfirmModal');
+      const titleEl = document.getElementById('advanceConfirmTitle');
+      const msgEl = document.getElementById('advanceConfirmMessage');
+      const btnTextEl = document.getElementById('advanceConfirmBtnText');
+      const iconEl = document.getElementById('advanceConfirmIcon');
+      const iconWrap = document.getElementById('advanceConfirmIconWrap');
+
+      if (nextStatus === 'Ready') {
+        if (titleEl) titleEl.textContent = 'Xác nhận hoàn tất giặt sấy';
+        if (msgEl) {
+          msgEl.innerHTML = `Xác nhận mẻ đồ <strong class="text-primary font-mono font-bold">#WS3T-${displayCode}</strong> đã hoàn tất giặt sấy, gấp gọn và dán tem Seal niêm phong?`;
+        }
+        if (btnTextEl) btnTextEl.textContent = 'Đúng, đã hoàn tất';
+        if (iconEl) iconEl.textContent = 'verified';
+        if (iconWrap) iconWrap.className = 'w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5';
+      } else if (nextStatus === 'Washing') {
+        if (titleEl) titleEl.textContent = 'Xác nhận bắt đầu giặt & sấy';
+        if (msgEl) {
+          msgEl.innerHTML = `Xác nhận đưa mẻ đồ <strong class="text-primary font-mono font-bold">#WS3T-${displayCode}</strong> vào máy để bắt đầu quy trình giặt & sấy?`;
+        }
+        if (btnTextEl) btnTextEl.textContent = 'Đúng, bắt đầu giặt';
+        if (iconEl) iconEl.textContent = 'local_laundry_service';
+        if (iconWrap) iconWrap.className = 'w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5';
+      } else {
+        const label = STATUS_LABELS[nextStatus] || nextStatus;
+        if (titleEl) titleEl.textContent = 'Xác nhận chuyển trạng thái';
+        if (msgEl) {
+          msgEl.innerHTML = `Xác nhận chuyển mẻ đồ <strong class="text-primary font-mono font-bold">#WS3T-${displayCode}</strong> sang trạng thái <strong>"${label}"</strong>?`;
+        }
+        if (btnTextEl) btnTextEl.textContent = 'Đúng, chuyển trạng thái';
+        if (iconEl) iconEl.textContent = 'arrow_forward';
+        if (iconWrap) iconWrap.className = 'w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5';
+      }
+
+      if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+      }
     }
+    window.promptAdvanceOrder = promptAdvanceOrder;
+
+    function closeAdvanceConfirmModal() {
+      const modal = document.getElementById('advanceConfirmModal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+      pendingAdvance = null;
+    }
+    window.closeAdvanceConfirmModal = closeAdvanceConfirmModal;
+
+    async function executeAdvanceOrder() {
+      if (!pendingAdvance) return;
+      const { orderId, nextStatus, code } = pendingAdvance;
+      const btn = document.getElementById('advanceConfirmBtn');
+      if (btn) {
+        btn.disabled = true;
+        btn.classList.add('opacity-70');
+      }
+      try {
+        const note = nextStatus === 'Ready'
+          ? 'Đã hoàn tất giặt sấy, gấp gọn & dán tem niêm phong seal'
+          : (nextStatus === 'Washing' ? 'Bắt đầu đưa vào giặt sấy từ Web Admin' : 'Chuyển trạng thái từ Web Admin');
+        await Api.Orders.updateStatus(orderId, nextStatus, note);
+        closeAdvanceConfirmModal();
+        await loadOrders(true);
+      } catch (err) {
+        alert('Chuyển trạng thái thất bại: ' + (err.message || err));
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.classList.remove('opacity-70');
+        }
+      }
+    }
+    window.executeAdvanceOrder = executeAdvanceOrder;
+
+    async function advanceOrder(orderId, nextStatus) {
+      promptAdvanceOrder(orderId, nextStatus, orderCode(orderId));
+    }
+    window.advanceOrder = advanceOrder;
+
+    async function rollbackToWashing(orderId, code) {
+      const displayCode = code || orderCode(orderId);
+      const confirmed = confirm(`Bạn có chắc chắn muốn hoàn tác mẻ đồ #WS3T-${displayCode} quay trở lại trạng thái "Đang giặt & sấy" không?\n\n(Dùng khi nhân viên bấm nhầm hoàn tất trong khi máy giặt chưa xử lý xong)`);
+      if (!confirmed) return;
+      try {
+        await Api.Orders.updateStatus(orderId, 'Washing', 'Hoàn tác về Đang giặt & sấy do thao tác nhầm');
+        await loadOrders(true);
+      } catch (err) {
+        alert('Hoàn tác thất bại: ' + (err.message || err));
+      }
+    }
+    window.rollbackToWashing = rollbackToWashing;
 
     function openCreateOrderModal() { window.location.href = 'pos.html'; }
 
@@ -1167,6 +1296,11 @@
         if (!me) return;
       }
       await loadOrders();
+      const urlParams = new URLSearchParams(window.location.search);
+      const autoOpenId = urlParams.get('auto_open');
+      if (autoOpenId) {
+        openOrderDetails(Number(autoOpenId));
+      }
       setInterval(loadOrders, 3000);
     })();
   </script>
