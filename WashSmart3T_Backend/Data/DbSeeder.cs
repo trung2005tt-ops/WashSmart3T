@@ -212,6 +212,36 @@ public static class DbSeeder
         {
             new Promotion
             {
+                Code = "3TCHAOBAN",
+                Title = "Giảm 20.000 đ đơn đầu tiên",
+                Description = "Áp dụng cho khách hàng mới của WashSmart 3T.",
+                DiscountType = "FixedAmount",
+                DiscountValue = 20000,
+                MinOrderAmount = 0,
+                MaxDiscountAmount = 20000,
+                StartDate = DateTime.UtcNow.AddDays(-30),
+                EndDate = DateTime.UtcNow.AddMonths(12),
+                UsageLimit = 2000,
+                UsedCount = 0,
+                IsActive = true
+            },
+            new Promotion
+            {
+                Code = "WASH3T30K",
+                Title = "Giảm 30.000 đ đơn từ 100k",
+                Description = "Ưu đãi giặt sấy nguyên mẻ tinh tươm cho đơn từ 100.000đ.",
+                DiscountType = "FixedAmount",
+                DiscountValue = 30000,
+                MinOrderAmount = 100000,
+                MaxDiscountAmount = 30000,
+                StartDate = DateTime.UtcNow.AddDays(-30),
+                EndDate = DateTime.UtcNow.AddMonths(12),
+                UsageLimit = 2000,
+                UsedCount = 0,
+                IsActive = true
+            },
+            new Promotion
+            {
                 Code = "3TTINHTUOM",
                 Title = "Giặt Sấy Tinh Tươm Lấy Ngay (Hạng Vàng)",
                 Description = "Giảm ngay 20.000đ cho đơn dịch vụ Giặt sấy gấp thơm tho chỉ từ 120.000đ.",
