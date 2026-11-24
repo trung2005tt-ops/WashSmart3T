@@ -258,7 +258,10 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
 
   // 🚀 Logic kiểm tra khung giờ hết hạn theo thời gian thực (Lead Time Buffer)
   bool _isSlotExpired(int slotIndex, int dateIndex) {
-    if (dateIndex > 0) return false;
+    if (dateIndex > 0) {
+      // Ca lấy gấp hỏa tốc (slotIndex == 0) chỉ áp dụng trong ngày hôm nay, không áp dụng cho ngày khác
+      return slotIndex == 0;
+    }
     final now = DateTime.now();
     // Ca 0: Hỏa tốc trong 30-45 phút. Đóng sau 20:00 tối
     if (slotIndex == 0) {
@@ -360,8 +363,8 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
     } catch (_) {}
   }
 
-  // Giá giặt chưa xác định cho đến khi shipper cân/đếm thực tế.
-  int get expressFee => (selectedTimeSlot == 0) ? 25000 : 0;
+  // Giá giặt chưa xác định cho đến khi shipper cân/đếm thực tế. Phí hỏa tốc chỉ áp dụng nếu đặt lấy gấp hôm nay.
+  int get expressFee => (selectedDateIndex == 0 && selectedTimeSlot == 0) ? 25000 : 0;
   int get transportTotal => shippingFee + expressFee;
 
   void _showToast(String message) {
@@ -1492,9 +1495,14 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
                     onTap: () {
                       setState(() {
                         selectedDateIndex = index;
+                        // Nếu chuyển sang ngày khác (index > 0) và đang chọn slot lấy gấp (0), tự động chuyển sang ca 1 (08:00 - 10:00)
+                        if (index > 0 && selectedTimeSlot == 0) {
+                          selectedTimeSlot = 1;
+                        }
                         // Nếu ca hiện tại bị hết hạn ở ngày mới, chuyển sang ca mở đầu tiên
                         if (_isSlotExpired(selectedTimeSlot, selectedDateIndex)) {
-                          for (int i = 0; i < timeSlots.length; i++) {
+                          final startIdx = selectedDateIndex == 0 ? 0 : 1;
+                          for (int i = startIdx; i < timeSlots.length; i++) {
                             if (!_isSlotExpired(i, selectedDateIndex)) {
                               selectedTimeSlot = i;
                               break;
@@ -1575,146 +1583,149 @@ class _BookingStep2ScreenState extends State<BookingStep2Screen> {
               ),
             ),
 
-          // Time slot list
+          // Time slot list (Chỉ hiển thị option Lấy gấp hỏa tốc ở ngày Hôm nay; các ngày khác không hiện option lấy gấp)
           Column(
-            children: List.generate(timeSlots.length, (index) {
-              final slot = timeSlots[index];
-              final isSelected = selectedTimeSlot == index;
-              final isSlotDisabled = _isSlotExpired(index, selectedDateIndex);
+            children: [
+              for (int index = (selectedDateIndex == 0 ? 0 : 1); index < timeSlots.length; index++)
+                Builder(builder: (context) {
+                  final slot = timeSlots[index];
+                  final isSelected = selectedTimeSlot == index;
+                  final isSlotDisabled = _isSlotExpired(index, selectedDateIndex);
 
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8.0),
-                child: InkWell(
-                  onTap: isSlotDisabled
-                      ? () => _showToast('Ca giặt này đã hết hạn nhận đồ. Vui lòng chọn ca tiếp theo hoặc ngày mai.')
-                      : () => setState(() => selectedTimeSlot = index),
-                  borderRadius: BorderRadius.circular(12),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: isSlotDisabled
-                          ? Colors.grey.shade100
-                          : isSelected
-                          ? primaryFixed.withOpacity(0.4)
-                          : surfaceLow,
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: InkWell(
+                      onTap: isSlotDisabled
+                          ? () => _showToast('Ca giặt này đã hết hạn nhận đồ. Vui lòng chọn ca tiếp theo hoặc ngày mai.')
+                          : () => setState(() => selectedTimeSlot = index),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isSlotDisabled
-                            ? Colors.transparent
-                            : isSelected
-                            ? primaryColor
-                            : Colors.transparent,
-                        width: isSelected ? 1.5 : 0,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
+                      child: Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isSlotDisabled
+                              ? Colors.grey.shade100
+                              : isSelected
+                              ? primaryFixed.withOpacity(0.4)
+                              : surfaceLow,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isSlotDisabled
+                                ? Colors.transparent
+                                : isSelected
+                                ? primaryColor
+                                : Colors.transparent,
+                            width: isSelected ? 1.5 : 0,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Radio<int>(
-                              value: index,
-                              groupValue: selectedTimeSlot,
-                              activeColor: primaryColor,
-                              onChanged: isSlotDisabled
-                                  ? null
-                                  : (val) {
-                                      if (val != null) {
-                                        setState(() => selectedTimeSlot = val);
-                                      }
-                                    },
-                            ),
-                            const SizedBox(width: 4),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            Row(
                               children: [
-                                Row(
+                                Radio<int>(
+                                  value: index,
+                                  groupValue: selectedTimeSlot,
+                                  activeColor: primaryColor,
+                                  onChanged: isSlotDisabled
+                                      ? null
+                                      : (val) {
+                                          if (val != null) {
+                                            setState(() => selectedTimeSlot = val);
+                                          }
+                                        },
+                                ),
+                                const SizedBox(width: 4),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          getSlotTitle(index),
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: isSlotDisabled
+                                                ? Colors.grey.shade400
+                                                : onSurface,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 6),
+                                        if (isSlotDisabled)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 1,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: Colors.grey.shade200,
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                            child: Text(
+                                              'Đã hết ca',
+                                              style: GoogleFonts.plusJakartaSans(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.grey.shade600,
+                                              ),
+                                            ),
+                                          )
+                                        else if (slot['badge'] != null)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 1,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: slot['badgeBg'] as Color,
+                                              borderRadius: BorderRadius.circular(10),
+                                            ),
+                                            child: Text(
+                                              slot['badge'] as String,
+                                              style: GoogleFonts.plusJakartaSans(
+                                                fontSize: 9,
+                                                fontWeight: FontWeight.bold,
+                                                color: slot['badgeText'] as Color,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
                                     Text(
-                                      getSlotTitle(index),
+                                      slot['sub'] as String,
                                       style: GoogleFonts.plusJakartaSans(
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
+                                        fontSize: 10,
                                         color: isSlotDisabled
                                             ? Colors.grey.shade400
-                                            : onSurface,
+                                            : onSurfaceVariant,
                                       ),
                                     ),
-                                    const SizedBox(width: 6),
-                                    if (isSlotDisabled)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 6,
-                                          vertical: 1,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: Colors.grey.shade200,
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        child: Text(
-                                          'Đã hết ca',
-                                          style: GoogleFonts.plusJakartaSans(
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.grey.shade600,
-                                          ),
-                                        ),
-                                      )
-                                    else if (slot['badge'] != null)
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 6,
-                                          vertical: 1,
-                                        ),
-                                        decoration: BoxDecoration(
-                                          color: slot['badgeBg'] as Color,
-                                          borderRadius: BorderRadius.circular(10),
-                                        ),
-                                        child: Text(
-                                          slot['badge'] as String,
-                                          style: GoogleFonts.plusJakartaSans(
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.bold,
-                                            color: slot['badgeText'] as Color,
-                                          ),
-                                        ),
-                                      ),
                                   ],
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  slot['sub'] as String,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 10,
-                                    color: isSlotDisabled
-                                        ? Colors.grey.shade400
-                                        : onSurfaceVariant,
-                                  ),
                                 ),
                               ],
                             ),
+                            Text(
+                              isSlotDisabled
+                                  ? 'Đã đóng'
+                                  : (slot['price'] as String),
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: isSlotDisabled
+                                    ? Colors.grey.shade400
+                                    : (slot['isPricePrimary'] == true)
+                                    ? primaryColor
+                                    : tertiaryColor,
+                              ),
+                            ),
                           ],
                         ),
-                        Text(
-                          isSlotDisabled
-                              ? 'Đã đóng'
-                              : (slot['price'] as String),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: isSlotDisabled
-                                ? Colors.grey.shade400
-                                : (slot['isPricePrimary'] == true)
-                                ? primaryColor
-                                : tertiaryColor,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
-              );
-            }),
+                  );
+                }),
+            ],
           ),
           const SizedBox(height: 8),
 
