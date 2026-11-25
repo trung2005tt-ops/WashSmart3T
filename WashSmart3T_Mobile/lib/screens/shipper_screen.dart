@@ -197,7 +197,8 @@ class _ShipperScreenState extends State<ShipperScreen>
   // Thống kê ca chạy & Đối soát tiền mặt cuối ca
   Map<String, dynamic>? _currentShiftData;
 
-  // Cấu hình tài khoản ngân hàng nhận tiền đồng bộ từ StoreConfig
+  // Cấu hình tài khoản ngân hàng & địa chỉ cửa hàng đồng bộ từ StoreConfig
+  String _storeAddress = 'WashSmart 3T • 140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú, TP. HCM';
   String _storeBankBin = '970422';
   String _storeBankName = 'MBBank (Ngân hàng Quân Đội)';
   String _storeBankAccountNo = '0818606505';
@@ -210,6 +211,10 @@ class _ShipperScreenState extends State<ShipperScreen>
         final cfg = jsonDecode(res.body);
         if (cfg is Map<String, dynamic> && mounted) {
           setState(() {
+            final storeAddr = (cfg['storeAddress'] ?? cfg['address'] ?? '').toString().trim();
+            if (storeAddr.isNotEmpty) {
+              _storeAddress = storeAddr.contains('WashSmart') ? storeAddr : 'WashSmart 3T • $storeAddr';
+            }
             final bin = cfg['bankBin']?.toString().trim() ?? '';
             final name = cfg['bankName']?.toString().trim() ?? '';
             final acc = cfg['bankAccountNo']?.toString().trim() ?? '';
@@ -222,6 +227,21 @@ class _ShipperScreenState extends State<ShipperScreen>
         }
       }
     } catch (_) {}
+  }
+
+  double _resolveOrderDistanceKm(Map<String, dynamic> o, String customerAddress) {
+    final rawDist = (o['distanceKm'] as num?)?.toDouble();
+    if (rawDist != null && rawDist > 0) return rawDist;
+    final addr = customerAddress.toLowerCase();
+    if (addr.contains('lê trọng tấn')) return 0.6;
+    if (addr.contains('nguyễn sỹ sách') || addr.contains('cộng hòa') || addr.contains('tân bình') || addr.contains('tây thạnh')) return 1.8;
+    if (addr.contains('tân phú') || addr.contains('âu cơ') || addr.contains('trường chinh')) return 2.4;
+    if (addr.contains('gò vấp') || addr.contains('bình tân') || addr.contains('quận 12')) return 4.5;
+    if (addr.contains('quận 1') || addr.contains('quận 3') || addr.contains('quận 10') || addr.contains('phú nhuận')) return 6.5;
+    final shipFee = (o['shippingFee'] as num?)?.toDouble() ?? 0.0;
+    if (shipFee >= 30000) return 5.0;
+    if (shipFee >= 20000) return 3.2;
+    return 2.0;
   }
 
   // Dữ liệu đơn từ API (không còn mock)
@@ -368,7 +388,14 @@ class _ShipperScreenState extends State<ShipperScreen>
                 '',
             pickupAddress: o['pickupAddress'] as String? ?? '',
             deliveryAddress: o['deliveryAddress'] as String? ?? '',
-            distanceKm: 0.0,
+            distanceKm: _resolveOrderDistanceKm(
+              o,
+              (type == OrderType.pickup
+                      ? (o['pickupAddress'] ?? o['deliveryAddress'])
+                      : (o['deliveryAddress'] ?? o['pickupAddress']))
+                  ?.toString() ??
+                  '',
+            ),
             type: type,
             status: shipperStatus,
             serviceDetails: serviceDetails.isNotEmpty
@@ -2198,7 +2225,11 @@ class _ShipperScreenState extends State<ShipperScreen>
                                     ),
                                   ),
                                   Text(
-                                    order.pickupAddress,
+                                    isPickup
+                                        ? (order.pickupAddress.isNotEmpty
+                                            ? order.pickupAddress
+                                            : order.deliveryAddress)
+                                        : _storeAddress,
                                     style: GoogleFonts.plusJakartaSans(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
@@ -2238,7 +2269,11 @@ class _ShipperScreenState extends State<ShipperScreen>
                                     ),
                                   ),
                                   Text(
-                                    order.deliveryAddress,
+                                    isPickup
+                                        ? _storeAddress
+                                        : (order.deliveryAddress.isNotEmpty
+                                            ? order.deliveryAddress
+                                            : order.pickupAddress),
                                     style: GoogleFonts.plusJakartaSans(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600,
