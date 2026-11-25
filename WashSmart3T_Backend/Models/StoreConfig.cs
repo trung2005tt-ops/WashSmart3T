@@ -37,5 +37,17 @@ public class StoreConfig
     public string SmsBrandName { get; set; } = "WASHSMART3T";
     public string SmsOtpTemplate { get; set; } = "Ma OTP xac thuc WashSmart 3T cua ban la {OTP}. Hieu luc trong 5 phut.";
 
+    // Quy tắc tự động đăng ký & thăng hạng thành viên
+    public bool LoyaltyAutoEnabled { get; set; } = true;
+    public int RegisterBonusPoints { get; set; } = 45;
+    public decimal SilverMinSpent { get; set; } = 500000;
+    public int SilverMinPoints { get; set; } = 500;
+    public decimal GoldMinSpent { get; set; } = 1000000;
+    public int GoldMinPoints { get; set; } = 1000;
+    public string GoldRewardCode { get; set; } = "3TTINHTUOM";
+    public decimal DiamondMinSpent { get; set; } = 2000000;
+    public int DiamondMinPoints { get; set; } = 2000;
+    public string DiamondRewardCode { get; set; } = "DIAMOND-VIP";
+
     public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
 }

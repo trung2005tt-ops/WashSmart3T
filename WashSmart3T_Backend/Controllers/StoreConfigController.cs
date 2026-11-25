@@ -119,6 +119,75 @@ public class StoreConfigController : ControllerBase
     }
 
     // ============================================================
+    // GET: api/StoreConfig/loyalty-rules
+    // Lấy thiết lập quy tắc tự động đăng ký & lên hạng
+    // ============================================================
+    [HttpGet("loyalty-rules")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> GetLoyaltyRules()
+    {
+        var config = await GetOrCreateConfigAsync();
+        return Ok(new
+        {
+            loyaltyAutoEnabled = config.LoyaltyAutoEnabled,
+            registerBonusPoints = config.RegisterBonusPoints,
+            silverMinSpent = config.SilverMinSpent,
+            silverMinPoints = config.SilverMinPoints,
+            goldMinSpent = config.GoldMinSpent,
+            goldMinPoints = config.GoldMinPoints,
+            goldRewardCode = config.GoldRewardCode,
+            diamondMinSpent = config.DiamondMinSpent,
+            diamondMinPoints = config.DiamondMinPoints,
+            diamondRewardCode = config.DiamondRewardCode,
+            updatedAt = config.UpdatedAt
+        });
+    }
+
+    // ============================================================
+    // PUT: api/StoreConfig/loyalty-rules
+    // Lưu thiết lập quy tắc tự động đăng ký & lên hạng
+    // ============================================================
+    [HttpPut("loyalty-rules")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> UpdateLoyaltyRules([FromBody] LoyaltyRulesRequest request)
+    {
+        if (request.RegisterBonusPoints < 0 || request.SilverMinSpent < 0 || request.GoldMinSpent < 0 || request.DiamondMinSpent < 0)
+        {
+            return BadRequest(new { message = "Giá trị điểm hoặc chi tiêu không được nhỏ hơn 0." });
+        }
+
+        var config = await GetOrCreateConfigAsync();
+        config.LoyaltyAutoEnabled = request.LoyaltyAutoEnabled;
+        config.RegisterBonusPoints = request.RegisterBonusPoints;
+        config.SilverMinSpent = request.SilverMinSpent;
+        config.SilverMinPoints = request.SilverMinPoints;
+        config.GoldMinSpent = request.GoldMinSpent;
+        config.GoldMinPoints = request.GoldMinPoints;
+        config.GoldRewardCode = string.IsNullOrWhiteSpace(request.GoldRewardCode) ? "3TTINHTUOM" : request.GoldRewardCode.Trim().ToUpperInvariant();
+        config.DiamondMinSpent = request.DiamondMinSpent;
+        config.DiamondMinPoints = request.DiamondMinPoints;
+        config.DiamondRewardCode = string.IsNullOrWhiteSpace(request.DiamondRewardCode) ? "DIAMOND-VIP" : request.DiamondRewardCode.Trim().ToUpperInvariant();
+        config.UpdatedAt = DateTime.UtcNow;
+
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            message = "Đã lưu thiết lập quy tắc tự động đăng ký & lên hạng thành công!",
+            loyaltyAutoEnabled = config.LoyaltyAutoEnabled,
+            registerBonusPoints = config.RegisterBonusPoints,
+            silverMinSpent = config.SilverMinSpent,
+            silverMinPoints = config.SilverMinPoints,
+            goldMinSpent = config.GoldMinSpent,
+            goldMinPoints = config.GoldMinPoints,
+            goldRewardCode = config.GoldRewardCode,
+            diamondMinSpent = config.DiamondMinSpent,
+            diamondMinPoints = config.DiamondMinPoints,
+            diamondRewardCode = config.DiamondRewardCode
+        });
+    }
+
+    // ============================================================
     // PUT: api/StoreConfig
     // Chỉ Quản trị viên (Admin) mới có quyền đổi địa chỉ và tài khoản nhận tiền VietQR.
     // Dữ liệu được lưu trực tiếp vào CSDL SQL Server, an toàn đa tiến trình/container.
@@ -305,4 +374,18 @@ public class StoreConfigController : ControllerBase
             config
         });
     }
+}
+
+public class LoyaltyRulesRequest
+{
+    public bool LoyaltyAutoEnabled { get; set; } = true;
+    public int RegisterBonusPoints { get; set; } = 45;
+    public decimal SilverMinSpent { get; set; } = 500000;
+    public int SilverMinPoints { get; set; } = 500;
+    public decimal GoldMinSpent { get; set; } = 1000000;
+    public int GoldMinPoints { get; set; } = 1000;
+    public string? GoldRewardCode { get; set; }
+    public decimal DiamondMinSpent { get; set; } = 2000000;
+    public int DiamondMinPoints { get; set; } = 2000;
+    public string? DiamondRewardCode { get; set; }
 }

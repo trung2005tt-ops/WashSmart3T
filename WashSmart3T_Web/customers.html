@@ -242,36 +242,82 @@
                 <span class="material-symbols-outlined text-green-600 text-lg">auto_awesome</span>
                 Quy Tắc Tự Động Đăng Ký & Lên Hạng
               </h2>
-              <span class="text-[10px] px-2 py-0.5 rounded bg-green-100 text-green-800 font-bold">Hoạt động</span>
+              <label class="inline-flex items-center gap-1.5 cursor-pointer select-none">
+                <input type="checkbox" id="rule-auto-enabled" checked class="sr-only peer">
+                <span class="text-[10px] px-2 py-0.5 rounded bg-gray-100 text-gray-600 peer-checked:bg-green-100 peer-checked:text-green-800 font-bold transition-colors" id="rule-auto-status-badge">Hoạt động</span>
+              </label>
             </div>
 
             <div class="space-y-3 text-xs">
-              <div class="p-3 rounded-lg bg-green-50 border border-green-200 space-y-1">
-                <div class="flex items-center justify-between">
+              <!-- Đăng ký App lần đầu -->
+              <div class="p-3 rounded-lg bg-green-50 border border-green-200 space-y-2">
+                <div class="flex items-center justify-between gap-2">
                   <span class="font-bold text-green-900 bg-green-200 px-2 py-0.5 rounded text-[10px]">Đăng ký App lần đầu</span>
-                  <span class="font-bold text-green-800">+45 xu WashPoints</span>
+                  <div class="flex items-center gap-1">
+                    <span class="font-bold text-green-800">+</span>
+                    <input type="number" id="rule-register-bonus" min="0" value="45" class="w-16 px-2 py-1 rounded border border-green-300 bg-white text-right font-bold text-green-900 text-xs focus:outline-none focus:ring-1 focus:ring-green-600">
+                    <span class="font-bold text-green-800 text-[11px]">xu</span>
+                  </div>
                 </div>
-                <p class="text-[11px] text-green-800">Tự động cộng 45 xu ngay khi khách hàng xác nhận SĐT trên App.</p>
+                <p class="text-[11px] text-green-800">Tự động cộng xu ngay khi khách hàng đăng ký & xác nhận OTP trên App.</p>
               </div>
 
-              <div class="p-3 rounded-lg bg-surface-container-low border border-surface-container space-y-1">
+              <!-- Lên VIP Silver -->
+              <div class="p-3 rounded-lg bg-surface-container-low border border-surface-container space-y-2">
                 <div class="flex items-center justify-between">
-                  <span class="font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded text-[10px]">Lên VIP Gold (&ge;5tr)</span>
-                  <span class="font-mono text-primary font-bold">GOLD-WELCOME</span>
+                  <span class="font-bold text-blue-800 bg-blue-100 px-2 py-0.5 rounded text-[10px]">Lên VIP Silver</span>
+                  <span class="text-[10px] text-secondary font-medium">Tự động khi đạt ngưỡng</span>
                 </div>
-                <p class="text-[11px] text-secondary">Tự động đẩy Voucher giảm 20% vào Ví App khách hàng.</p>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-[10px] text-secondary mb-0.5">Chi tiêu từ (đ)</label>
+                    <input type="number" id="rule-silver-spent" min="0" step="50000" value="500000" class="w-full px-2 py-1 rounded border border-surface-container bg-white font-semibold text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+                  </div>
+                  <div>
+                    <label class="block text-[10px] text-secondary mb-0.5">Hoặc Xu từ</label>
+                    <input type="number" id="rule-silver-points" min="0" step="50" value="500" class="w-full px-2 py-1 rounded border border-surface-container bg-white font-semibold text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+                  </div>
+                </div>
               </div>
 
-              <div class="p-3 rounded-lg bg-surface-container-low border border-surface-container space-y-1">
-                <div class="flex items-center justify-between">
-                  <span class="font-bold text-white bg-primary px-2 py-0.5 rounded text-[10px]">Lên VIP Diamond (&ge;15tr)</span>
-                  <span class="font-mono text-primary font-bold">DIAMOND-VIP</span>
+              <!-- Lên VIP Gold -->
+              <div class="p-3 rounded-lg bg-surface-container-low border border-surface-container space-y-2">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="font-bold text-amber-800 bg-amber-100 px-2 py-0.5 rounded text-[10px]">Lên VIP Gold</span>
+                  <input type="text" id="rule-gold-code" value="3TTINHTUOM" placeholder="Mã ưu đãi" class="w-28 px-2 py-0.5 rounded border border-surface-container bg-white font-mono text-primary font-bold text-[11px] text-right uppercase focus:outline-none focus:ring-1 focus:ring-primary">
                 </div>
-                <p class="text-[11px] text-secondary">Tự động tặng 01 lần Giặt Hấp Áo Vest Miễn Phí.</p>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-[10px] text-secondary mb-0.5">Chi tiêu từ (đ)</label>
+                    <input type="number" id="rule-gold-spent" min="0" step="50000" value="1000000" class="w-full px-2 py-1 rounded border border-surface-container bg-white font-semibold text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+                  </div>
+                  <div>
+                    <label class="block text-[10px] text-secondary mb-0.5">Hoặc Xu từ</label>
+                    <input type="number" id="rule-gold-points" min="0" step="50" value="1000" class="w-full px-2 py-1 rounded border border-surface-container bg-white font-semibold text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+                  </div>
+                </div>
+              </div>
+
+              <!-- Lên VIP Diamond -->
+              <div class="p-3 rounded-lg bg-surface-container-low border border-surface-container space-y-2">
+                <div class="flex items-center justify-between gap-2">
+                  <span class="font-bold text-white bg-primary px-2 py-0.5 rounded text-[10px]">Lên VIP Diamond</span>
+                  <input type="text" id="rule-diamond-code" value="DIAMOND-VIP" placeholder="Mã ưu đãi" class="w-28 px-2 py-0.5 rounded border border-surface-container bg-white font-mono text-primary font-bold text-[11px] text-right uppercase focus:outline-none focus:ring-1 focus:ring-primary">
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <div>
+                    <label class="block text-[10px] text-secondary mb-0.5">Chi tiêu từ (đ)</label>
+                    <input type="number" id="rule-diamond-spent" min="0" step="100000" value="2000000" class="w-full px-2 py-1 rounded border border-surface-container bg-white font-semibold text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+                  </div>
+                  <div>
+                    <label class="block text-[10px] text-secondary mb-0.5">Hoặc Xu từ</label>
+                    <input type="number" id="rule-diamond-points" min="0" step="100" value="2000" class="w-full px-2 py-1 rounded border border-surface-container bg-white font-semibold text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+                  </div>
+                </div>
               </div>
             </div>
 
-            <button onclick="showToast('Đã lưu cấu hình tự động thưởng xu & voucher.')" class="w-full py-2 rounded-lg bg-surface-container text-on-surface hover:bg-surface-container-high text-xs font-medium transition-colors">
+            <button id="btn-save-loyalty-rules" type="button" onclick="saveLoyaltyRules()" class="w-full py-2.5 rounded-lg bg-primary text-white hover:bg-primary-container text-xs font-bold transition-colors shadow-sm">
               Lưu thiết lập quy tắc
             </button>
           </div>
@@ -862,6 +908,69 @@
       modal.classList.remove('hidden');
       modal.classList.add('flex');
     }
+
+    async function loadLoyaltyRules() {
+      try {
+        const rules = await Api.get('/StoreConfig/loyalty-rules');
+        if (!rules) return;
+        const chk = document.getElementById('rule-auto-enabled');
+        const badge = document.getElementById('rule-auto-status-badge');
+        if (chk) {
+          chk.checked = rules.loyaltyAutoEnabled !== false;
+          if (badge) badge.textContent = chk.checked ? 'Hoạt động' : 'Tạm tắt';
+        }
+        const setVal = (id, val) => { const el = document.getElementById(id); if (el && val !== undefined && val !== null) el.value = val; };
+        setVal('rule-register-bonus', rules.registerBonusPoints);
+        setVal('rule-silver-spent', rules.silverMinSpent);
+        setVal('rule-silver-points', rules.silverMinPoints);
+        setVal('rule-gold-spent', rules.goldMinSpent);
+        setVal('rule-gold-points', rules.goldMinPoints);
+        setVal('rule-gold-code', rules.goldRewardCode);
+        setVal('rule-diamond-spent', rules.diamondMinSpent);
+        setVal('rule-diamond-points', rules.diamondMinPoints);
+        setVal('rule-diamond-code', rules.diamondRewardCode);
+      } catch (err) {
+        console.warn('Không tải được quy tắc loyalty:', err);
+      }
+    }
+
+    document.getElementById('rule-auto-enabled')?.addEventListener('change', (e) => {
+      const badge = document.getElementById('rule-auto-status-badge');
+      if (badge) badge.textContent = e.target.checked ? 'Hoạt động' : 'Tạm tắt';
+    });
+
+    async function saveLoyaltyRules() {
+      const btn = document.getElementById('btn-save-loyalty-rules');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Đang lưu...';
+      }
+      try {
+        const payload = {
+          loyaltyAutoEnabled: !!document.getElementById('rule-auto-enabled')?.checked,
+          registerBonusPoints: Number(document.getElementById('rule-register-bonus')?.value || 0),
+          silverMinSpent: Number(document.getElementById('rule-silver-spent')?.value || 0),
+          silverMinPoints: Number(document.getElementById('rule-silver-points')?.value || 0),
+          goldMinSpent: Number(document.getElementById('rule-gold-spent')?.value || 0),
+          goldMinPoints: Number(document.getElementById('rule-gold-points')?.value || 0),
+          goldRewardCode: (document.getElementById('rule-gold-code')?.value || '').trim().toUpperCase(),
+          diamondMinSpent: Number(document.getElementById('rule-diamond-spent')?.value || 0),
+          diamondMinPoints: Number(document.getElementById('rule-diamond-points')?.value || 0),
+          diamondRewardCode: (document.getElementById('rule-diamond-code')?.value || '').trim().toUpperCase()
+        };
+        const res = await Api.put('/StoreConfig/loyalty-rules', payload);
+        showToast(`✓ ${res.message || 'Đã lưu thiết lập quy tắc tự động thành công!'}`);
+      } catch (err) {
+        showToast('Lỗi lưu quy tắc: ' + (err.message || 'Không thể lưu'), true);
+      } finally {
+        if (btn) {
+          btn.disabled = false;
+          btn.textContent = 'Lưu thiết lập quy tắc';
+        }
+      }
+    }
+
+    loadLoyaltyRules();
   </script>
 </body>
 

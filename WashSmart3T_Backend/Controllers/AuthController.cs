@@ -224,6 +224,11 @@ public class AuthController : ControllerBase
             });
         }
 
+        var storeCfg = await GetStoreConfigAsync();
+        int initialBonus = (storeCfg.LoyaltyAutoEnabled && storeCfg.RegisterBonusPoints > 0)
+            ? storeCfg.RegisterBonusPoints
+            : 0;
+
         // 4. Tạo tài khoản với mật khẩu hash BCrypt an toàn
         var user = new User
         {
@@ -232,6 +237,8 @@ public class AuthController : ControllerBase
             Email = request.Email.Trim(),
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password),
             RoleId = customerRole.Id,
+            LoyaltyPoints = initialBonus,
+            MembershipTier = LoyaltyService.CalculateTier(0, initialBonus),
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };

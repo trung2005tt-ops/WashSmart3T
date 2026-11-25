@@ -634,11 +634,31 @@ namespace WashSmart.API.Migrations
                     b.Property<decimal>("BaseShippingFee")
                         .HasColumnType("decimal(18,2)");
 
+                    b.Property<int>("DiamondMinPoints")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("DiamondMinSpent")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("DiamondRewardCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
                     b.Property<decimal>("ExpressExtraFee")
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<decimal>("FreeShipMinAmount")
                         .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("GoldMinPoints")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("GoldMinSpent")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("GoldRewardCode")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Hotline")
                         .IsRequired()
@@ -650,9 +670,21 @@ namespace WashSmart.API.Migrations
                     b.Property<double>("Longitude")
                         .HasColumnType("float");
 
+                    b.Property<bool>("LoyaltyAutoEnabled")
+                        .HasColumnType("bit");
+
                     b.Property<string>("OpenHours")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<int>("RegisterBonusPoints")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SilverMinPoints")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("SilverMinSpent")
+                        .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("SmsApiKey")
                         .IsRequired()
