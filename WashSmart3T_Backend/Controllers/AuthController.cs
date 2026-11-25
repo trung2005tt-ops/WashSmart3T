@@ -806,6 +806,7 @@ public class AuthController : ControllerBase
         }
 
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        user.PlainPassword = newPassword;
         await _context.SaveChangesAsync();
 
         return Ok(new
