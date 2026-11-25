@@ -246,6 +246,32 @@ public class AuthController : ControllerBase
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
+        // Tự động phát hành Voucher Chào Bạn Mới 50.000đ vào ví Ưu đãi của khách vừa đăng ký
+        if (storeCfg.LoyaltyAutoEnabled)
+        {
+            var welcomeCode = $"3TNEW-{user.Id}";
+            if (!await _context.Promotions.AnyAsync(p => p.Code == welcomeCode))
+            {
+                _context.Promotions.Add(new Promotion
+                {
+                    Code = welcomeCode,
+                    Title = "Quà Tặng Thành Viên Mới 3T - Giảm 50.000đ",
+                    Description = $"Ưu đãi chào bạn mới dành riêng cho {user.FullName} ({user.Phone}). Giảm 50.000đ cho đơn đầu tiên từ 100.000đ.",
+                    DiscountType = "FixedAmount",
+                    DiscountValue = 50000,
+                    MinOrderAmount = 100000,
+                    MaxDiscountAmount = 50000,
+                    StartDate = DateTime.UtcNow.AddMinutes(-1),
+                    EndDate = DateTime.UtcNow.AddMonths(3),
+                    UsageLimit = 1,
+                    UsedCount = 0,
+                    IsActive = true,
+                    CreatedAt = DateTime.UtcNow
+                });
+                await _context.SaveChangesAsync();
+            }
+        }
+
         // Đồng bộ toàn bộ đơn hàng POS đã tạo trước đó gắn với số điện thoại này vào tài khoản mới
         var unlinkedOrders = await _context.Orders
             .Where(o => o.ContactPhone == phone && o.CustomerId != user.Id)

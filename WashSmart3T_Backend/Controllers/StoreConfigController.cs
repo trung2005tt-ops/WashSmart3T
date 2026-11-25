@@ -33,6 +33,8 @@ public class StorePublicConfigDto
     public string BankBin { get; set; } = string.Empty;
     public string BankAccountNo { get; set; } = string.Empty;
     public string BankAccountHolder { get; set; } = string.Empty;
+    public bool LoyaltyAutoEnabled { get; set; } = true;
+    public int RegisterBonusPoints { get; set; } = 45;
     public DateTime UpdatedAt { get; set; }
 }
 
@@ -100,6 +102,8 @@ public class StoreConfigController : ControllerBase
             BankBin = config.BankBin,
             BankAccountNo = config.BankAccountNo,
             BankAccountHolder = config.BankAccountHolder,
+            LoyaltyAutoEnabled = config.LoyaltyAutoEnabled,
+            RegisterBonusPoints = config.RegisterBonusPoints,
             UpdatedAt = config.UpdatedAt
         };
 

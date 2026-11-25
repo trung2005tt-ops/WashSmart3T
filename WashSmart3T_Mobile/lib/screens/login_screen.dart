@@ -1,5 +1,7 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
 import 'home_screen.dart';
@@ -29,11 +31,27 @@ class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _passwordController = TextEditingController();
 
   bool _isLoading = false;
+  int _registerBonusPoints = 45;
 
   @override
   void initState() {
     super.initState();
     _passwordController.clear();
+    _loadWelcomeConfig();
+  }
+
+  Future<void> _loadWelcomeConfig() async {
+    try {
+      final res = await http.get(Uri.parse('${ApiService.baseUrl}/StoreConfig'));
+      if (res.statusCode == 200) {
+        final data = jsonDecode(res.body);
+        if (mounted && data['registerBonusPoints'] is num) {
+          setState(() {
+            _registerBonusPoints = (data['registerBonusPoints'] as num).toInt();
+          });
+        }
+      }
+    } catch (_) {}
   }
 
   @override
@@ -396,7 +414,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            'Chưa có tài khoản? Nhận ngay 100 WashPoints và lượt ủi thơm đầu tiên miễn phí.',
+                            'Chưa có tài khoản? Đăng ký ngay để nhận $_registerBonusPoints WashPoints và Voucher 50.000đ trong ví Ưu đãi.',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 12,
                               color: const Color(0xFF5B4041),

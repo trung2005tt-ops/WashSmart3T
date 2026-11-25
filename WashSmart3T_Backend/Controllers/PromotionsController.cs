@@ -98,11 +98,11 @@ public class PromotionsController : ControllerBase
             var titleLower = (p.Title ?? string.Empty).ToLowerInvariant();
             var descLower = (p.Description ?? string.Empty).ToLowerInvariant();
 
-            bool isCompensation = descLower.Contains("đền bù") || titleLower.Contains("đền bù");
+            bool isPersonalOnly = descLower.Contains("đền bù") || titleLower.Contains("đền bù") || descLower.Contains("dành riêng cho") || codeUpper.StartsWith("3TNEW-");
             bool isPersonal = !string.IsNullOrEmpty(resolvedPhone) && (p.Description.Contains(resolvedPhone) || (!string.IsNullOrEmpty(customerName) && p.Title.Contains(customerName)));
 
-            // Nếu là voucher đền bù cá nhân của khách khác thì không hiển thị
-            if (isCompensation && !isPersonal)
+            // Nếu là voucher cá nhân (đền bù / tặng riêng thành viên mới) của khách khác thì không hiển thị
+            if (isPersonalOnly && !isPersonal)
             {
                 continue;
             }
@@ -152,7 +152,7 @@ public class PromotionsController : ControllerBase
                 maxDiscountAmount = p.MaxDiscountAmount,
                 requiredTier,
                 tierLabel,
-                badgeText = isPersonal ? "3T CARE ĐỀN BÙ" : (requiredTier == "Bronze" ? "TOÀN HỆ THỐNG" : tierLabel.ToUpperInvariant()),
+                badgeText = isPersonal ? (descLower.Contains("đền bù") ? "3T CARE ĐỀN BÙ" : "QUÀ THÀNH VIÊN MỚI") : (requiredTier == "Bronze" ? "TOÀN HỆ THỐNG" : tierLabel.ToUpperInvariant()),
                 category = "Toàn hệ thống",
                 expiry = p.EndDate.ToString("dd/MM/yyyy"),
                 isAvailable,
