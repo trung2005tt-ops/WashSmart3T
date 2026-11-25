@@ -289,10 +289,6 @@ class _OrdersListScreenState extends State<OrdersListScreen>
             else
               ..._filteredOrders.map(_buildOrderCard),
 
-            const SizedBox(height: 16),
-
-            // 6. BANNER TỔNG ĐÀI HỖ TRỢ & CSKH 24/7
-            _buildSupportBanner(),
             const SizedBox(height: 30), // Đã thu gọn khoảng trống bên dưới
           ],
         ),
@@ -2524,100 +2520,6 @@ class _OrdersListScreenState extends State<OrdersListScreen>
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildSupportBanner() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: surfaceLow,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: primaryFixed,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.support_agent, color: primaryColor, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Cam kết dịch vụ & Khiếu nại 3T',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: onSurface,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Cần hỗ trợ về đồ giặt hoặc khiếu nại bồi thường? Liên hệ Hotline 3T hoặc gửi yêu cầu giải quyết trong 24h.',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11,
-                    color: outlineColor,
-                    height: 1.3,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    InkWell(
-                      onTap: () => _showToast('Đang gọi Tổng đài 1900 3388...'),
-                      child: Row(
-                        children: [
-                          Icon(Icons.call, size: 14, color: primaryColor),
-                          const SizedBox(width: 4),
-                          Text(
-                            '1900 3388',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: primaryColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    InkWell(
-                      onTap: () =>
-                          _showToast('Đang kết nối tới tư vấn viên CSKH...'),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.chat_bubble_outline,
-                            size: 14,
-                            color: tertiaryColor,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Chat CSKH 24/7',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: tertiaryColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
