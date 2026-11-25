@@ -31,15 +31,6 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
   int _loyaltyPoints = 1450;
   List<Map<String, dynamic>> _vouchers = [];
 
-  int selectedCategoryIndex = 0;
-  final List<String> categories = [
-    'Tất cả',
-    'Giặt Sấy & Ủi',
-    'Freeship Gom & Giao',
-    'Giày & Đồ hiệu',
-    'Đặc quyền Đổi Xu',
-  ];
-
   final TextEditingController _promoInputController = TextEditingController();
   bool _isVerifying = false;
 
@@ -121,18 +112,6 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
   void dispose() {
     _promoInputController.dispose();
     super.dispose();
-  }
-
-  int _countCategory(String cat) {
-    if (_vouchers.isEmpty) return 0;
-    return _vouchers.where((v) => (v['category'] ?? '') == cat).length;
-  }
-
-  List<Map<String, dynamic>> _getFilteredVouchers() {
-    if (_vouchers.isEmpty) return [];
-    if (selectedCategoryIndex == 0) return _vouchers;
-    final catName = categories[selectedCategoryIndex];
-    return _vouchers.where((v) => (v['category'] ?? '') == catName).toList();
   }
 
   String _formatTierTitle(String tier) {
@@ -328,7 +307,8 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final filteredVouchers = _getFilteredVouchers();
+    final eligibleVouchers = _vouchers.where((v) => v['isAvailable'] == true).toList();
+    final ineligibleVouchers = _vouchers.where((v) => v['isAvailable'] != true).toList();
 
     return Scaffold(
       backgroundColor: bgSurface,
@@ -403,18 +383,14 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
                   _buildPromoCodeInputBar(),
                   const SizedBox(height: 16),
 
-                  // 3. Thanh Tab Phân loại
-                  _buildCategoryTabs(),
-                  const SizedBox(height: 16),
-
-                  // 4. Tiêu đề Danh sách Ưu đãi
+                  // 3. Tiêu đề Danh sách Voucher Đủ Điều Kiện
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
                         children: [
                           Text(
-                            'Ưu đãi sẵn sàng dùng',
+                            'Voucher bạn đủ điều kiện (${eligibleVouchers.length})',
                             style: GoogleFonts.plusJakartaSans(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -425,8 +401,8 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
                           Container(
                             width: 8,
                             height: 8,
-                            decoration: BoxDecoration(
-                              color: primaryColor,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF15803D),
                               shape: BoxShape.circle,
                             ),
                           ),
@@ -440,8 +416,7 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
                   ),
                   const SizedBox(height: 12),
 
-                  // Danh sách Coupon Voucher Động theo Hạng Thành Viên
-                  if (filteredVouchers.isEmpty)
+                  if (eligibleVouchers.isEmpty)
                     Container(
                       padding: const EdgeInsets.all(24),
                       alignment: Alignment.center,
@@ -450,20 +425,19 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       child: Text(
-                        'Không có voucher nào trong danh mục này.',
+                        'Hiện chưa có voucher nào đủ điều kiện cho hạng ${_formatTierTitle(_membershipTier)}.',
                         style: GoogleFonts.plusJakartaSans(fontSize: 13, color: outlineColor),
                       ),
                     )
                   else
-                    ...filteredVouchers.map((v) {
+                    ...eligibleVouchers.map((v) {
                       final code = (v['code'] ?? '').toString();
                       final title = (v['title'] ?? '').toString();
                       final desc = (v['description'] ?? '').toString();
                       final discountTag = (v['discountTag'] ?? 'GIẢM').toString();
                       final discountValue = (v['discountValue'] ?? '20k').toString();
-                      final badgeText = (v['badgeText'] ?? '3T CARE').toString();
+                      final badgeText = (v['badgeText'] ?? 'TOÀN HỆ THỐNG').toString();
                       final expiry = (v['expiry'] ?? '31/12/2026').toString();
-                      final isAvail = v['isAvailable'] == true;
 
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12.0),
@@ -472,21 +446,76 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
                           discountTag: discountTag,
                           discountValue: discountValue,
                           badgeText: badgeText,
-                          badgeColor: isAvail ? const Color(0xFFFFDADB) : surfaceHigh,
-                          badgeTextColor: isAvail ? const Color(0xFF40000D) : outlineColor,
+                          badgeColor: const Color(0xFFFFDADB),
+                          badgeTextColor: const Color(0xFF40000D),
                           title: title,
-                          subBadge: isAvail ? 'Đặc quyền' : 'Chưa mở khóa',
-                          subBadgeBg: isAvail ? surfaceLow : surfaceHigh,
-                          subBadgeTextColor: isAvail ? primaryColor : outlineColor,
+                          subBadge: '✓ Đủ điều kiện',
+                          subBadgeBg: const Color(0xFFDCFCE7),
+                          subBadgeTextColor: const Color(0xFF15803D),
                           desc: desc,
                           code: code,
                           expiry: expiry,
-                          btnText: isAvail ? 'Dùng ngay' : 'Xem điều kiện',
-                          isPrimaryBtn: isAvail,
-                          accentColor: isAvail ? primaryColor : outlineColor,
+                          btnText: 'Dùng ngay',
+                          isPrimaryBtn: true,
+                          accentColor: primaryColor,
                         ),
                       );
                     }),
+
+                  if (ineligibleVouchers.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Icon(Icons.lock_outline, size: 18, color: outlineColor),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Voucher chưa đủ điều kiện (${ineligibleVouchers.length})',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: outlineColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ...ineligibleVouchers.map((v) {
+                      final code = (v['code'] ?? '').toString();
+                      final title = (v['title'] ?? '').toString();
+                      final rawDesc = (v['description'] ?? '').toString();
+                      final reason = (v['ineligibleReason'] ?? '').toString();
+                      final desc = reason.isNotEmpty ? '$reason\n$rawDesc' : rawDesc;
+                      final discountTag = (v['discountTag'] ?? 'GIẢM').toString();
+                      final discountValue = (v['discountValue'] ?? '20k').toString();
+                      final badgeText = (v['badgeText'] ?? 'CHƯA MỞ KHÓA').toString();
+                      final expiry = (v['expiry'] ?? '31/12/2026').toString();
+
+                      return Opacity(
+                        opacity: 0.72,
+                        child: Padding(
+                          padding: const EdgeInsets.only(bottom: 12.0),
+                          child: _buildVoucherCoupon(
+                            icon: Icons.lock_outline,
+                            discountTag: discountTag,
+                            discountValue: discountValue,
+                            badgeText: badgeText,
+                            badgeColor: surfaceHigh,
+                            badgeTextColor: outlineColor,
+                            title: title,
+                            subBadge: 'Chưa đủ điều kiện',
+                            subBadgeBg: const Color(0xFFF3E8E8),
+                            subBadgeTextColor: const Color(0xFF93000A),
+                            desc: desc,
+                            code: code,
+                            expiry: expiry,
+                            btnText: 'Xem điều kiện',
+                            isPrimaryBtn: false,
+                            accentColor: outlineColor,
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
 
                   const SizedBox(height: 20),
 
@@ -799,50 +828,6 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
                   ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildCategoryTabs() {
-    return SizedBox(
-      height: 32,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: categories.length,
-        itemBuilder: (context, index) {
-          bool isSelected = selectedCategoryIndex == index;
-          String catLabel = categories[index];
-          if (index == 0) {
-            catLabel = 'Tất cả (${_vouchers.length})';
-          } else {
-            int count = _countCategory(categories[index]);
-            catLabel = '${categories[index]} ($count)';
-          }
-
-          return Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: InkWell(
-              onTap: () => setState(() => selectedCategoryIndex = index),
-              borderRadius: BorderRadius.circular(16),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isSelected ? primaryColor : surfaceHigh,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Text(
-                  catLabel,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    color: isSelected ? Colors.white : onSurface,
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
       ),
     );
   }

@@ -65,162 +65,90 @@ public class PromotionsController : ControllerBase
             }
         }
 
-        var allVouchers = new List<object>
-        {
-            new {
-                code = "3TTINHTUOM",
-                title = "Giặt Sấy Tinh Tươm Lấy Ngay",
-                description = "Giảm ngay 20.000đ cho đơn dịch vụ Giặt sấy gấp thơm tho chỉ từ 120.000đ.",
-                discountTag = "GIẢM",
-                discountValue = "20k",
-                discountAmount = 20000,
-                minOrderAmount = 120000,
-                requiredTier = "Gold",
-                tierLabel = "Hạng Vàng",
-                badgeText = "3T CARE",
-                category = "Giặt Sấy & Ủi",
-                expiry = "30/10/2026",
-                isAvailable = tier == "Gold" || tier == "Diamond"
-            },
-            new {
-                code = "FREESHIP3T",
-                title = "Freeship Gom & Giao 2 Chiều",
-                description = "Miễn phí giao nhận tận sảnh chung cư hoặc nhà riêng (tối đa 30.000đ).",
-                discountTag = "SHIP",
-                discountValue = "0 Đ",
-                discountAmount = 30000,
-                minOrderAmount = 0,
-                requiredTier = "Gold",
-                tierLabel = "VIP Vàng",
-                badgeText = "VIP VÀNG",
-                category = "Freeship Gom & Giao",
-                expiry = "05/11/2026",
-                isAvailable = tier == "Gold" || tier == "Diamond"
-            },
-            new {
-                code = "SNEAKERNEW",
-                title = "Vệ Sinh Sneaker & Khử Trùng UV",
-                description = "Giặt hấp giày thể thao, phủ nano chống bám bẩn kèm khử khuẩn sâu. Đơn từ 150k.",
-                discountTag = "GIẢM",
-                discountValue = "30k",
-                discountAmount = 30000,
-                minOrderAmount = 150000,
-                requiredTier = "Gold",
-                tierLabel = "Hạng Vàng",
-                badgeText = "UV CARE",
-                category = "Giày & Đồ hiệu",
-                expiry = "15/11/2026",
-                isAvailable = tier == "Gold" || tier == "Diamond"
-            },
-            new {
-                code = "GIATKHOVIP",
-                title = "Giặt Khô Hấp Vest & Đầm Lụa",
-                description = "Công nghệ giặt hydrocacbon dịu nhẹ giữ form áo vest, suit và lụa tơ tằm.",
-                discountTag = "GIẢM",
-                discountValue = "15%",
-                discountAmount = 50000,
-                minOrderAmount = 150000,
-                requiredTier = "Gold",
-                tierLabel = "Hạng Vàng",
-                badgeText = "PREMIUM",
-                category = "Giày & Đồ hiệu",
-                expiry = "20/11/2026",
-                isAvailable = tier == "Gold" || tier == "Diamond"
-            },
-            new {
-                code = "DIAMOND-VIP",
-                title = "Đặc Quyền Thượng Hạng Diamond",
-                description = "Giảm trực tiếp 50.000đ trên tổng hóa đơn và ưu tiên xử lý trong lồng giặt VIP.",
-                discountTag = "GIẢM",
-                discountValue = "50k",
-                discountAmount = 50000,
-                minOrderAmount = 200000,
-                requiredTier = "Diamond",
-                tierLabel = "Kim Cương",
-                badgeText = "DIAMOND",
-                category = "Đặc quyền Đổi Xu",
-                expiry = "31/12/2026",
-                isAvailable = tier == "Diamond"
-            },
-            new {
-                code = "FREESHIPVIP",
-                title = "Freeship Không Giới Hạn Kim Cương",
-                description = "Miễn phí gom và giao tận cửa cho tất cả đơn hàng, không phụ thuộc khoảng cách.",
-                discountTag = "SHIP",
-                discountValue = "0 Đ",
-                discountAmount = 50000,
-                minOrderAmount = 0,
-                requiredTier = "Diamond",
-                tierLabel = "Kim Cương",
-                badgeText = "DIAMOND",
-                category = "Freeship Gom & Giao",
-                expiry = "31/12/2026",
-                isAvailable = tier == "Diamond"
-            },
-            new {
-                code = "3TBAC",
-                title = "Ưu Đãi Thành Viên Hạng Bạc",
-                description = "Giảm ngay 15.000đ cho đơn giặt sấy từ 100.000đ.",
-                discountTag = "GIẢM",
-                discountValue = "15k",
-                discountAmount = 15000,
-                minOrderAmount = 100000,
-                requiredTier = "Silver",
-                tierLabel = "Hạng Bạc",
-                badgeText = "SILVER",
-                category = "Giặt Sấy & Ủi",
-                expiry = "30/11/2026",
-                isAvailable = tier == "Silver" || tier == "Gold" || tier == "Diamond"
-            },
-            new {
-                code = "CHAOBANMOI",
-                title = "Chào Bạn Mới 3T",
-                description = "Giảm 20% (tối đa 50.000đ) cho khách hàng mới trải nghiệm dịch vụ.",
-                discountTag = "GIẢM",
-                discountValue = "20%",
-                discountAmount = 50000,
-                minOrderAmount = 50000,
-                requiredTier = "Bronze",
-                tierLabel = "Thành viên",
-                badgeText = "WELCOME",
-                category = "Giặt Sấy & Ủi",
-                expiry = "31/12/2026",
-                isAvailable = true
-            }
-        };
-
-        // Nạp thêm các voucher thực tế trong DB mà khách hàng sở hữu hoặc voucher chung còn hiệu lực
+        // Nạp danh sách các voucher THẬT đang phát hành & còn hiệu lực trong CSDL
         var now = DateTime.UtcNow;
         var dbPromos = await _context.Promotions
+            .AsNoTracking()
             .Where(p => p.IsActive && p.StartDate <= now && p.EndDate >= now && p.UsedCount < p.UsageLimit)
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
 
+        var eligibleList = new List<object>();
+        var ineligibleList = new List<object>();
+
         foreach (var p in dbPromos)
         {
-            bool isPersonal = !string.IsNullOrEmpty(phone) && (p.Description.Contains(phone) || p.Title.Contains(customerName));
-            bool isGeneral = !p.Description.Contains("Đền Bù") && !p.Title.Contains("Đền Bù") && !p.Description.Contains("đền bù");
+            var codeUpper = (p.Code ?? string.Empty).ToUpperInvariant();
+            var titleLower = (p.Title ?? string.Empty).ToLowerInvariant();
+            var descLower = (p.Description ?? string.Empty).ToLowerInvariant();
 
-            if (isPersonal || isGeneral)
+            bool isCompensation = descLower.Contains("đền bù") || titleLower.Contains("đền bù");
+            bool isPersonal = !string.IsNullOrEmpty(phone) && (p.Description.Contains(phone) || (!string.IsNullOrEmpty(customerName) && p.Title.Contains(customerName)));
+
+            // Nếu là voucher đền bù cá nhân của khách khác thì không hiển thị
+            if (isCompensation && !isPersonal)
             {
-                allVouchers.Insert(0, new
-                {
-                    code = p.Code,
-                    title = p.Title,
-                    description = p.Description,
-                    discountTag = p.DiscountType == "Percentage" ? "GIẢM" : "VOUCHER",
-                    discountValue = p.DiscountType == "Percentage" ? $"{p.DiscountValue}%" : $"{p.DiscountValue / 1000:N0}k",
-                    discountAmount = p.DiscountValue,
-                    minOrderAmount = p.MinOrderAmount,
-                    requiredTier = "Bronze",
-                    tierLabel = isPersonal ? "Tặng Riêng Bạn" : "Toàn hệ thống",
-                    badgeText = isPersonal ? "3T CARE ĐỀN BÙ" : "ƯU ĐÃI",
-                    category = "Voucher & Đền bù 3T Care",
-                    expiry = p.EndDate.ToString("dd/MM/yyyy"),
-                    isAvailable = true
-                });
+                continue;
             }
+
+            // Xác định điều kiện hạng thành viên thực tế
+            string requiredTier = "Bronze";
+            string tierLabel = isPersonal ? "Tặng Riêng Bạn" : "Mọi hạng thành viên";
+            bool isAvailable = true;
+
+            if (codeUpper.Contains("DIAMOND") || titleLower.Contains("kim cương") || titleLower.Contains("diamond") || descLower.Contains("kim cương"))
+            {
+                requiredTier = "Diamond";
+                tierLabel = "Hạng Kim Cương";
+                isAvailable = string.Equals(tier, "Diamond", StringComparison.OrdinalIgnoreCase);
+            }
+            else if (codeUpper == "3TTINHTUOM" || codeUpper == "FREESHIP3T" || codeUpper == "SNEAKERNEW" || codeUpper == "GIATKHOVIP" ||
+                     titleLower.Contains("hạng vàng") || titleLower.Contains("vip vàng") || descLower.Contains("hạng vàng"))
+            {
+                requiredTier = "Gold";
+                tierLabel = "Hạng Vàng";
+                isAvailable = string.Equals(tier, "Gold", StringComparison.OrdinalIgnoreCase) ||
+                              string.Equals(tier, "Diamond", StringComparison.OrdinalIgnoreCase);
+            }
+            else if (codeUpper == "3TBAC" || titleLower.Contains("hạng bạc") || descLower.Contains("hạng bạc"))
+            {
+                requiredTier = "Silver";
+                tierLabel = "Hạng Bạc";
+                isAvailable = string.Equals(tier, "Silver", StringComparison.OrdinalIgnoreCase) ||
+                              string.Equals(tier, "Gold", StringComparison.OrdinalIgnoreCase) ||
+                              string.Equals(tier, "Diamond", StringComparison.OrdinalIgnoreCase);
+            }
+
+            string ineligibleReason = isAvailable
+                ? string.Empty
+                : $"Yêu cầu {tierLabel} trở lên (Hạng hiện tại: {tier})";
+
+            var item = new
+            {
+                code = p.Code,
+                title = p.Title,
+                description = p.Description,
+                discountTag = p.DiscountType == "Percentage" ? "GIẢM" : "VOUCHER",
+                discountValue = p.DiscountType == "Percentage" ? $"{(int)p.DiscountValue}%" : $"{p.DiscountValue / 1000:N0}k",
+                discountAmount = p.DiscountValue,
+                minOrderAmount = p.MinOrderAmount,
+                maxDiscountAmount = p.MaxDiscountAmount,
+                requiredTier,
+                tierLabel,
+                badgeText = isPersonal ? "3T CARE ĐỀN BÙ" : (requiredTier == "Bronze" ? "TOÀN HỆ THỐNG" : tierLabel.ToUpperInvariant()),
+                category = "Toàn hệ thống",
+                expiry = p.EndDate.ToString("dd/MM/yyyy"),
+                isAvailable,
+                ineligibleReason
+            };
+
+            if (isAvailable)
+                eligibleList.Add(item);
+            else
+                ineligibleList.Add(item);
         }
+
+        var allVouchers = eligibleList.Concat(ineligibleList).ToList();
 
         return Ok(new
         {
