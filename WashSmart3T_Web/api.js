@@ -486,6 +486,9 @@ var Api = window.Api = {
     async verify(code, orderAmount) {
       return Api.post('/Promotions/verify', { code, orderAmount });
     },
+    async revoke(id) {
+      return Api.delete(`/Promotions/${id}`);
+    },
   },
 
   // Bàn giao tiền ca Shipper & Đối soát tài chính

@@ -326,6 +326,54 @@
 
       </div>
 
+      <!-- Danh sách Voucher & Thu hồi -->
+      <section class="bg-surface-card rounded-xl border border-surface-container shadow-sm overflow-hidden">
+        <div class="p-4 border-b border-surface-container flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="font-bold text-sm text-on-surface flex items-center gap-2">
+              <span class="material-symbols-outlined text-primary text-lg">confirmation_number</span>
+              <span>Danh Sách Mã Ưu Đãi &amp; Voucher Hệ Thống</span>
+            </h2>
+            <p class="text-[11px] text-secondary mt-0.5">Theo dõi các mã đang phát hành và thu hồi (ngưng áp dụng) bất kỳ lúc nào.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-2">
+            <input id="promo-search-input" type="text" placeholder="Tìm theo mã hoặc tiêu đề..."
+              class="bg-surface-container-low rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary w-48">
+            <select id="promo-status-filter" class="bg-surface-container-low rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+              <option value="active">Đang áp dụng</option>
+              <option value="all">Tất cả</option>
+              <option value="revoked">Đã thu hồi</option>
+            </select>
+            <button type="button" onclick="loadPromotions()" class="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface text-xs font-medium flex items-center gap-1 transition-colors">
+              <span class="material-symbols-outlined text-sm">refresh</span>
+              <span>Làm mới</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-xs">
+            <thead>
+              <tr class="bg-surface-container-low text-secondary font-semibold border-b border-surface-container">
+                <th class="py-2.5 px-4">Mã Voucher</th>
+                <th class="py-2.5 px-4">Tiêu đề &amp; Mô tả</th>
+                <th class="py-2.5 px-4">Mức giảm</th>
+                <th class="py-2.5 px-4">Đơn tối thiểu</th>
+                <th class="py-2.5 px-4">Lượt dùng</th>
+                <th class="py-2.5 px-4">Hạn dùng</th>
+                <th class="py-2.5 px-4">Trạng thái</th>
+                <th class="py-2.5 px-4 text-right">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="promotions-table-body" class="divide-y divide-surface-container">
+              <tr>
+                <td colspan="8" class="py-8 text-center text-secondary">Đang tải danh sách voucher...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
     </main>
   </div>
 
@@ -882,6 +930,7 @@
 
         hideBroadcastModal();
         showToast(`🚀 ${res.message || `Đã phát hành voucher [${code}] đến khách hàng trên App thành công!`}`);
+        await loadPromotions();
       } catch (err) {
         showToast('Lỗi phát hành voucher: ' + err.message, true);
       } finally {
@@ -971,6 +1020,99 @@
     }
 
     loadLoyaltyRules();
+
+    // ==========================================
+    // QUẢN LÝ & THU HỒI VOUCHER HỆ THỐNG
+    // ==========================================
+    let allPromotionsCache = [];
+
+    async function loadPromotions() {
+      const tbody = document.getElementById('promotions-table-body');
+      if (!tbody) return;
+      try {
+        const list = await Api.Promotions.all('all');
+        allPromotionsCache = Array.isArray(list) ? list : [];
+        renderPromotionsTable();
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="8" class="py-6 text-center text-error">Không tải được danh sách voucher: ${escapeHtml(err.message || '')}</td></tr>`;
+      }
+    }
+
+    function renderPromotionsTable() {
+      const tbody = document.getElementById('promotions-table-body');
+      if (!tbody) return;
+
+      const keyword = (document.getElementById('promo-search-input')?.value || '').trim().toLowerCase();
+      const statusFilter = document.getElementById('promo-status-filter')?.value || 'active';
+
+      const filtered = allPromotionsCache.filter(p => {
+        if (statusFilter === 'active' && !p.isActive) return false;
+        if (statusFilter === 'revoked' && p.isActive) return false;
+        if (keyword) {
+          const hay = `${p.code || ''} ${p.title || ''} ${p.description || ''}`.toLowerCase();
+          if (!hay.includes(keyword)) return false;
+        }
+        return true;
+      });
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" class="py-8 text-center text-secondary">Không có mã voucher nào phù hợp.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(p => {
+        const isPercent = p.discountType === 'Percentage';
+        const discountLabel = isPercent
+          ? `Giảm ${Number(p.discountValue || 0)}%` + (p.maxDiscountAmount ? ` (tối đa ${Number(p.maxDiscountAmount).toLocaleString('vi-VN')}đ)` : '')
+          : `Giảm ${Number(p.discountValue || 0).toLocaleString('vi-VN')}đ`;
+        const minOrderLabel = p.minOrderAmount > 0 ? `${Number(p.minOrderAmount).toLocaleString('vi-VN')}đ` : '0đ';
+        const endDateLabel = p.endDate ? new Date(p.endDate).toLocaleDateString('vi-VN') : '--';
+        const statusBadge = p.isActive
+          ? `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Đang áp dụng</span>`
+          : `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-gray-100 text-gray-500 border border-gray-200">Đã thu hồi</span>`;
+        const actionBtn = p.isActive
+          ? `<button type="button" onclick="revokePromotion(${p.id}, '${escapeHtml(p.code)}')" class="px-2.5 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-[11px] font-semibold inline-flex items-center gap-1 transition-colors">
+               <span class="material-symbols-outlined text-sm">block</span>
+               <span>Thu hồi</span>
+             </button>`
+          : `<span class="text-[11px] text-secondary italic">Đã ngưng</span>`;
+
+        return `
+          <tr class="hover:bg-surface-container-low/60 transition-colors">
+            <td class="py-3 px-4">
+              <span class="px-2 py-1 rounded bg-primary/10 text-primary font-mono font-bold text-[11px]">${escapeHtml(p.code)}</span>
+            </td>
+            <td class="py-3 px-4 max-w-xs">
+              <p class="font-semibold text-on-surface">${escapeHtml(p.title)}</p>
+              <p class="text-[11px] text-secondary line-clamp-1">${escapeHtml(p.description || '')}</p>
+            </td>
+            <td class="py-3 px-4 font-semibold text-primary whitespace-nowrap">${discountLabel}</td>
+            <td class="py-3 px-4 text-on-surface whitespace-nowrap">${minOrderLabel}</td>
+            <td class="py-3 px-4 text-secondary whitespace-nowrap">${p.usedCount ?? 0} / ${p.usageLimit ?? 0}</td>
+            <td class="py-3 px-4 text-secondary whitespace-nowrap">${endDateLabel}</td>
+            <td class="py-3 px-4 whitespace-nowrap">${statusBadge}</td>
+            <td class="py-3 px-4 text-right whitespace-nowrap">${actionBtn}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function revokePromotion(id, code) {
+      if (!confirm(`Bạn có chắc muốn thu hồi (ngưng áp dụng) mã voucher "${code}"?\nKhách hàng sẽ không thể nhìn thấy hoặc sử dụng mã này nữa.`)) {
+        return;
+      }
+      try {
+        const res = await Api.Promotions.revoke(id);
+        showToast(`✓ ${res.message || `Đã thu hồi mã ${code}`}`);
+        await loadPromotions();
+      } catch (err) {
+        showToast('Lỗi thu hồi voucher: ' + (err.message || 'Không thể thực hiện'), true);
+      }
+    }
+
+    document.getElementById('promo-search-input')?.addEventListener('input', renderPromotionsTable);
+    document.getElementById('promo-status-filter')?.addEventListener('change', renderPromotionsTable);
+    loadPromotions();
   </script>
 </body>
 
