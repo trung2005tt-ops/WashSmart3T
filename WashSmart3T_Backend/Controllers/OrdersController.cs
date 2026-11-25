@@ -1025,6 +1025,8 @@ public class OrdersController : ControllerBase
         public string PaymentTiming { get; set; } = "PayNow";
         public string? Note { get; set; }
         public double? DistanceKm { get; set; }
+        public string? PromotionCode { get; set; }
+        public decimal DiscountAmount { get; set; }
         public List<CreateOrderDetailRequest> Items { get; set; } = new();
     }
 
@@ -1162,7 +1164,18 @@ public class OrdersController : ControllerBase
                 subTotal += lineTotal;
             }
 
-            var totalAmount = subTotal + actualDeliveryFee + addonFee;
+            var discountAmount = Math.Max(0, request.DiscountAmount);
+            if (!string.IsNullOrWhiteSpace(request.PromotionCode))
+            {
+                var cleanPromoCode = request.PromotionCode.Trim().ToUpperInvariant();
+                var promo = await _context.Promotions.FirstOrDefaultAsync(p => p.Code == cleanPromoCode);
+                if (promo != null && promo.IsActive)
+                {
+                    promo.UsedCount++;
+                }
+            }
+
+            var totalAmount = Math.Max(0, subTotal + actualDeliveryFee + addonFee - discountAmount);
 
             if (request.PaymentTiming == "PayNow" && request.PaymentMethod == "Cash" && request.CashReceived < totalAmount)
             {
@@ -1183,7 +1196,7 @@ public class OrdersController : ControllerBase
                 Note = request.Note?.Trim(),
                 ShippingFee = actualDeliveryFee,
                 AddonFee = addonFee,
-                DiscountAmount = 0,
+                DiscountAmount = discountAmount,
                 TotalAmount = totalAmount,
                 PaymentMethod = request.PaymentMethod,
                 Status = initialStatus,
@@ -1264,6 +1277,7 @@ public class OrdersController : ControllerBase
                 subTotal,
                 shippingFee = order.ShippingFee,
                 addonFee = order.AddonFee,
+                discountAmount = order.DiscountAmount,
                 totalAmount = order.TotalAmount,
                 paymentStatus = payment.Status.ToString(),
                 items = order.OrderDetails.Select(d => new { d.ServiceId, d.Quantity, d.Unit, d.UnitPrice, d.TotalPrice })

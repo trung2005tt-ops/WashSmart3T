@@ -436,10 +436,51 @@
                 <span class="text-secondary">Tạm tính:</span>
                 <span id="summarySubtotal" class="font-semibold text-on-surface">0 đ</span>
               </div>
-              <div class="flex justify-between items-center">
-                <span id="vip-discount-label" class="text-primary font-semibold">Giảm VIP Gold (-10%):</span>
+              <div id="summaryPromoRow" class="hidden justify-between items-center text-primary">
+                <span id="vip-discount-label" class="text-primary font-semibold">Ưu đãi giảm giá:</span>
                 <span id="summaryVipDiscount" class="font-bold text-primary">0 đ</span>
               </div>
+            </div>
+          </div>
+
+          <!-- Khung Áp Dụng Ưu Đãi Toàn Hệ Thống / Voucher -->
+          <div class="p-3.5 rounded-lg bg-surface-container-low border border-surface-container space-y-2 text-xs">
+            <div class="flex items-center justify-between">
+              <div class="flex items-center gap-1.5 font-bold text-on-surface text-[11px]">
+                <span class="material-symbols-outlined text-primary text-base">local_offer</span>
+                <span>ƯU ĐÃI TOÀN HỆ THỐNG / VOUCHER</span>
+              </div>
+              <button type="button" id="btnOpenPromoModal" class="text-[11px] text-primary hover:underline font-semibold flex items-center gap-0.5">
+                <span>Chọn ưu đãi</span>
+                <span class="material-symbols-outlined text-sm">chevron_right</span>
+              </button>
+            </div>
+
+            <!-- Ô nhập mã trực tiếp -->
+            <div class="flex gap-1.5">
+              <div class="relative flex-1">
+                <input type="text" id="posPromoCodeInput" placeholder="Nhập mã (VD: 3TCHAOBAN, WASH3T30K...)"
+                  class="w-full uppercase font-mono px-2.5 py-1.5 rounded-md border border-outline/30 bg-surface text-on-surface text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none">
+              </div>
+              <button type="button" id="btnApplyPromoCode"
+                class="px-3 py-1.5 rounded-md bg-primary hover:bg-primary/90 text-white font-bold text-xs shadow-sm transition-colors flex items-center gap-1">
+                <span id="btnApplyPromoText">Áp dụng</span>
+              </button>
+            </div>
+
+            <!-- Badge ưu đãi đang được áp dụng -->
+            <div id="appliedPromoBadge" class="hidden p-2 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800">
+              <div class="flex items-center justify-between">
+                <div class="flex items-center gap-1.5 truncate">
+                  <span class="material-symbols-outlined text-emerald-600 text-base">check_circle</span>
+                  <span class="font-bold text-[11px] uppercase tracking-wide font-mono" id="appliedPromoCodeDisplay">MÃ</span>
+                  <span class="text-[11px] text-emerald-700 truncate" id="appliedPromoTitleDisplay">— Giảm 0 đ</span>
+                </div>
+                <button type="button" id="btnRemovePromo" class="text-rose-600 hover:text-rose-800 p-0.5 rounded text-[11px] font-bold flex items-center gap-0.5 ml-2" title="Gỡ ưu đãi">
+                  <span class="material-symbols-outlined text-sm">cancel</span>
+                </button>
+              </div>
+              <p class="text-[10px] text-emerald-600 mt-0.5 truncate" id="appliedPromoDescDisplay"></p>
             </div>
           </div>
 
@@ -546,6 +587,61 @@
       </div>
 
     </main>
+  </div>
+
+  <!-- MODAL: DANH SÁCH ƯU ĐÃI TOÀN HỆ THỐNG / VOUCHER (POS) -->
+  <div id="promo-list-modal"
+    class="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div
+      class="bg-white rounded-2xl max-w-lg w-full max-h-[85vh] flex flex-col shadow-2xl border border-gray-200 overflow-hidden">
+      <!-- Modal Header -->
+      <div class="p-4 border-b border-gray-200 flex items-center justify-between bg-surface-container-low">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold">
+            <span class="material-symbols-outlined text-xl">local_offer</span>
+          </div>
+          <div>
+            <h3 class="font-bold text-sm text-gray-900">Ưu Đãi & Khuyến Mãi Toàn Hệ Thống</h3>
+            <p class="text-[11px] text-gray-500">Áp dụng mã giảm giá trực tiếp vào đơn hàng tại quầy</p>
+          </div>
+        </div>
+        <button type="button" id="btnClosePromoModal" class="p-1 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+          <span class="material-symbols-outlined text-xl">close</span>
+        </button>
+      </div>
+
+      <!-- Current Order Amount Info -->
+      <div class="px-4 py-2.5 bg-rose-50/60 border-b border-rose-100 flex items-center justify-between text-xs">
+        <span class="text-gray-600 font-medium">Tạm tính đơn hiện tại:</span>
+        <span id="promoModalOrderAmount" class="font-extrabold text-primary text-sm">0 đ</span>
+      </div>
+
+      <!-- Search / Quick Filter -->
+      <div class="p-3 border-b border-gray-100 bg-white">
+        <div class="relative">
+          <span class="material-symbols-outlined absolute left-2.5 top-2 text-gray-400 text-sm">search</span>
+          <input type="text" id="promoFilterInput" placeholder="Tìm theo mã hoặc tên ưu đãi..."
+            class="w-full pl-8 pr-3 py-1.5 rounded-lg border border-gray-200 text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none">
+        </div>
+      </div>
+
+      <!-- Promo List Container -->
+      <div id="promoModalList" class="p-4 overflow-y-auto space-y-2.5 flex-1 max-h-[50vh] divide-y divide-gray-100">
+        <div class="text-center py-6 text-gray-500 text-xs">
+          <span class="material-symbols-outlined animate-spin text-2xl text-primary mb-2">progress_activity</span>
+          <p>Đang tải danh sách ưu đãi hệ thống...</p>
+        </div>
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-3 border-t border-gray-200 bg-gray-50 flex items-center justify-between">
+        <span class="text-[11px] text-gray-500 italic">* Ưu đãi tự động giảm trừ vào tổng thanh toán & mã VietQR</span>
+        <button type="button" id="btnClosePromoModalFooter"
+          class="px-4 py-1.5 rounded-lg bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold text-xs transition-colors">
+          Đóng
+        </button>
+      </div>
+    </div>
   </div>
 
   <!-- MODAL: HÓA ĐƠN XEM TRƯỚC & IN NHIỆT (RECEIPT PREVIEW & PRINT) -->
@@ -676,6 +772,8 @@
     // Tính phí giao hàng động theo khoảng cách từ địa chỉ khách nhập
     let currentDeliveryFee = 0;
     let currentDistanceKm = 0;
+    let currentAppliedPromo = null;
+    let systemPromotions = [];
     const STORE_ADDRESS = 'Cửa hàng WashSmart 3T - Chi nhánh CS1, TP.HCM';
     const HOME_DELIVERY_FEE = 20000;
 
@@ -1041,13 +1139,56 @@
       const hasDeliveryAddress = isHomeDelivery() && addr.length > 0 && currentDeliveryFee > 0;
       const deliveryFee = hasDeliveryAddress ? currentDeliveryFee : 0;
       const subtotal = serviceTotal + totalAddonFee + deliveryFee;
-      const discount = 0, grandTotal = subtotal;
+      let discount = 0;
+      if (currentAppliedPromo) {
+        const minAmount = Number(currentAppliedPromo.minOrderAmount || 0);
+        if (subtotal >= minAmount) {
+          if (currentAppliedPromo.discountType === 'Percentage') {
+            discount = Math.round(subtotal * (Number(currentAppliedPromo.discountValue || 0) / 100));
+            if (currentAppliedPromo.maxDiscountAmount && discount > Number(currentAppliedPromo.maxDiscountAmount)) {
+              discount = Number(currentAppliedPromo.maxDiscountAmount);
+            }
+          } else {
+            discount = Math.min(subtotal, Number(currentAppliedPromo.discountValue || currentAppliedPromo.discountAmount || 0));
+          }
+        }
+      }
+      const grandTotal = Math.max(0, subtotal - discount);
 
       const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value; };
       set('summarySubtotal', formatCurrency(subtotal));
-      set('summaryVipDiscount', formatCurrency(-discount)); 
+
+      const promoRow = document.getElementById('summaryPromoRow');
+      if (promoRow) {
+        if (currentAppliedPromo) {
+          promoRow.classList.remove('hidden');
+          promoRow.classList.add('flex');
+          set('vip-discount-label', `Ưu đãi (${currentAppliedPromo.code}):`);
+          set('summaryVipDiscount', discount > 0 ? ('-' + formatCurrency(discount)) : `Cần từ ${formatCurrency(currentAppliedPromo.minOrderAmount)}`);
+        } else {
+          promoRow.classList.add('hidden');
+          promoRow.classList.remove('flex');
+          set('summaryVipDiscount', '0 đ');
+        }
+      }
+
+      const appliedBadge = document.getElementById('appliedPromoBadge');
+      if (appliedBadge) {
+        if (currentAppliedPromo) {
+          appliedBadge.classList.remove('hidden');
+          set('appliedPromoCodeDisplay', currentAppliedPromo.code);
+          const discText = discount > 0
+            ? `— Giảm ${formatCurrency(discount)}`
+            : `— Cần tối thiểu ${formatCurrency(currentAppliedPromo.minOrderAmount)}`;
+          set('appliedPromoTitleDisplay', discText);
+          const descEl = document.getElementById('appliedPromoDescDisplay');
+          if (descEl) descEl.textContent = currentAppliedPromo.title || currentAppliedPromo.description || '';
+        } else {
+          appliedBadge.classList.add('hidden');
+        }
+      }
+
       set('summaryGrandTotal', formatCurrency(grandTotal).replace('đ', 'VNĐ'));
-      set('vip-discount-label', 'Ưu đãi thành viên');
 
       let deliveryRow = document.getElementById('summaryDeliveryRow');
       if (!deliveryRow) { 
@@ -1082,8 +1223,235 @@
         if (qrContainer) qrContainer.classList.add('hidden');
         if (qrEmpty) qrEmpty.classList.remove('hidden');
       }
-      return { subtotal, discount, grandTotal, serviceTotal, addonFee: totalAddonFee, selectedCareItems, deliveryFee };
+      return { subtotal, discount, grandTotal, serviceTotal, addonFee: totalAddonFee, selectedCareItems, deliveryFee, promoCode: currentAppliedPromo ? currentAppliedPromo.code : null };
     }
+
+    async function applyPromotionCode(code) {
+      if (!code || !code.trim()) {
+        showToast('Vui lòng nhập mã ưu đãi.', true);
+        return;
+      }
+      const cleanCode = code.trim().toUpperCase();
+      const calc = updateBillCalculations();
+      const btnApply = document.getElementById('btnApplyPromoCode');
+      const origHtml = btnApply ? btnApply.innerHTML : 'Áp dụng';
+      if (btnApply) {
+        btnApply.disabled = true;
+        btnApply.innerHTML = '<span class="material-symbols-outlined text-xs animate-spin">refresh</span>';
+      }
+
+      try {
+        const res = await Api.post('/Promotions/verify', {
+          code: cleanCode,
+          orderAmount: calc.subtotal
+        });
+
+        if (res && res.valid) {
+          const found = systemPromotions.find(p => p.code?.toUpperCase() === cleanCode);
+          currentAppliedPromo = {
+            code: res.code || cleanCode,
+            title: res.title || found?.title || 'Ưu đãi hệ thống',
+            description: found?.description || res.message || '',
+            discountAmount: res.discountAmount || 0,
+            discountType: found?.discountType || 'FixedAmount',
+            discountValue: found?.discountValue || res.discountAmount,
+            minOrderAmount: found?.minOrderAmount || 0,
+            maxDiscountAmount: found?.maxDiscountAmount || null
+          };
+          const input = document.getElementById('posPromoCodeInput');
+          if (input) input.value = cleanCode;
+          updateBillCalculations();
+          showToast(res.message || `Đã áp dụng mã ${cleanCode}!`);
+          closePromoModal();
+        } else {
+          showToast(res?.message || 'Mã ưu đãi không hợp lệ.', true);
+        }
+      } catch (err) {
+        showToast(err.message || 'Mã ưu đãi không hợp lệ hoặc chưa đủ điều kiện.', true);
+      } finally {
+        if (btnApply) {
+          btnApply.disabled = false;
+          btnApply.innerHTML = origHtml;
+        }
+      }
+    }
+
+    function removePromotion() {
+      currentAppliedPromo = null;
+      const input = document.getElementById('posPromoCodeInput');
+      if (input) input.value = '';
+      updateBillCalculations();
+      renderPromoModalList(document.getElementById('promoFilterInput')?.value || '');
+      showToast('Đã gỡ mã ưu đãi.');
+    }
+
+    async function openPromoModal() {
+      const modal = document.getElementById('promo-list-modal');
+      if (!modal) return;
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+
+      const calc = updateBillCalculations();
+      const amountEl = document.getElementById('promoModalOrderAmount');
+      if (amountEl) amountEl.textContent = formatCurrency(calc.subtotal);
+
+      const listContainer = document.getElementById('promoModalList');
+      if (listContainer) {
+        listContainer.innerHTML = `
+          <div class="text-center py-6 text-gray-500 text-xs">
+            <span class="material-symbols-outlined animate-spin text-2xl text-primary mb-2">progress_activity</span>
+            <p>Đang tải danh sách ưu đãi hệ thống...</p>
+          </div>
+        `;
+      }
+
+      try {
+        const promos = await Api.get('/Promotions?category=active');
+        if (Array.isArray(promos)) {
+          systemPromotions = promos;
+        }
+
+        const phone = document.getElementById('customerPhoneInput')?.value.replace(/\D/g, '') || '';
+        if (phone.length >= 9) {
+          try {
+            const myVouchersRes = await Api.get('/Promotions/my-vouchers');
+            if (myVouchersRes && Array.isArray(myVouchersRes.vouchers)) {
+              myVouchersRes.vouchers.forEach(v => {
+                if (!systemPromotions.some(sp => sp.code?.toUpperCase() === v.code?.toUpperCase())) {
+                  systemPromotions.unshift({
+                    code: v.code,
+                    title: v.title,
+                    description: v.description,
+                    discountType: v.discountTag === 'GIẢM' && String(v.discountValue || '').includes('%') ? 'Percentage' : 'FixedAmount',
+                    discountValue: v.discountAmount,
+                    minOrderAmount: v.minOrderAmount || 0,
+                    badgeText: v.badgeText,
+                    tierLabel: v.tierLabel,
+                    isPersonal: true
+                  });
+                }
+              });
+            }
+          } catch (_) {}
+        }
+
+        renderPromoModalList(document.getElementById('promoFilterInput')?.value || '');
+      } catch (err) {
+        if (listContainer) {
+          listContainer.innerHTML = `
+            <div class="text-center py-6 text-rose-600 text-xs">
+              <span class="material-symbols-outlined text-2xl mb-1">error</span>
+              <p>Không thể tải danh sách ưu đãi: ${safeText(err.message)}</p>
+            </div>
+          `;
+        }
+      }
+    }
+
+    function closePromoModal() {
+      const modal = document.getElementById('promo-list-modal');
+      if (modal) {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }
+    }
+
+    function renderPromoModalList(filterKeyword = '') {
+      const listContainer = document.getElementById('promoModalList');
+      if (!listContainer) return;
+      const calc = updateBillCalculations();
+      const currentSubtotal = calc.subtotal;
+
+      const q = (filterKeyword || '').trim().toLowerCase();
+      const filtered = systemPromotions.filter(p => {
+        if (!q) return true;
+        return (p.code || '').toLowerCase().includes(q) ||
+               (p.title || '').toLowerCase().includes(q) ||
+               (p.description || '').toLowerCase().includes(q);
+      });
+
+      if (filtered.length === 0) {
+        listContainer.innerHTML = `
+          <div class="text-center py-8 text-gray-400 text-xs">
+            <span class="material-symbols-outlined text-3xl mb-1">search_off</span>
+            <p>Không tìm thấy ưu đãi nào phù hợp.</p>
+          </div>
+        `;
+        return;
+      }
+
+      listContainer.innerHTML = filtered.map(p => {
+        const isCurrentApplied = currentAppliedPromo && currentAppliedPromo.code?.toUpperCase() === p.code?.toUpperCase();
+        const minAmount = Number(p.minOrderAmount || 0);
+        const isEligible = currentSubtotal >= minAmount;
+        const missingAmount = minAmount - currentSubtotal;
+
+        let discountDisplay = '';
+        if (p.discountType === 'Percentage') {
+          discountDisplay = `GIẢM ${p.discountValue}%`;
+        } else {
+          discountDisplay = `GIẢM ${formatCurrency(p.discountValue)}`;
+        }
+
+        return `
+          <div class="p-3 rounded-xl border ${isCurrentApplied ? 'border-emerald-500 bg-emerald-50/50 ring-1 ring-emerald-500/20' : 'border-gray-200 bg-white hover:border-primary/50'} transition-all text-xs">
+            <div class="flex items-start justify-between gap-2">
+              <div class="space-y-1 min-w-0 flex-1">
+                <div class="flex items-center gap-1.5 flex-wrap">
+                  <span class="font-mono font-bold text-xs uppercase px-2 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 tracking-wider">${safeText(p.code)}</span>
+                  <span class="font-bold text-[10px] uppercase px-1.5 py-0.5 rounded bg-rose-500 text-white">${discountDisplay}</span>
+                  ${p.tierLabel ? `<span class="text-[10px] px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-medium">${safeText(p.tierLabel)}</span>` : ''}
+                </div>
+                <h4 class="font-bold text-gray-900 text-xs">${safeText(p.title)}</h4>
+                <p class="text-[11px] text-gray-500 line-clamp-2">${safeText(p.description || '')}</p>
+                <div class="flex items-center gap-2 text-[10px] text-gray-500 pt-1">
+                  <span>• Đơn tối thiểu: <strong>${minAmount > 0 ? formatCurrency(minAmount) : 'Mọi đơn'}</strong></span>
+                  ${p.maxDiscountAmount ? `<span>• Giảm tối đa: <strong>${formatCurrency(p.maxDiscountAmount)}</strong></span>` : ''}
+                </div>
+              </div>
+
+              <div class="shrink-0 self-center pl-2">
+                ${isCurrentApplied ? `
+                  <button type="button" onclick="removePromotion()" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold text-xs flex items-center gap-1 shadow-sm hover:bg-emerald-700">
+                    <span class="material-symbols-outlined text-sm">check</span>
+                    <span>Đang dùng</span>
+                  </button>
+                ` : isEligible ? `
+                  <button type="button" onclick="applyPromotionCode('${p.code}')" class="px-3 py-1.5 rounded-lg bg-primary hover:bg-primary-container text-white font-bold text-xs flex items-center gap-1 shadow-sm transition-colors">
+                    <span>Áp dụng</span>
+                  </button>
+                ` : `
+                  <div class="text-right">
+                    <button type="button" disabled class="px-2.5 py-1.5 rounded-lg bg-gray-100 text-gray-400 font-semibold text-xs cursor-not-allowed">
+                      Chưa đủ
+                    </button>
+                    <p class="text-[9px] text-rose-500 mt-0.5 whitespace-nowrap">Thiếu ${formatCurrency(missingAmount)}</p>
+                  </div>
+                `}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    document.getElementById('btnOpenPromoModal')?.addEventListener('click', openPromoModal);
+    document.getElementById('btnClosePromoModal')?.addEventListener('click', closePromoModal);
+    document.getElementById('btnClosePromoModalFooter')?.addEventListener('click', closePromoModal);
+    document.getElementById('btnRemovePromo')?.addEventListener('click', removePromotion);
+    document.getElementById('btnApplyPromoCode')?.addEventListener('click', () => {
+      const code = document.getElementById('posPromoCodeInput')?.value || '';
+      applyPromotionCode(code);
+    });
+    document.getElementById('posPromoCodeInput')?.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        applyPromotionCode(e.target.value);
+      }
+    });
+    document.getElementById('promoFilterInput')?.addEventListener('input', (e) => {
+      renderPromoModalList(e.target.value);
+    });
     async function lookupCustomer() {
       const phoneInput = document.getElementById('customerPhoneInput');
       const phone = phoneInput ? phoneInput.value.replace(/\D/g, '') : '';
@@ -1334,7 +1702,8 @@
           `Thời điểm thu tiền: ${isPayNow ? 'Tại quầy khi tiếp nhận' : 'COD khi giao đồ'}`,
           `Tiện ích: ${careSummaryText}`,
           `Phụ phí tiện ích: ${calc.addonFee}đ`,
-          `Phí giao hàng: ${calc.deliveryFee}đ`
+          `Phí giao hàng: ${calc.deliveryFee}đ`,
+          ...(currentAppliedPromo && calc.discount > 0 ? [`Ưu đãi áp dụng: ${currentAppliedPromo.code} (-${formatCurrency(calc.discount)})`] : [])
         ];
         const newOrder = await Api.post('/Orders/pos', {
           customerName,
@@ -1347,6 +1716,8 @@
           cashReceived,
           paymentMethod: selectedPaymentMethod,
           paymentTiming: isPayNow ? 'PayNow' : 'COD',
+          promotionCode: currentAppliedPromo ? currentAppliedPromo.code : null,
+          discountAmount: calc.discount,
           note: notes.join('\n'),
           items: orderItemsPayload,
           distanceKm: currentDistanceKm
@@ -1413,7 +1784,11 @@
             addonList.appendChild(row);
           });
         }
-        set('receipt-subtotal', formatCurrency(calc.grandTotal)); set('receipt-vip-title', 'Ưu đãi thành viên:'); set('receipt-vip-discount', formatCurrency(0)); set('receipt-grand-total', formatCurrency(newOrder.totalAmount ?? newOrder.TotalAmount ?? calc.grandTotal).replace('đ', 'VNĐ')); set('receipt-pay-method', `${selectedPaymentMethod} · ${isPayNow ? 'Thu tại quầy' : 'COD khi giao đồ'}`);
+        set('receipt-subtotal', formatCurrency(calc.subtotal));
+        set('receipt-vip-title', calc.discount > 0 ? `Ưu đãi (${currentAppliedPromo?.code || 'Hệ thống'}):` : 'Ưu đãi:');
+        set('receipt-vip-discount', calc.discount > 0 ? ('-' + formatCurrency(calc.discount)) : '0 đ');
+        set('receipt-grand-total', formatCurrency(newOrder.totalAmount ?? newOrder.TotalAmount ?? calc.grandTotal).replace('đ', 'VNĐ'));
+        set('receipt-pay-method', `${selectedPaymentMethod} · ${isPayNow ? 'Thu tại quầy' : 'COD khi giao đồ'}`);
         receiptModal.classList.remove('hidden'); receiptModal.classList.add('flex'); showToast(`Đã tạo đơn #WS3T-${orderId}. ${newOrder.paymentStatus === 'Pending' ? 'Thanh toán đang chờ xác nhận.' : 'Đã ghi nhận thanh toán tiền mặt tại quầy.'}`);
       } catch (err) { showToast('Không tạo được đơn: ' + (err.message || 'Lỗi API'), true); }
       finally { btnPrintAndSeal.disabled = false; btnPrintAndSeal.innerHTML = '<span class="material-symbols-outlined text-lg">print</span><span>In Hóa đơn & Tem Mã Vạch Seal</span>'; }
