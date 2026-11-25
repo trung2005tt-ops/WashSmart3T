@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../services/address_service.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
 import 'login_screen.dart';
@@ -180,6 +182,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final addressController = TextEditingController(text: _user?['address'] ?? '');
     final phone = (_user?['phone'] ?? '').toString();
     bool isSaving = false;
+    List<AddressSuggestion> addressSuggestions = [];
+    bool isSearchingAddress = false;
+    Timer? addressDebounce;
 
     showModalBottomSheet(
       context: context,
@@ -187,6 +192,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) => Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.9,
+          ),
           padding: EdgeInsets.only(
             left: 20,
             right: 20,
@@ -197,10 +205,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             color: Colors.white,
             borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
               Center(
                 child: Container(
                   width: 40,
@@ -296,10 +305,48 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 controller: addressController,
                 maxLines: 2,
                 minLines: 1,
+                onChanged: (val) {
+                  addressDebounce?.cancel();
+                  final q = val.trim();
+                  if (q.length < 2) {
+                    setModalState(() {
+                      addressSuggestions = [];
+                      isSearchingAddress = false;
+                    });
+                    return;
+                  }
+                  setModalState(() => isSearchingAddress = true);
+                  addressDebounce = Timer(const Duration(milliseconds: 350), () async {
+                    final results = await AddressService.searchSuggestions(q);
+                    if (!ctx.mounted) return;
+                    setModalState(() {
+                      addressSuggestions = results;
+                      isSearchingAddress = false;
+                    });
+                  });
+                },
                 decoration: InputDecoration(
                   filled: true,
                   fillColor: surfaceLow,
                   prefixIcon: const Icon(Icons.home_outlined, color: primaryColor, size: 20),
+                  suffixIcon: isSearchingAddress
+                      ? const Padding(
+                          padding: EdgeInsets.all(12),
+                          child: SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: primaryColor),
+                          ),
+                        )
+                      : (addressController.text.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, size: 18, color: outlineColor),
+                              onPressed: () {
+                                addressController.clear();
+                                setModalState(() => addressSuggestions = []);
+                              },
+                            )
+                          : null),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -307,6 +354,74 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   hintText: 'Ví dụ: 140 Lê Trọng Tấn, P. Tây Thạnh, Q. Tân Phú',
                 ),
               ),
+              if (addressSuggestions.isNotEmpty) ...[
+                const SizedBox(height: 6),
+                Container(
+                  constraints: const BoxConstraints(maxHeight: 200),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.06),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ListView.separated(
+                    shrinkWrap: true,
+                    padding: EdgeInsets.zero,
+                    itemCount: addressSuggestions.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1, color: Color(0xFFF3E8E8)),
+                    itemBuilder: (_, idx) {
+                      final item = addressSuggestions[idx];
+                      return InkWell(
+                        onTap: () {
+                          addressController.text = item.displayName;
+                          setModalState(() => addressSuggestions = []);
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.location_on_outlined, color: primaryColor, size: 18),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.shortTitle,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: onSurface,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      item.subtitle,
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 10,
+                                        color: outlineColor,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
               const SizedBox(height: 14),
 
               // Số điện thoại (read-only)
@@ -388,6 +503,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ],
           ),
+        ),
         ),
       ),
     );
