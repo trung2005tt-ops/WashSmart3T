@@ -222,6 +222,18 @@
   <!-- LEAFLET MAP CANVAS -->
   <div id="mapCanvas"></div>
 
+  <!-- ROUTE DIRECTION LEGEND (Lượt đi / Lượt về) -->
+  <div id="routeLegend" class="fixed bottom-24 left-3 z-10 bg-white/95 backdrop-blur-md rounded-xl shadow-lg border border-slate-200 px-2.5 py-1.5 flex items-center gap-3 text-[11px] font-bold text-slate-700 pointer-events-none">
+    <div class="flex items-center gap-1.5">
+      <span class="inline-block w-5 h-1 rounded-full bg-[#B90538]"></span>
+      <span>Lượt đi</span>
+    </div>
+    <div class="flex items-center gap-1.5">
+      <span class="inline-block w-5 h-0 border-t-[3px] border-dashed border-[#059669]"></span>
+      <span>Lượt về</span>
+    </div>
+  </div>
+
   <!-- BOTTOM SHEET / STOPS DRAWER -->
   <div id="stopsDrawer" class="drawer-panel collapsed absolute bottom-0 left-0 right-0 z-20 bg-white rounded-t-3xl shadow-2xl border-t border-slate-200 max-h-[75vh] flex flex-col">
     <!-- Drawer Drag Bar -->
@@ -263,6 +275,8 @@
     let satelliteLayer = null;
     let isSatellite = false;
     let activePolyline = null;
+    let returnPolyline = null;
+    let routeDirectionMarkers = [];
     let stopMarkers = [];
     let storeMarker = null;
     let shipperSimMarker = null;
@@ -284,9 +298,14 @@
         const headerEl = document.querySelector('header');
         const hudEl = document.getElementById('routeHudBadge');
         const drawerEl = document.getElementById('stopsDrawer');
+        const legendEl = document.getElementById('routeLegend');
         if (headerEl) headerEl.style.display = 'none';
         if (hudEl) hudEl.style.display = 'none';
         if (drawerEl) drawerEl.style.display = 'none';
+        if (legendEl) {
+          legendEl.classList.remove('bottom-24');
+          legendEl.classList.add('bottom-2');
+        }
       }
       initMap();
       await loadShipperOrders();
@@ -371,6 +390,14 @@
           const polyBounds = activePolyline.getBounds();
           if (polyBounds && polyBounds.isValid()) {
             pts.push(polyBounds.getSouthWest(), polyBounds.getNorthEast());
+          }
+        } catch (_) {}
+      }
+      if (returnPolyline) {
+        try {
+          const retBounds = returnPolyline.getBounds();
+          if (retBounds && retBounds.isValid()) {
+            pts.push(retBounds.getSouthWest(), retBounds.getNorthEast());
           }
         } catch (_) {}
       }
@@ -559,6 +586,12 @@
         map.removeLayer(activePolyline);
         activePolyline = null;
       }
+      if (returnPolyline) {
+        map.removeLayer(returnPolyline);
+        returnPolyline = null;
+      }
+      routeDirectionMarkers.forEach(m => map.removeLayer(m));
+      routeDirectionMarkers = [];
 
       // Resolve coords for all orders
       ordersList.forEach(o => {
@@ -672,7 +705,24 @@
       return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     }
 
-    // Fetch OSRM Route
+    function addRouteDirectionBadge(coords, label, bgColor) {
+      if (!coords || coords.length < 2) return;
+      const midIdx = Math.floor(coords.length / 2);
+      const midPt = coords[midIdx];
+      const badge = L.marker(midPt, {
+        interactive: false,
+        zIndexOffset: 900,
+        icon: L.divIcon({
+          className: 'route-dir-badge',
+          html: `<div style="background:${bgColor};color:#fff;font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;border:1.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.28);white-space:nowrap;transform:translate(-50%,-50%);">${label}</div>`,
+          iconSize: [0, 0],
+          iconAnchor: [0, 0]
+        })
+      }).addTo(map);
+      routeDirectionMarkers.push(badge);
+    }
+
+    // Fetch OSRM Route (Tách riêng Lượt đi & Lượt về để phân biệt trực quan)
     async function fetchOsrmPolyline(hub, sequence) {
       if (!sequence.length) {
         document.getElementById('hudDistance').textContent = '0.0 km';
@@ -680,68 +730,98 @@
         return;
       }
 
-      // Build waypoints string: lng,lat
-      const waypoints = [
+      const outboundWaypoints = [
         `${hub.lng},${hub.lat}`,
-        ...sequence.map(s => `${s.coords.lng},${s.coords.lat}`),
-        `${hub.lng},${hub.lat}` // return to hub
+        ...sequence.map(s => `${s.coords.lng},${s.coords.lat}`)
+      ];
+      const lastStop = sequence[sequence.length - 1];
+      const returnWaypoints = [
+        `${lastStop.coords.lng},${lastStop.coords.lat}`,
+        `${hub.lng},${hub.lat}`
       ];
 
-      const url = `https://router.project-osrm.org/route/v1/driving/${waypoints.join(';')}?overview=full&geometries=geojson`;
-
-      try {
+      const fetchLeg = async (pts) => {
+        const url = `https://router.project-osrm.org/route/v1/driving/${pts.join(';')}?overview=full&geometries=geojson`;
         const resp = await fetch(url);
         if (!resp.ok) throw new Error("OSRM failed");
         const data = await resp.json();
+        if (!data.routes || !data.routes.length) throw new Error("OSRM empty");
+        return data.routes[0];
+      };
 
-        if (data.routes && data.routes.length > 0) {
-          const route = data.routes[0];
-          const distKm = (route.distance / 1000).toFixed(1);
-          const durMin = Math.ceil(route.duration / 60);
+      try {
+        const [outboundRoute, returnRoute] = await Promise.all([
+          fetchLeg(outboundWaypoints),
+          fetchLeg(returnWaypoints)
+        ]);
 
-          document.getElementById('hudDistance').textContent = `${distKm} km`;
-          document.getElementById('hudDuration').textContent = `${durMin} phút`;
+        const totalDistKm = ((outboundRoute.distance + returnRoute.distance) / 1000).toFixed(1);
+        const totalDurMin = Math.ceil((outboundRoute.duration + returnRoute.duration) / 60);
 
-          // GeoJSON coords are [lng, lat], Leaflet needs [lat, lng]
-          currentRouteCoords = route.geometry.coordinates.map(c => [c[1], c[0]]);
+        document.getElementById('hudDistance').textContent = `${totalDistKm} km`;
+        document.getElementById('hudDuration').textContent = `${totalDurMin} phút`;
 
-          activePolyline = L.polyline(currentRouteCoords, {
-            color: '#B90538',
-            weight: 5,
-            opacity: 0.9,
-            lineCap: 'round',
-            lineJoin: 'round'
-          }).addTo(map);
+        const outboundCoords = outboundRoute.geometry.coordinates.map(c => [c[1], c[0]]);
+        const returnCoords = returnRoute.geometry.coordinates.map(c => [c[1], c[0]]);
+        currentRouteCoords = [...outboundCoords, ...returnCoords];
 
-          return;
-        }
+        // Lượt đi: Đường liền màu đỏ đô (#B90538)
+        activePolyline = L.polyline(outboundCoords, {
+          color: '#B90538',
+          weight: 6,
+          opacity: 0.9,
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(map);
+
+        // Lượt về: Đường nét đứt màu xanh ngọc (#059669) để phân biệt khi trùng đường
+        returnPolyline = L.polyline(returnCoords, {
+          color: '#059669',
+          weight: 4.5,
+          opacity: 0.95,
+          dashArray: '10, 8',
+          lineCap: 'round',
+          lineJoin: 'round'
+        }).addTo(map);
+
+        addRouteDirectionBadge(outboundCoords, 'Lượt đi →', '#B90538');
+        addRouteDirectionBadge(returnCoords, '← Lượt về', '#059669');
+        return;
       } catch (err) {
         console.warn('OSRM request error, fallback geodesic polyline:', err);
       }
 
-      // Fallback polyline
-      const poly = [[hub.lat, hub.lng]];
+      // Fallback polyline (tách 2 chặng)
+      const outboundPoly = [[hub.lat, hub.lng]];
       let totalDist = 0;
       let last = hub;
       sequence.forEach(s => {
-        poly.push([s.coords.lat, s.coords.lng]);
+        outboundPoly.push([s.coords.lat, s.coords.lng]);
         totalDist += haversineDistance(last.lat, last.lng, s.coords.lat, s.coords.lng);
         last = s.coords;
       });
-      poly.push([hub.lat, hub.lng]);
+      const returnPoly = [[last.lat, last.lng], [hub.lat, hub.lng]];
       totalDist += haversineDistance(last.lat, last.lng, hub.lat, hub.lng);
       totalDist = (totalDist * 1.3).toFixed(1);
 
       document.getElementById('hudDistance').textContent = `${totalDist} km`;
       document.getElementById('hudDuration').textContent = `${Math.ceil(totalDist * 3)} phút`;
 
-      currentRouteCoords = poly;
-      activePolyline = L.polyline(poly, {
+      currentRouteCoords = [...outboundPoly, ...returnPoly];
+      activePolyline = L.polyline(outboundPoly, {
         color: '#B90538',
-        weight: 5,
-        opacity: 0.85,
-        dashArray: '6, 8'
+        weight: 5.5,
+        opacity: 0.9
       }).addTo(map);
+      returnPolyline = L.polyline(returnPoly, {
+        color: '#059669',
+        weight: 4.5,
+        opacity: 0.9,
+        dashArray: '8, 8'
+      }).addTo(map);
+
+      addRouteDirectionBadge(outboundPoly, 'Lượt đi →', '#B90538');
+      addRouteDirectionBadge(returnPoly, '← Lượt về', '#059669');
     }
 
     // Render Drawer Stops List
