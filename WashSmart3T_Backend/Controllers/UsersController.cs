@@ -128,6 +128,7 @@ public class UsersController : ControllerBase
                 fullName = u.FullName,
                 phone = u.Phone,
                 email = u.Email,
+                address = u.Address,
                 isActive = u.IsActive,
                 createdAt = u.CreatedAt,
                 loyaltyPoints = u.LoyaltyPoints,
@@ -138,6 +139,62 @@ public class UsersController : ControllerBase
             .ToListAsync();
 
         return Ok(customers);
+    }
+
+    // ============================================================
+    // GET: api/Users/customers/{id}
+    // Xem chi tiết thông tin khách hàng và lịch sử đơn hàng gần đây
+    // ============================================================
+    [HttpGet("customers/{id}")]
+    [Authorize(Roles = "Admin,Staff")]
+    public async Task<IActionResult> GetCustomerDetail(int id)
+    {
+        var user = await _context.Users
+            .Include(u => u.Role)
+            .AsNoTracking()
+            .FirstOrDefaultAsync(u => u.Id == id);
+
+        if (user == null)
+            return NotFound(new { message = "Không tìm thấy khách hàng." });
+
+        var orders = await _context.Orders
+            .AsNoTracking()
+            .Where(o => o.CustomerId == id)
+            .OrderByDescending(o => o.CreatedAt)
+            .Take(20)
+            .Select(o => new
+            {
+                id = o.Id,
+                orderType = o.OrderType,
+                status = o.Status.ToString(),
+                totalAmount = o.TotalAmount,
+                discountAmount = o.DiscountAmount,
+                paymentMethod = o.PaymentMethod,
+                createdAt = o.CreatedAt,
+                deliveryAddress = o.DeliveryAddress
+            })
+            .ToListAsync();
+
+        var totalOrders = await _context.Orders.CountAsync(o => o.CustomerId == id);
+        var computedSpent = user.TotalSpent > 0
+            ? user.TotalSpent
+            : await _context.Orders.Where(o => o.CustomerId == id && o.Status == OrderStatus.Completed).SumAsync(o => (decimal?)o.TotalAmount) ?? 0m;
+
+        return Ok(new
+        {
+            id = user.Id,
+            fullName = user.FullName,
+            phone = user.Phone,
+            email = user.Email,
+            address = user.Address,
+            isActive = user.IsActive,
+            createdAt = user.CreatedAt,
+            loyaltyPoints = user.LoyaltyPoints,
+            membershipTier = user.MembershipTier,
+            ordersCount = totalOrders,
+            totalSpent = computedSpent,
+            recentOrders = orders
+        });
     }
 
     // ============================================================
