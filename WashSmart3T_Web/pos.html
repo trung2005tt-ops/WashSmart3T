@@ -448,39 +448,48 @@
             <div class="flex items-center justify-between">
               <div class="flex items-center gap-1.5 font-bold text-on-surface text-[11px]">
                 <span class="material-symbols-outlined text-primary text-base">local_offer</span>
-                <span>ƯU ĐÃI TOÀN HỆ THỐNG / VOUCHER</span>
+                <span>ƯU ĐÃI & VOUCHER KHÁCH HÀNG</span>
               </div>
-              <button type="button" id="btnOpenPromoModal" class="text-[11px] text-primary hover:underline font-semibold flex items-center gap-0.5">
-                <span>Chọn ưu đãi</span>
+              <button type="button" id="btnOpenPromoModal" class="hidden text-[11px] text-primary hover:underline font-semibold items-center gap-0.5">
+                <span id="btnOpenPromoLabel">Chọn ưu đãi</span>
                 <span class="material-symbols-outlined text-sm">chevron_right</span>
               </button>
             </div>
 
-            <!-- Ô nhập mã trực tiếp -->
-            <div class="flex gap-1.5">
-              <div class="relative flex-1">
-                <input type="text" id="posPromoCodeInput" placeholder="Nhập mã (VD: 3TCHAOBAN, WASH3T30K...)"
-                  class="w-full uppercase font-mono px-2.5 py-1.5 rounded-md border border-outline/30 bg-surface text-on-surface text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none">
-              </div>
-              <button type="button" id="btnApplyPromoCode"
-                class="px-3 py-1.5 rounded-md bg-primary hover:bg-primary/90 text-white font-bold text-xs shadow-sm transition-colors flex items-center gap-1">
-                <span id="btnApplyPromoText">Áp dụng</span>
-              </button>
+            <!-- Thông báo yêu cầu kiểm tra SĐT khách trước -->
+            <div id="promoLockedHint" class="p-2.5 rounded-md bg-amber-50 border border-amber-200 text-amber-800 text-[11px] flex items-start gap-2">
+              <span class="material-symbols-outlined text-amber-600 text-base shrink-0">info</span>
+              <span>Vui lòng nhập SĐT và bấm <strong>"Kiểm tra"</strong> tài khoản khách hàng để hiển thị voucher tương ứng theo hạng thẻ của khách.</span>
             </div>
 
-            <!-- Badge ưu đãi đang được áp dụng -->
-            <div id="appliedPromoBadge" class="hidden p-2 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800">
-              <div class="flex items-center justify-between">
-                <div class="flex items-center gap-1.5 truncate">
-                  <span class="material-symbols-outlined text-emerald-600 text-base">check_circle</span>
-                  <span class="font-bold text-[11px] uppercase tracking-wide font-mono" id="appliedPromoCodeDisplay">MÃ</span>
-                  <span class="text-[11px] text-emerald-700 truncate" id="appliedPromoTitleDisplay">— Giảm 0 đ</span>
+            <!-- Khu vực nhập/chọn mã (chỉ mở sau khi kiểm tra khách) -->
+            <div id="promoControlsArea" class="hidden space-y-2">
+              <!-- Ô nhập mã trực tiếp -->
+              <div class="flex gap-1.5">
+                <div class="relative flex-1">
+                  <input type="text" id="posPromoCodeInput" placeholder="Nhập mã (VD: 3TCHAOBAN, WASH3T30K...)"
+                    class="w-full uppercase font-mono px-2.5 py-1.5 rounded-md border border-outline/30 bg-surface text-on-surface text-xs focus:ring-1 focus:ring-primary focus:border-primary outline-none">
                 </div>
-                <button type="button" id="btnRemovePromo" class="text-rose-600 hover:text-rose-800 p-0.5 rounded text-[11px] font-bold flex items-center gap-0.5 ml-2" title="Gỡ ưu đãi">
-                  <span class="material-symbols-outlined text-sm">cancel</span>
+                <button type="button" id="btnApplyPromoCode"
+                  class="px-3 py-1.5 rounded-md bg-primary hover:bg-primary/90 text-white font-bold text-xs shadow-sm transition-colors flex items-center gap-1">
+                  <span id="btnApplyPromoText">Áp dụng</span>
                 </button>
               </div>
-              <p class="text-[10px] text-emerald-600 mt-0.5 truncate" id="appliedPromoDescDisplay"></p>
+
+              <!-- Badge ưu đãi đang được áp dụng -->
+              <div id="appliedPromoBadge" class="hidden p-2 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-800">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-1.5 truncate">
+                    <span class="material-symbols-outlined text-emerald-600 text-base">check_circle</span>
+                    <span class="font-bold text-[11px] uppercase tracking-wide font-mono" id="appliedPromoCodeDisplay">MÃ</span>
+                    <span class="text-[11px] text-emerald-700 truncate" id="appliedPromoTitleDisplay">— Giảm 0 đ</span>
+                  </div>
+                  <button type="button" id="btnRemovePromo" class="text-rose-600 hover:text-rose-800 p-0.5 rounded text-[11px] font-bold flex items-center gap-0.5 ml-2" title="Gỡ ưu đãi">
+                    <span class="material-symbols-outlined text-sm">cancel</span>
+                  </button>
+                </div>
+                <p class="text-[10px] text-emerald-600 mt-0.5 truncate" id="appliedPromoDescDisplay"></p>
+              </div>
             </div>
           </div>
 
@@ -774,6 +783,8 @@
     let currentDistanceKm = 0;
     let currentAppliedPromo = null;
     let systemPromotions = [];
+    let isCustomerChecked = false;
+    let currentCheckedPhone = '';
     const STORE_ADDRESS = 'Cửa hàng WashSmart 3T - Chi nhánh CS1, TP.HCM';
     const HOME_DELIVERY_FEE = 20000;
 
@@ -1177,9 +1188,12 @@
         if (currentAppliedPromo) {
           appliedBadge.classList.remove('hidden');
           set('appliedPromoCodeDisplay', currentAppliedPromo.code);
+          const minReq = Number(currentAppliedPromo.minOrderAmount || 0);
           const discText = discount > 0
             ? `— Giảm ${formatCurrency(discount)}`
-            : `— Cần tối thiểu ${formatCurrency(currentAppliedPromo.minOrderAmount)}`;
+            : (subtotal < minReq
+                ? `— Cần tối thiểu ${formatCurrency(minReq)}`
+                : '— Đủ điều kiện (Chờ chọn dịch vụ)');
           set('appliedPromoTitleDisplay', discText);
           const descEl = document.getElementById('appliedPromoDescDisplay');
           if (descEl) descEl.textContent = currentAppliedPromo.title || currentAppliedPromo.description || '';
@@ -1306,33 +1320,23 @@
       }
 
       try {
-        const promos = await Api.get('/Promotions?category=active');
-        if (Array.isArray(promos)) {
-          systemPromotions = promos;
-        }
-
-        const phone = document.getElementById('customerPhoneInput')?.value.replace(/\D/g, '') || '';
-        if (phone.length >= 9) {
-          try {
-            const myVouchersRes = await Api.get('/Promotions/my-vouchers');
-            if (myVouchersRes && Array.isArray(myVouchersRes.vouchers)) {
-              myVouchersRes.vouchers.forEach(v => {
-                if (!systemPromotions.some(sp => sp.code?.toUpperCase() === v.code?.toUpperCase())) {
-                  systemPromotions.unshift({
-                    code: v.code,
-                    title: v.title,
-                    description: v.description,
-                    discountType: v.discountTag === 'GIẢM' && String(v.discountValue || '').includes('%') ? 'Percentage' : 'FixedAmount',
-                    discountValue: v.discountAmount,
-                    minOrderAmount: v.minOrderAmount || 0,
-                    badgeText: v.badgeText,
-                    tierLabel: v.tierLabel,
-                    isPersonal: true
-                  });
-                }
-              });
-            }
-          } catch (_) {}
+        const phone = currentCheckedPhone || (document.getElementById('customerPhoneInput')?.value.replace(/\D/g, '') || '');
+        const myVouchersRes = await Api.get('/Promotions/my-vouchers?phone=' + encodeURIComponent(phone));
+        systemPromotions = [];
+        if (myVouchersRes && Array.isArray(myVouchersRes.vouchers)) {
+          systemPromotions = myVouchersRes.vouchers.map(v => ({
+            code: v.code,
+            title: v.title,
+            description: v.description,
+            discountType: v.discountType || (String(v.discountValue || '').includes('%') ? 'Percentage' : 'FixedAmount'),
+            discountValue: v.discountAmount,
+            minOrderAmount: v.minOrderAmount || 0,
+            maxDiscountAmount: v.maxDiscountAmount || null,
+            badgeText: v.badgeText,
+            tierLabel: v.tierLabel,
+            isAvailable: v.isAvailable !== false,
+            ineligibleReason: v.ineligibleReason || ''
+          }));
         }
 
         renderPromoModalList(document.getElementById('promoFilterInput')?.value || '');
@@ -1383,7 +1387,9 @@
       listContainer.innerHTML = filtered.map(p => {
         const isCurrentApplied = currentAppliedPromo && currentAppliedPromo.code?.toUpperCase() === p.code?.toUpperCase();
         const minAmount = Number(p.minOrderAmount || 0);
-        const isEligible = currentSubtotal >= minAmount;
+        const tierOk = p.isAvailable !== false;
+        const amountOk = currentSubtotal >= minAmount;
+        const isEligible = tierOk && amountOk;
         const missingAmount = minAmount - currentSubtotal;
 
         let discountDisplay = '';
@@ -1394,7 +1400,7 @@
         }
 
         return `
-          <div class="p-3 rounded-xl border ${isCurrentApplied ? 'border-emerald-500 bg-emerald-50/50 ring-1 ring-emerald-500/20' : 'border-gray-200 bg-white hover:border-primary/50'} transition-all text-xs">
+          <div class="p-3 rounded-xl border ${!tierOk ? 'border-gray-200 bg-gray-50 opacity-70' : (isCurrentApplied ? 'border-emerald-500 bg-emerald-50/50 ring-1 ring-emerald-500/20' : 'border-gray-200 bg-white hover:border-primary/50')} transition-all text-xs">
             <div class="flex items-start justify-between gap-2">
               <div class="space-y-1 min-w-0 flex-1">
                 <div class="flex items-center gap-1.5 flex-wrap">
@@ -1404,6 +1410,7 @@
                 </div>
                 <h4 class="font-bold text-gray-900 text-xs">${safeText(p.title)}</h4>
                 <p class="text-[11px] text-gray-500 line-clamp-2">${safeText(p.description || '')}</p>
+                ${!tierOk && p.ineligibleReason ? `<p class="text-[10px] font-semibold text-rose-600">${safeText(p.ineligibleReason)}</p>` : ''}
                 <div class="flex items-center gap-2 text-[10px] text-gray-500 pt-1">
                   <span>• Đơn tối thiểu: <strong>${minAmount > 0 ? formatCurrency(minAmount) : 'Mọi đơn'}</strong></span>
                   ${p.maxDiscountAmount ? `<span>• Giảm tối đa: <strong>${formatCurrency(p.maxDiscountAmount)}</strong></span>` : ''}
@@ -1423,9 +1430,9 @@
                 ` : `
                   <div class="text-right">
                     <button type="button" disabled class="px-2.5 py-1.5 rounded-lg bg-gray-100 text-gray-400 font-semibold text-xs cursor-not-allowed">
-                      Chưa đủ
+                      ${!tierOk ? 'Chưa mở khóa' : 'Chưa đủ'}
                     </button>
-                    <p class="text-[9px] text-rose-500 mt-0.5 whitespace-nowrap">Thiếu ${formatCurrency(missingAmount)}</p>
+                    ${tierOk ? `<p class="text-[9px] text-rose-500 mt-0.5 whitespace-nowrap">Thiếu ${formatCurrency(missingAmount)}</p>` : ''}
                   </div>
                 `}
               </div>
@@ -1452,6 +1459,54 @@
     document.getElementById('promoFilterInput')?.addEventListener('input', (e) => {
       renderPromoModalList(e.target.value);
     });
+    async function unlockCustomerPromotions(phone) {
+      isCustomerChecked = true;
+      currentCheckedPhone = phone;
+      currentAppliedPromo = null;
+      const inp = document.getElementById('posPromoCodeInput');
+      if (inp) inp.value = '';
+      updateBillCalculations();
+
+      document.getElementById('promoLockedHint')?.classList.add('hidden');
+      document.getElementById('promoControlsArea')?.classList.remove('hidden');
+      const btnOpen = document.getElementById('btnOpenPromoModal');
+      if (btnOpen) {
+        btnOpen.classList.remove('hidden');
+        btnOpen.classList.add('flex');
+      }
+
+      try {
+        const res = await Api.get('/Promotions/my-vouchers?phone=' + encodeURIComponent(phone));
+        if (res && Array.isArray(res.vouchers)) {
+          const availCount = res.vouchers.filter(v => v.isAvailable !== false).length;
+          const lbl = document.getElementById('btnOpenPromoLabel');
+          if (lbl) lbl.textContent = `Chọn ưu đãi (${availCount} khả dụng)`;
+        }
+      } catch (_) {}
+    }
+
+    function lockCustomerPromotions() {
+      isCustomerChecked = false;
+      currentCheckedPhone = '';
+      currentAppliedPromo = null;
+      const inp = document.getElementById('posPromoCodeInput');
+      if (inp) inp.value = '';
+      document.getElementById('promoLockedHint')?.classList.remove('hidden');
+      document.getElementById('promoControlsArea')?.classList.add('hidden');
+      const btnOpen = document.getElementById('btnOpenPromoModal');
+      if (btnOpen) {
+        btnOpen.classList.add('hidden');
+        btnOpen.classList.remove('flex');
+      }
+      updateBillCalculations();
+    }
+
+    document.getElementById('customerPhoneInput')?.addEventListener('input', () => {
+      if (isCustomerChecked) {
+        lockCustomerPromotions();
+      }
+    });
+
     async function lookupCustomer() {
       const phoneInput = document.getElementById('customerPhoneInput');
       const phone = phoneInput ? phoneInput.value.replace(/\D/g, '') : '';
@@ -1493,6 +1548,7 @@
           }
 
           showToast(`Đã tìm thấy khách hàng cũ: ${foundName}`);
+          await unlockCustomerPromotions(phone);
         } else {
           // KHÁCH HÀNG MỚI (Chưa có trong hệ thống -> Nhân viên phải tự nhập)
           if (nameInput) {
@@ -1512,6 +1568,7 @@
             addressInput.placeholder = 'Nhập số nhà, tên đường, phường, quận/huyện cho khách mới...';
           }
           recalculateDeliveryFeeFromAddress('');
+          await unlockCustomerPromotions(phone);
 
           showToast('Khách hàng mới! Nhân viên vui lòng tự nhập họ tên & địa chỉ lần đầu.');
         }

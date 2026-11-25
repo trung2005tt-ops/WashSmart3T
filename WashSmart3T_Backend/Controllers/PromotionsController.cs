@@ -43,17 +43,33 @@ public class PromotionsController : ControllerBase
     // ============================================================
     [HttpGet("my-vouchers")]
     [AllowAnonymous]
-    public async Task<IActionResult> GetMyVouchers()
+    public async Task<IActionResult> GetMyVouchers([FromQuery] string? phone = null)
     {
         var idStr = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         int? userId = int.TryParse(idStr, out var id) ? id : null;
 
-        string tier = "Gold"; // Mặc định Gold nếu demo chưa đăng nhập
-        int points = 1450;
-        string customerName = "Chị Kiều Như";
-        string? phone = null;
+        string tier = "Bronze";
+        int points = 0;
+        string customerName = "Khách hàng mới";
+        string? resolvedPhone = null;
 
-        if (userId.HasValue)
+        if (!string.IsNullOrWhiteSpace(phone))
+        {
+            var (_, _, cleanPhone) = WashSmart.API.Services.SmsService.NormalizePhone(phone);
+            var targetPhone = !string.IsNullOrWhiteSpace(cleanPhone) ? cleanPhone : phone.Trim();
+            var targetUser = await _context.Users.AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Phone == targetPhone || u.Phone == phone.Trim());
+
+            resolvedPhone = targetPhone;
+            if (targetUser != null)
+            {
+                tier = string.IsNullOrWhiteSpace(targetUser.MembershipTier) ? "Bronze" : targetUser.MembershipTier;
+                points = targetUser.LoyaltyPoints;
+                customerName = targetUser.FullName;
+                resolvedPhone = targetUser.Phone;
+            }
+        }
+        else if (userId.HasValue)
         {
             var user = await _context.Users.AsNoTracking().FirstOrDefaultAsync(u => u.Id == userId.Value);
             if (user != null)
@@ -61,7 +77,7 @@ public class PromotionsController : ControllerBase
                 tier = string.IsNullOrWhiteSpace(user.MembershipTier) ? "Bronze" : user.MembershipTier;
                 points = user.LoyaltyPoints;
                 customerName = user.FullName;
-                phone = user.Phone;
+                resolvedPhone = user.Phone;
             }
         }
 
@@ -83,7 +99,7 @@ public class PromotionsController : ControllerBase
             var descLower = (p.Description ?? string.Empty).ToLowerInvariant();
 
             bool isCompensation = descLower.Contains("đền bù") || titleLower.Contains("đền bù");
-            bool isPersonal = !string.IsNullOrEmpty(phone) && (p.Description.Contains(phone) || (!string.IsNullOrEmpty(customerName) && p.Title.Contains(customerName)));
+            bool isPersonal = !string.IsNullOrEmpty(resolvedPhone) && (p.Description.Contains(resolvedPhone) || (!string.IsNullOrEmpty(customerName) && p.Title.Contains(customerName)));
 
             // Nếu là voucher đền bù cá nhân của khách khác thì không hiển thị
             if (isCompensation && !isPersonal)
@@ -129,6 +145,7 @@ public class PromotionsController : ControllerBase
                 title = p.Title,
                 description = p.Description,
                 discountTag = p.DiscountType == "Percentage" ? "GIẢM" : "VOUCHER",
+                discountType = p.DiscountType,
                 discountValue = p.DiscountType == "Percentage" ? $"{(int)p.DiscountValue}%" : $"{p.DiscountValue / 1000:N0}k",
                 discountAmount = p.DiscountValue,
                 minOrderAmount = p.MinOrderAmount,
