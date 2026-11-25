@@ -138,10 +138,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
-
-// 🚀 BẬT CORS TRƯỚC STATIC FILES ĐỂ TRÌNH DUYỆT / FLUTTER WEB LOAD ĐƯỢC ẢNH MINH CHỨNG
+// 🚀 BẬT CORS TRƯỚC HTTPS REDIRECTION & STATIC FILES ĐỂ TRÌNH DUYỆT / FLUTTER WEB KHÔNG BỊ LỖI PREFLIGHT 307
 app.UseCors("FlutterPolicy");
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 app.UseStaticFiles(new StaticFileOptions
 {
