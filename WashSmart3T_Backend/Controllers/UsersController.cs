@@ -230,13 +230,20 @@ public class UsersController : ControllerBase
 
         user.LoyaltyPoints += request.PointsDelta;
         if (user.LoyaltyPoints < 0) user.LoyaltyPoints = 0;
+        var oldTier = user.MembershipTier;
+        user.MembershipTier = LoyaltyService.CalculateTier(user.TotalSpent, user.LoyaltyPoints);
         await _context.SaveChangesAsync();
+
+        var tierNotice = !string.Equals(oldTier, user.MembershipTier, StringComparison.OrdinalIgnoreCase)
+            ? $" Hạng thẻ tự động cập nhật: {user.MembershipTier}!"
+            : "";
 
         return Ok(new
         {
-            message = $"Đã điều chỉnh điểm tích lũy của {user.FullName}: {(request.PointsDelta >= 0 ? "+" : "")}{request.PointsDelta} điểm. Điểm hiện tại: {user.LoyaltyPoints}.",
+            message = $"Đã điều chỉnh điểm tích lũy của {user.FullName}: {(request.PointsDelta >= 0 ? "+" : "")}{request.PointsDelta} điểm. Điểm hiện tại: {user.LoyaltyPoints}.{tierNotice}",
             userId = user.Id,
-            loyaltyPoints = user.LoyaltyPoints
+            loyaltyPoints = user.LoyaltyPoints,
+            membershipTier = user.MembershipTier
         });
     }
 
