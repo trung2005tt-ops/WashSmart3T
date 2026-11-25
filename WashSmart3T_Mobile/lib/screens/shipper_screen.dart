@@ -612,8 +612,8 @@ class _ShipperScreenState extends State<ShipperScreen>
         },
         body: jsonEncode({
           'isOnline': isOnline,
-          'latitude': 10.8031, // Cửa hàng WashSmart 3T (140 Lê Trọng Tấn)
-          'longitude': 106.6268,
+          'latitude': 10.8070, // Cửa hàng WashSmart 3T (140 Lê Trọng Tấn)
+          'longitude': 106.6287,
         }),
       );
     } catch (_) {}

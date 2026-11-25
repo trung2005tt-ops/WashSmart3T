@@ -1632,6 +1632,7 @@
     function openLiveMapModal(options = {}) {
       const modal = document.getElementById('liveMapModal');
       modal.classList.remove('hidden');
+      loadDispatchData();
 
       // Initialize Leaflet if not yet initialized
       if (!leafletMap) {
@@ -2161,6 +2162,7 @@
       } else if (tab === 'shippers') {
         sBtn.className = 'flex-1 py-1.5 px-1.5 rounded-lg bg-primary text-white font-bold text-xs flex items-center justify-center gap-1 shadow-sm transition-all';
         sContent.classList.remove('hidden');
+        loadDispatchData();
       } else if (tab === 'handovers') {
         hBtn.className = 'flex-1 py-1.5 px-1.5 rounded-lg bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-1 shadow-sm transition-all';
         hContent.classList.remove('hidden');
@@ -2627,7 +2629,7 @@
       selectedOrderId = parseInt(params.get('order'), 10) || null;
 
       await loadDispatchData();
-      setInterval(loadDispatchData, 30000);
+      setInterval(loadDispatchData, 8000);
 
       if (params.get('map') === '1') {
         setTimeout(async () => {
