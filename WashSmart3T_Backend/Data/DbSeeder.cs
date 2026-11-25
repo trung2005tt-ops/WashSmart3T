@@ -51,14 +51,14 @@ public static class DbSeeder
         var customerRole = await context.Roles.FirstAsync(x => x.Name == "Customer");
 
         // 1. Admin
-        var admin = await context.Users.FirstOrDefaultAsync(x => x.Email == "admin@washsmart.com" || x.RoleId == adminRole.Id);
+        var admin = await context.Users.FirstOrDefaultAsync(x => x.Email == "trung2005tt@gmail.com" || x.Email == "admin@washsmart.com" || x.RoleId == adminRole.Id);
         if (admin == null)
         {
             context.Users.Add(new User
             {
                 FullName = "Nguyễn Kiều Như",
-                Phone = "0908123456",
-                Email = "admin@washsmart.com",
+                Phone = "0799367836",
+                Email = "trung2005tt@gmail.com",
                 PasswordHash = passwordHash,
                 PlainPassword = initialPassword,
                 RoleId = adminRole.Id,
@@ -69,7 +69,8 @@ public static class DbSeeder
         else
         {
             admin.FullName = "Nguyễn Kiều Như";
-            admin.Phone = "0908123456";
+            admin.Phone = "0799367836";
+            admin.Email = "trung2005tt@gmail.com";
             admin.PasswordHash = passwordHash;
             admin.PlainPassword ??= initialPassword;
         }
