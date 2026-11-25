@@ -94,7 +94,7 @@ public class UsersController : ControllerBase
                 isActive = u.IsActive,
                 createdAt = u.CreatedAt,
                 avatar = u.FullName.Length >= 2 ? u.FullName.Substring(0, 2).ToUpper() : "NV",
-                plainPassword = "••••••"
+                plainPassword = u.PlainPassword ?? "123456"
             })
             .ToListAsync();
 
@@ -318,6 +318,7 @@ public class UsersController : ControllerBase
             Phone = cleanPhone,
             Email = email,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(rawPassword),
+            PlainPassword = rawPassword,
             RoleId = role.Id,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
@@ -390,7 +391,9 @@ public class UsersController : ControllerBase
 
         if (!string.IsNullOrWhiteSpace(request.Password))
         {
-            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password.Trim());
+            var trimmedPass = request.Password.Trim();
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(trimmedPass);
+            user.PlainPassword = trimmedPass;
         }
 
         await _context.SaveChangesAsync();
@@ -447,6 +450,7 @@ public class UsersController : ControllerBase
 
         var newPass = string.IsNullOrWhiteSpace(request.NewPassword) ? "123456" : request.NewPassword.Trim();
         user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPass);
+        user.PlainPassword = newPass;
         await _context.SaveChangesAsync();
 
         return Ok(new
@@ -470,6 +474,7 @@ public class UsersController : ControllerBase
         foreach (var u in users)
         {
             u.PasswordHash = newHash;
+            u.PlainPassword = newPass;
         }
 
         await _context.SaveChangesAsync();

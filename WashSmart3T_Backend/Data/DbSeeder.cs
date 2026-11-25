@@ -60,6 +60,7 @@ public static class DbSeeder
                 Phone = "0908123456",
                 Email = "admin@washsmart.com",
                 PasswordHash = passwordHash,
+                PlainPassword = initialPassword,
                 RoleId = adminRole.Id,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
@@ -70,6 +71,7 @@ public static class DbSeeder
             admin.FullName = "Nguyễn Kiều Như";
             admin.Phone = "0908123456";
             admin.PasswordHash = passwordHash;
+            admin.PlainPassword ??= initialPassword;
         }
 
         // 2. Nhân viên tiếp nhận / Lễ tân POS (Staff)
@@ -92,6 +94,7 @@ public static class DbSeeder
                     Phone = s.Phone,
                     Email = s.Email,
                     PasswordHash = passwordHash,
+                    PlainPassword = initialPassword,
                     RoleId = staffRole.Id,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
@@ -102,6 +105,7 @@ public static class DbSeeder
                 u.FullName = s.Name;
                 u.Phone = s.Phone;
                 u.PasswordHash = passwordHash;
+                u.PlainPassword ??= initialPassword;
             }
         }
 
@@ -122,6 +126,7 @@ public static class DbSeeder
                     Phone = sh.Phone,
                     Email = sh.Email,
                     PasswordHash = passwordHash,
+                    PlainPassword = initialPassword,
                     RoleId = shipperRole.Id,
                     IsActive = true,
                     CreatedAt = DateTime.UtcNow
@@ -132,6 +137,7 @@ public static class DbSeeder
                 u.FullName = sh.Name;
                 u.Phone = sh.Phone;
                 u.PasswordHash = passwordHash;
+                u.PlainPassword ??= initialPassword;
             }
         }
 
