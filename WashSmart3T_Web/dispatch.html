@@ -1839,29 +1839,20 @@
 
       onlineShippers.forEach((s, idx) => {
         const activeCount = shipperActiveOrderCount(s.id);
-        let sLat, sLng, locationDesc;
+        // Luôn đặt vị trí Shipper xuất phát tại Cửa hàng WashSmart 3T (140 Lê Trọng Tấn)
+        // Micro-offset siêu nhỏ (~12-15m) để nhiều xe không đè khít lên icon Hub 3T
+        const parkAngle = idx * 1.05;
+        const sLat = STORE_HUB.lat + 0.00012 * Math.cos(parkAngle);
+        const sLng = STORE_HUB.lng + 0.00012 * Math.sin(parkAngle);
+        let locationDesc = `Đang trực ca tại Cửa hàng 140 Lê Trọng Tấn • Sẵn sàng nhận đơn`;
 
         if (activeCount > 0) {
-          // Khi đang có đơn: Xuất phát từ cửa hàng đến địa chỉ đơn hàng
           const assignedOrder = allOrders.find(o => o.shipperId === s.id && ['PickingUp', 'Delivering', 'Confirmed', 'Ready'].includes(o.status));
           if (assignedOrder) {
-            const orderCoords = resolveOrderCoordinates(assignedOrder);
-            // Vị trí đang di chuyển từ Cửa Hàng tới trạm của khách hàng
-            sLat = (STORE_HUB.lat * 0.45) + (orderCoords.lat * 0.55);
-            sLng = (STORE_HUB.lng * 0.45) + (orderCoords.lng * 0.55);
-            locationDesc = `Đang di chuyển từ Cửa hàng tới đơn #${assignedOrder.id} (${assignedOrder.customerName || 'Khách'})`;
+            locationDesc = `Tại Cửa hàng 140 Lê Trọng Tấn • Chuẩn bị/phụ trách đơn #${assignedOrder.id} (${assignedOrder.customerName || 'Khách'})`;
           } else {
-            sLat = STORE_HUB.lat;
-            sLng = STORE_HUB.lng;
             locationDesc = `Đang trực tại Cửa hàng WashSmart 3T (140 Lê Trọng Tấn)`;
           }
-        } else {
-          // KHI SHIPPER RẢNH / CHỜ ĐƠN: VỊ TRÍ XUẤT PHÁT Ở TẠI CỬA HÀNG 140 LÊ TRỌNG TẤN!
-          // Đỗ tại sân cửa hàng Hub với micro-offset siêu nhỏ (~12-15m) để không đè khít lên icon Hub 3T
-          const parkAngle = idx * 1.05;
-          sLat = STORE_HUB.lat + 0.00012 * Math.cos(parkAngle);
-          sLng = STORE_HUB.lng + 0.00012 * Math.sin(parkAngle);
-          locationDesc = `Đang trực ca tại Cửa hàng 140 Lê Trọng Tấn • Sẵn sàng nhận đơn`;
         }
 
         const shipperIcon = L.divIcon({
