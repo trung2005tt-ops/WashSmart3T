@@ -18,8 +18,11 @@ class NoCacheHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
         super().end_headers()
 
 if __name__ == '__main__':
-    socketserver.TCPServer.allow_reuse_address = True
-    with socketserver.TCPServer(("", PORT), NoCacheHTTPRequestHandler) as httpd:
+    class ThreadingTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
+        allow_reuse_address = True
+        daemon_threads = True
+
+    with ThreadingTCPServer(("", PORT), NoCacheHTTPRequestHandler) as httpd:
         print(f"Serving WashSmart3T_Web at http://localhost:{PORT} with cache disabled")
         sys.stdout.flush()
         try:
