@@ -519,11 +519,7 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
 
                   const SizedBox(height: 20),
 
-                  // 5. Cửa Hàng Đổi 3T Xu Lấy Quà
-                  _buildRedeemRewardsStore(),
-                  const SizedBox(height: 20),
-
-                  // 6. Banner Đại Tiệc
+                  // 5. Banner Đại Tiệc
                   _buildCampaignBanner(),
                   const SizedBox(height: 20),
 
@@ -670,7 +666,7 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
                     const Icon(Icons.price_change, color: Colors.white, size: 14),
                     const SizedBox(width: 4),
                     Text(
-                      '≈ ${_formatCurrency(deductibleAmount)} khấu trừ trực tiếp',
+                      '≈ ${_formatCurrency(deductibleAmount)} dùng như tiền mặt/xu khi thanh toán',
                       style: GoogleFonts.plusJakartaSans(fontSize: 11, color: Colors.white),
                     ),
                   ],
@@ -724,53 +720,26 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
             ),
           ),
           const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: SizedBox(
-                  height: 38,
-                  child: ElevatedButton.icon(
-                    onPressed: () => _showToast('Chuyển tới kho quà đổi Xu'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: primaryColor,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(19)),
-                      elevation: 2,
-                    ),
-                    icon: const Icon(Icons.redeem, size: 16),
-                    label: Text(
-                      'Đổi quà / Voucher',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+          SizedBox(
+            width: double.infinity,
+            height: 38,
+            child: ElevatedButton.icon(
+              onPressed: _showPointsHistoryModal,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: primaryColor,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(19)),
+                elevation: 2,
+              ),
+              icon: const Icon(Icons.history, size: 17),
+              label: Text(
+                'Lịch sử tích điểm',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: SizedBox(
-                  height: 38,
-                  child: TextButton.icon(
-                    onPressed: _showPointsHistoryModal,
-                    style: TextButton.styleFrom(
-                      backgroundColor: Colors.white.withOpacity(0.2),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(19)),
-                    ),
-                    icon: const Icon(Icons.history, size: 16),
-                    label: Text(
-                      'Lịch sử tích điểm',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
@@ -1032,158 +1001,6 @@ class _PromotionsScreenState extends State<PromotionsScreen> {
                     ],
                   ),
                 ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRedeemRewardsStore() {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(color: surfaceLow, borderRadius: BorderRadius.circular(16)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: const BoxDecoration(color: Color(0xFFFD56A7), shape: BoxShape.circle),
-                child: const Icon(Icons.stars, color: Colors.white, size: 18),
-              ),
-              const SizedBox(width: 8),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Đổi 3T Xu Nhận Quà Tinh Tươm',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: onSurface,
-                    ),
-                  ),
-                  Text(
-                    'Số dư của bạn: $_loyaltyPoints Xu',
-                    style: GoogleFonts.plusJakartaSans(fontSize: 10, color: outlineColor),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildRewardCard(
-                  imageUrl: 'https://images.unsplash.com/photo-1585238342024-78d387f4a707?q=80&w=400',
-                  cost: '300 Xu',
-                  title: 'Nước xả vải hữu cơ Pháp',
-                  desc: 'Nâng cấp hương nước hoa cỏ thơm mát lưu hương 7 ngày.',
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildRewardCard(
-                  imageUrl: 'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?q=80&w=400',
-                  cost: '500 Xu',
-                  title: 'Voucher 20k Giặt Chăn Ga',
-                  desc: 'Áp dụng giặt rèm cửa, topper và drap nệm phòng ngủ.',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          SizedBox(
-            width: double.infinity,
-            height: 36,
-            child: TextButton.icon(
-              onPressed: () => _showToast('Đang tải thêm danh sách quà tặng...'),
-              style: TextButton.styleFrom(
-                backgroundColor: surfaceHigh,
-                foregroundColor: primaryColor,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-              ),
-              label: Text(
-                'Xem thêm 12 phần quà đổi điểm khác',
-                style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.bold),
-              ),
-              icon: const Icon(Icons.chevron_right, size: 16),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildRewardCard({
-    required String imageUrl,
-    required String cost,
-    required String title,
-    required String desc,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(8),
-      decoration: BoxDecoration(color: cardBg, borderRadius: BorderRadius.circular(12)),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(imageUrl, height: 90, width: double.infinity, fit: BoxFit.cover),
-              ),
-              Positioned(
-                top: 4,
-                right: 4,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(color: primaryColor, borderRadius: BorderRadius.circular(10)),
-                  child: Text(
-                    cost,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            title,
-            style: GoogleFonts.plusJakartaSans(fontSize: 11, fontWeight: FontWeight.bold, color: onSurface),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Text(
-            desc,
-            style: GoogleFonts.plusJakartaSans(fontSize: 9, color: outlineColor),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            width: double.infinity,
-            height: 28,
-            child: ElevatedButton(
-              onPressed: () => _showToast('Xác nhận đổi $cost lấy quà!'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: surfaceHigh,
-                foregroundColor: primaryColor,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-              child: Text(
-                'Đổi ngay',
-                style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.bold),
               ),
             ),
           ),
