@@ -675,4 +675,165 @@ public class AuthController : ControllerBase
             }
         });
     }
+
+    // ============================================================
+    // POST: api/Auth/forgot-password-otp
+    // Gửi mã OTP đặt lại mật khẩu về Email đã đăng ký của tài khoản
+    // ============================================================
+    [HttpPost("forgot-password-otp")]
+    [AllowAnonymous]
+    public async Task<IActionResult> SendForgotPasswordOtp([FromBody] ForgotPasswordOtpRequest request)
+    {
+        var rawIdentifier = (request.Identifier ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(rawIdentifier))
+        {
+            return BadRequest(new { message = "Vui lòng nhập Email hoặc Số điện thoại tài khoản." });
+        }
+
+        User? user = null;
+        if (rawIdentifier.Contains('@'))
+        {
+            var cleanEmail = rawIdentifier.ToLowerInvariant();
+            user = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == cleanEmail);
+        }
+        else
+        {
+            var (_, _, normalizedPhone) = SmsService.NormalizePhone(rawIdentifier);
+            var lookupPhone = !string.IsNullOrWhiteSpace(normalizedPhone) ? normalizedPhone : rawIdentifier;
+            user = await _context.Users.FirstOrDefaultAsync(u => u.Phone == lookupPhone || u.Phone == rawIdentifier);
+        }
+
+        if (user == null)
+        {
+            return NotFound(new { message = "Không tìm thấy tài khoản nào với Email hoặc Số điện thoại này." });
+        }
+
+        if (!user.IsActive)
+        {
+            return BadRequest(new { message = "Tài khoản này đang bị tạm khóa. Vui lòng liên hệ quản trị viên." });
+        }
+
+        var userEmail = (user.Email ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(userEmail) || !userEmail.Contains('@') || userEmail.EndsWith("@customer.washsmart.local", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(new { message = "Tài khoản này chưa cập nhật địa chỉ Email thật để nhận OTP. Vui lòng liên hệ quầy WashSmart 3T để được hỗ trợ." });
+        }
+
+        var emailKey = userEmail.ToLowerInvariant();
+        var cooldownKey = $"Reset:{emailKey}";
+
+        if (_otpCooldowns.TryGetValue(cooldownKey, out var lastSent))
+        {
+            var elapsed = DateTime.UtcNow - lastSent;
+            if (elapsed < TimeSpan.FromSeconds(60))
+            {
+                var remain = 60 - (int)elapsed.TotalSeconds;
+                return StatusCode(StatusCodes.Status429TooManyRequests, new
+                {
+                    message = $"Vui lòng đợi {remain} giây trước khi yêu cầu gửi lại mã OTP mới."
+                });
+            }
+        }
+
+        _otpCooldowns[cooldownKey] = DateTime.UtcNow;
+
+        var otpCode = OtpManager.GenerateOtp("ResetPassword", emailKey);
+        var (emailSent, emailMsg, isSimulated) = await EmailService.SendOtpEmailAsync(
+            userEmail, otpCode, "ResetPassword", _configuration, user.FullName);
+
+        if (!emailSent)
+        {
+            return StatusCode(500, new { message = "Không thể gửi email OTP lúc này. Vui lòng thử lại sau." });
+        }
+
+        var maskedEmail = MaskEmail(userEmail);
+
+        return Ok(new
+        {
+            success = true,
+            message = $"Mã OTP xác thực đặt lại mật khẩu đã được gửi về email {maskedEmail}. Vui lòng kiểm tra hộp thư đến hoặc mục Spam và tự nhập mã OTP.",
+            maskedEmail,
+            isSimulated,
+            devHint = isSimulated ? $"[Chế độ Demo] Mã OTP đặt lại mật khẩu là: {otpCode}" : null
+        });
+    }
+
+    // ============================================================
+    // POST: api/Auth/reset-password
+    // Xác thực OTP khách hàng tự nhập & cập nhật mật khẩu mới
+    // ============================================================
+    [HttpPost("reset-password")]
+    [AllowAnonymous]
+    public async Task<IActionResult> ResetPassword([FromBody] ForgotPasswordResetRequest request)
+    {
+        var rawIdentifier = (request.Identifier ?? string.Empty).Trim();
+        var otpCode = (request.OtpCode ?? string.Empty).Trim();
+        var newPassword = request.NewPassword ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(rawIdentifier))
+            return BadRequest(new { message = "Vui lòng nhập Email hoặc Số điện thoại tài khoản." });
+
+        if (string.IsNullOrWhiteSpace(otpCode) || otpCode.Length != 6)
+            return BadRequest(new { message = "Vui lòng nhập đầy đủ mã OTP gồm 6 chữ số." });
+
+        if (newPassword.Length < 6)
+            return BadRequest(new { message = "Mật khẩu mới phải có ít nhất 6 ký tự." });
+
+        User? user = null;
+        if (rawIdentifier.Contains('@'))
+        {
+            var cleanEmail = rawIdentifier.ToLowerInvariant();
+            user = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == cleanEmail);
+        }
+        else
+        {
+            var (_, _, normalizedPhone) = SmsService.NormalizePhone(rawIdentifier);
+            var lookupPhone = !string.IsNullOrWhiteSpace(normalizedPhone) ? normalizedPhone : rawIdentifier;
+            user = await _context.Users.FirstOrDefaultAsync(u => u.Phone == lookupPhone || u.Phone == rawIdentifier);
+        }
+
+        if (user == null)
+            return NotFound(new { message = "Không tìm thấy tài khoản tương ứng." });
+
+        var emailKey = (user.Email ?? string.Empty).Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(emailKey))
+            return BadRequest(new { message = "Tài khoản không có Email hợp lệ." });
+
+        var (isValidOtp, otpError) = OtpManager.VerifyOtp("ResetPassword", emailKey, otpCode);
+        if (!isValidOtp)
+        {
+            return BadRequest(new { message = otpError });
+        }
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        await _context.SaveChangesAsync();
+
+        return Ok(new
+        {
+            success = true,
+            message = "Đặt lại mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới ngay bây giờ."
+        });
+    }
+
+    private static string MaskEmail(string email)
+    {
+        var parts = email.Split('@');
+        if (parts.Length != 2) return email;
+        var local = parts[0];
+        var domain = parts[1];
+        if (local.Length <= 2) return $"{local[0]}***@{domain}";
+        return $"{local.Substring(0, 2)}***{local.Substring(local.Length - 1)}@{domain}";
+    }
+}
+
+public class ForgotPasswordOtpRequest
+{
+    public string Identifier { get; set; } = string.Empty;
+}
+
+public class ForgotPasswordResetRequest
+{
+    public string Identifier { get; set; } = string.Empty;
+    public string OtpCode { get; set; } = string.Empty;
+    public string NewPassword { get; set; } = string.Empty;
 }

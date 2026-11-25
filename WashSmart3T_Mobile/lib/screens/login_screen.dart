@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'register_screen.dart';
+import 'forgot_password_screen.dart';
 import 'home_screen.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
@@ -263,12 +264,34 @@ class _LoginScreenState extends State<LoginScreen> {
                             ],
                           ),
                           const SizedBox(width: 20), // Tạo khoảng cách an toàn
-                          Text(
-                            'Quên mật khẩu?',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              color: primaryColor,
+                          InkWell(
+                            borderRadius: BorderRadius.circular(8),
+                            onTap: () async {
+                              final updatedIdentifier = await Navigator.push<String>(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => ForgotPasswordScreen(
+                                    initialIdentifier: _phoneController.text.trim(),
+                                  ),
+                                ),
+                              );
+                              if (updatedIdentifier != null && updatedIdentifier.isNotEmpty) {
+                                setState(() {
+                                  _phoneController.text = updatedIdentifier;
+                                  _passwordController.clear();
+                                });
+                              }
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                              child: Text(
+                                'Quên mật khẩu?',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: primaryColor,
+                                ),
+                              ),
                             ),
                           ),
                         ],

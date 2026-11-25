@@ -78,6 +78,46 @@ class ApiService {
     throw Exception(data['message'] ?? 'Đăng ký thất bại');
   }
 
+  static Future<Map<String, dynamic>> sendForgotPasswordOtp({
+    required String identifier,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/Auth/forgot-password-otp'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'identifier': identifier.trim()}),
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data;
+    }
+
+    throw Exception(data['message'] ?? 'Không thể gửi mã OTP đặt lại mật khẩu');
+  }
+
+  static Future<Map<String, dynamic>> resetPassword({
+    required String identifier,
+    required String otpCode,
+    required String newPassword,
+  }) async {
+    final response = await http.post(
+      Uri.parse('$baseUrl/Auth/reset-password'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'identifier': identifier.trim(),
+        'otpCode': otpCode.trim(),
+        'newPassword': newPassword,
+      }),
+    );
+
+    final data = jsonDecode(response.body);
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      return data;
+    }
+
+    throw Exception(data['message'] ?? 'Đặt lại mật khẩu thất bại');
+  }
+
   static Future<Map<String, dynamic>> getMe() async {
     final token = await AuthService.getToken();
 
