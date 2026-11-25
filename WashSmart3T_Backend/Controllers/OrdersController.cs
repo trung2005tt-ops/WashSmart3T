@@ -48,8 +48,8 @@ public class OrdersController : ControllerBase
                 ShipperId = shipperId,
                 IsOnline = true,
                 LastSeenAt = DateTime.UtcNow,
-                Latitude = 10.8031, // Cửa hàng WashSmart 3T (140 Lê Trọng Tấn)
-                Longitude = 106.6268
+                Latitude = 10.8070, // Cửa hàng WashSmart 3T (140 Lê Trọng Tấn)
+                Longitude = 106.6287
             },
             (id, existing) =>
             {
